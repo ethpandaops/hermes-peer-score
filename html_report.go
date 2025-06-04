@@ -33,7 +33,6 @@ const htmlTemplate = `<!DOCTYPE html>
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-3xl font-bold text-gray-900">Hermes Peer Score Report</h1>
-                    <p class="text-gray-600 mt-2">Ethereum Network Connectivity Assessment</p>
                 </div>
                 <div class="text-right">
                     <p class="text-sm text-gray-500">Generated on</p>
@@ -261,13 +260,13 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 	} else if report.OverallScore >= 90 {
 		templateData.ScoreClassification = "Excellent" // 90-100%: Outstanding connectivity.
 	} else if report.OverallScore >= 80 {
-		templateData.ScoreClassification = "Good"      // 80-89%: Good network health.
+		templateData.ScoreClassification = "Good" // 80-89%: Good network health.
 	} else if report.OverallScore >= 60 {
-		templateData.ScoreClassification = "Fair"      // 60-79%: Acceptable but could improve.
+		templateData.ScoreClassification = "Fair" // 60-79%: Acceptable but could improve.
 	} else if report.OverallScore >= 40 {
-		templateData.ScoreClassification = "Poor"      // 40-59%: Concerning network issues.
+		templateData.ScoreClassification = "Poor" // 40-59%: Concerning network issues.
 	} else {
-		templateData.ScoreClassification = "Critical"  // 0-39%: Severe connectivity problems.
+		templateData.ScoreClassification = "Critical" // 0-39%: Severe connectivity problems.
 	}
 
 	// Convert the client distribution map to a sorted list for consistent HTML display.
