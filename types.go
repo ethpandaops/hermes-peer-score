@@ -16,13 +16,15 @@ type PeerScoreConfig struct {
 // PeerStats contains detailed statistics for an individual peer connection.
 // This tracks the lifecycle and behavior of each peer discovered during testing.
 type PeerStats struct {
-	PeerID       string    `json:"peer_id"`       // Unique peer identifier (libp2p peer ID).
-	ClientType   string    `json:"client_type"`   // Ethereum client implementation (lighthouse, prysm, etc.).
-	ConnectedAt  time.Time `json:"connected_at"`  // Timestamp when the peer connection was established.
-	HandshakeOK  bool      `json:"handshake_ok"`  // Whether the initial handshake completed successfully.
-	GoodbyeCount int       `json:"goodbye_count"` // Number of goodbye messages received from this peer.
-	LastGoodbye  string    `json:"last_goodbye"`  // The most recent goodbye reason from this peer.
-	MessageCount int       `json:"message_count"` // Total number of messages exchanged with this peer.
+	PeerID         string    `json:"peer_id"`         // Unique peer identifier (libp2p peer ID).
+	ClientType     string    `json:"client_type"`     // Ethereum client implementation (lighthouse, prysm, etc.).
+	ConnectedAt    time.Time `json:"connected_at"`    // Timestamp when the peer connection was established.
+	Disconnected   bool      `json:"disconnected"`    // Whether the peer has disconnected.
+	DisconnectedAt time.Time `json:"disconnected_at"` // Timestamp when the peer disconnected.
+	HandshakeOK    bool      `json:"handshake_ok"`    // Whether the initial handshake completed successfully.
+	GoodbyeCount   int       `json:"goodbye_count"`   // Number of goodbye messages received from this peer.
+	LastGoodbye    string    `json:"last_goodbye"`    // The most recent goodbye reason from this peer.
+	MessageCount   int       `json:"message_count"`   // Total number of messages exchanged with this peer.
 }
 
 // PeerScoreReport contains the comprehensive analysis results from a peer scoring test.

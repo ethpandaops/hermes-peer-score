@@ -319,8 +319,9 @@ func (p *EnhancedLogParser) handleConnectionEvent(event ConnectionEvent) {
 		}
 		p.tool.peers[event.PeerID] = peer
 	} else if exists && !event.Connected {
-		// Peer disconnected
-		delete(p.tool.peers, event.PeerID)
+		// Peer disconnected - mark as disconnected but keep in map for goodbye tracking
+		peer.Disconnected = true
+		peer.DisconnectedAt = event.Time
 	}
 }
 
