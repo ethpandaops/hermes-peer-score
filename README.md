@@ -2,7 +2,7 @@
 
 A standalone tool for analyzing Ethereum network peer connection health and performance using Hermes as a gossipsub listener for beacon nodes.
 
-## 📋 Prerequisites
+## Prerequisites
 
 The tool automatically downloads and builds the latest Hermes binary during CI runs, or you can build it locally:
 
@@ -21,7 +21,7 @@ go mod tidy
 go build -o peer-score-tool
 ```
 
-## 📖 Usage
+## Usage
 
 ### Basic Usage
 ```bash
@@ -49,10 +49,7 @@ go build -o peer-score-tool
 
 **Note**: TLS is automatically enabled when either port is 443.
 
-## 📊 Report Formats
-
-### JSON Report
-Machine-readable format for CI/CD integration:
+## Report
 
 ```json
 {
@@ -77,16 +74,10 @@ Machine-readable format for CI/CD integration:
 ```
 
 ### HTML Report
-Visual dashboard with:
-- 🎯 Overall score with color-coded status
-- 📈 Connection statistics and success rates  
-- 🔍 Client diversity breakdown
-- ⚠️ Goodbye message analysis
-- 📋 Detailed test configuration
 
 View live example: [GitHub Pages Report](https://ethpandaops.github.io/hermes-peer-score/)
 
-## 🧮 Score Calculation
+## Score Calculation
 
 The overall score is calculated as:
 
@@ -102,26 +93,3 @@ The overall score is calculated as:
 - **40-59%**: Poor
 - **0-39%**: Critical
 
-## 🔄 CI/CD Integration
-
-### Automated Testing & Reporting
-
-The tool runs daily via GitHub Actions with:
-- ✅ Latest Hermes build from source
-- ✅ Configurable test duration
-- ✅ Score threshold validation (default: 80%)
-- ✅ HTML report deployment to GitHub Pages
-- ✅ Artifact storage for historical analysis
-
-
-## 🔧 Architecture
-
-The tool operates by:
-
-1. **Building/downloading** latest Hermes binary
-2. **Starting Hermes** as subprocess with beacon node configuration
-3. **Parsing logs** in real-time to track peer connection events
-4. **Analyzing patterns** for handshakes, disconnections, and client types
-5. **Calculating scores** based on connection success and diversity
-6. **Generating reports** in both JSON and HTML formats
-7. **Handling failures** gracefully with detailed error reporting
