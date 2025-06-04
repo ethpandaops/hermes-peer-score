@@ -8,11 +8,19 @@ on:
     inputs:
       duration:
         description: 'Test duration (e.g., 10m, 1h)'
-        default: '10m'
+        default: '1h'
         required: false
       chain:
-        description: 'Ethereum chain'
+        description: 'Chain'
         default: 'mainnet'
+        required: false
+      region:
+        description: 'Prysm region'
+        type: choice
+        options:
+          - SFO
+          - SYD
+        default: 'SFO'
         required: false
 
 jobs:
@@ -53,9 +61,19 @@ jobs:
         env:
           DURATION: ${{ github.event.inputs.duration || '10m' }}
           CHAIN: ${{ github.event.inputs.chain || 'mainnet' }}
+          REGION: ${{ github.event.inputs.region || 'SFO' }}
         run: |
+          # Select Prysm host based on region
+          if [ "$REGION" = "SYD" ]; then
+            PRYSM_HOST="${{ secrets.PRYSM_HOST_SYD }}"
+          else
+            PRYSM_HOST="${{ secrets.PRYSM_HOST_SFO }}"
+          fi
+          
+          echo "Using Prysm host in $REGION region"
+          
           ./peer-score-tool \
-            --prysm-host="${{ secrets.PRYSM_HOST }}" \
+            --prysm-host="$PRYSM_HOST" \
             --prysm-http-port=443 \
             --prysm-grpc-port=443 \
             --duration="$DURATION" \
