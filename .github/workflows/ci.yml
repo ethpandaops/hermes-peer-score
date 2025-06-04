@@ -26,21 +26,21 @@ on:
 jobs:
   peer-score-test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
-          
+
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y jq bc
-          
+
       - name: Build Latest Hermes
         run: |
           # Clone and build latest hermes from source
@@ -51,15 +51,15 @@ jobs:
           cd ..
           chmod +x ./hermes
           echo "Built Hermes from commit: $LATEST_COMMIT"
-          
+
       - name: Build Peer Score Tool
         run: |
           go mod tidy
           go build -o peer-score-tool
-          
+
       - name: Run Peer Score Test
         env:
-          DURATION: ${{ github.event.inputs.duration || '10m' }}
+          DURATION: ${{ github.event.inputs.duration || '30m' }}
           CHAIN: ${{ github.event.inputs.chain || 'mainnet' }}
           REGION: ${{ github.event.inputs.region || 'SFO' }}
         run: |
@@ -69,16 +69,16 @@ jobs:
           else
             PRYSM_HOST="${{ secrets.PRYSM_HOST_SFO }}"
           fi
-          
+
           echo "Using Prysm host in $REGION region"
-          
+
           ./peer-score-tool \
             --prysm-host="$PRYSM_HOST" \
             --prysm-http-port=443 \
             --prysm-grpc-port=443 \
             --duration="$DURATION" \
             --output=peer-score-report.json
-            
+
       - name: Parse Results
         id: results
         run: |
@@ -89,7 +89,7 @@ jobs:
             clients=$(jq -r '.unique_clients' peer-score-report.json)
             goodbyes=$(jq -r '.goodbye_messages' peer-score-report.json)
             summary=$(jq -r '.summary' peer-score-report.json)
-            
+
             echo "score=$score" >> $GITHUB_OUTPUT
             echo "connections=$connections" >> $GITHUB_OUTPUT
             echo "handshakes=$handshakes" >> $GITHUB_OUTPUT
@@ -100,25 +100,25 @@ jobs:
             echo "No report generated"
             exit 1
           fi
-          
+
       - name: Check Score Threshold
         run: |
           score=${{ steps.results.outputs.score }}
           threshold=80
-          
+
           # Handle null/empty score
           if [ "$score" = "null" ] || [ -z "$score" ]; then
             echo "::error::No valid score generated"
             exit 1
           fi
-          
+
           if (( $(echo "$score < $threshold" | bc -l) )); then
             echo "::error::Peer score below threshold: ${score}% (minimum: ${threshold}%)"
             exit 1
           else
             echo "::notice::Peer score: ${score}% (passed threshold: ${threshold}%)"
           fi
-          
+
       - name: Generate HTML Report
         run: |
           if [ -f peer-score-report.json ]; then
@@ -136,34 +136,34 @@ jobs:
             echo "No JSON report found"
             exit 1
           fi
-          
+
       - name: Upload Report Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: peer-score-reports-${{ github.run_number }}
           path: reports/
           retention-days: 30
-          
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
-        
+
       - name: Upload to Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: reports/
-          
+
       - name: Generate Summary
         run: |
           connections=${{ steps.results.outputs.connections }}
           handshakes=${{ steps.results.outputs.handshakes }}
-          
+
           # Calculate success rate safely
           if [ "$connections" -gt 0 ]; then
             success_rate=$(echo "scale=1; $handshakes * 100 / $connections" | bc)
           else
             success_rate="0"
           fi
-          
+
           {
             echo "## 🔗 Peer Score Report"
             echo ""
@@ -175,7 +175,7 @@ jobs:
             echo "- **Success Rate:** ${success_rate}%"
             echo "- **Goodbye Messages:** ${{ steps.results.outputs.goodbyes }}"
             echo ""
-            echo "### Network Diversity" 
+            echo "### Network Diversity"
             echo "- **Unique Clients:** ${{ steps.results.outputs.clients }}"
             echo ""
             echo "### Summary"
@@ -183,19 +183,19 @@ jobs:
             echo ""
             echo "_Report generated on $(date)_"
           } >> $GITHUB_STEP_SUMMARY
-          
+
   deploy:
     needs: peer-score-test
     runs-on: ubuntu-latest
-    
+
     permissions:
       pages: write
       id-token: write
-      
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-      
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
