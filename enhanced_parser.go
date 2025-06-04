@@ -18,7 +18,6 @@ type EnhancedLogParser struct {
 	connectionChan  chan ConnectionEvent
 	goodbyeChan     chan GoodbyeEvent
 	handshakeChan   chan HandshakeEvent
-	attestationChan chan AttestationEvent
 	errorChan       chan ErrorEvent
 }
 
@@ -64,14 +63,6 @@ type GoodbyeEvent struct {
 func (e GoodbyeEvent) Type() string         { return "goodbye" }
 func (e GoodbyeEvent) Timestamp() time.Time { return e.Time }
 
-type AttestationEvent struct {
-	PeerID string
-	Count  int
-	Time   time.Time
-}
-
-func (e AttestationEvent) Type() string         { return "attestation" }
-func (e AttestationEvent) Timestamp() time.Time { return e.Time }
 
 type ErrorEvent struct {
 	Message string
@@ -88,7 +79,6 @@ func NewEnhancedLogParser(tool *PeerScoreTool) *EnhancedLogParser {
 		connectionChan:  make(chan ConnectionEvent, 100),
 		goodbyeChan:     make(chan GoodbyeEvent, 100),
 		handshakeChan:   make(chan HandshakeEvent, 100),
-		attestationChan: make(chan AttestationEvent, 100),
 		errorChan:       make(chan ErrorEvent, 100),
 	}
 
@@ -292,11 +282,6 @@ func (p *EnhancedLogParser) dispatchEvent(event Event) {
 		case p.goodbyeChan <- e:
 		default:
 		}
-	case AttestationEvent:
-		select {
-		case p.attestationChan <- e:
-		default:
-		}
 	case ErrorEvent:
 		select {
 		case p.errorChan <- e:
@@ -316,8 +301,6 @@ func (p *EnhancedLogParser) eventProcessor(ctx context.Context) {
 			p.handleHandshakeEvent(event)
 		case event := <-p.goodbyeChan:
 			p.handleGoodbyeEvent(event)
-		case event := <-p.attestationChan:
-			p.handleAttestationEvent(event)
 		case event := <-p.errorChan:
 			p.handleErrorEvent(event)
 		}
@@ -376,10 +359,18 @@ func (p *EnhancedLogParser) handleGoodbyeEvent(event GoodbyeEvent) {
 	p.tool.goodbyeReasons[event.Reason]++
 
 	peer, exists := p.tool.peers[event.PeerID]
+	clientType := "unknown"
 	if exists {
 		peer.GoodbyeCount++
 		peer.LastGoodbye = event.Reason
+		clientType = peer.ClientType
 	}
+
+	// Track goodbye by client type
+	if p.tool.goodbyesByClient[clientType] == nil {
+		p.tool.goodbyesByClient[clientType] = make(map[string]int)
+	}
+	p.tool.goodbyesByClient[clientType][event.Reason]++
 
 	// Log with severity based on goodbye reason
 	severity := classifyGoodbyeSeverity(event.Reason)
@@ -408,9 +399,6 @@ func classifyGoodbyeSeverity(reason string) string {
 	}
 }
 
-func (p *EnhancedLogParser) handleAttestationEvent(event AttestationEvent) {
-	log.Printf("Received %d attestations from %s", event.Count, event.PeerID[:12])
-}
 
 func (p *EnhancedLogParser) handleErrorEvent(event ErrorEvent) {
 	p.tool.mu.Lock()
