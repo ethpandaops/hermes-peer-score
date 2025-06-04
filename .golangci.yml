@@ -34,7 +34,6 @@ linters:
     - promlinter
     - reassign
     - staticcheck
-    - tagliatelle
     - thelper
     - tparallel
     - unconvert

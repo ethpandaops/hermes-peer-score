@@ -237,8 +237,8 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 
 	// Parse the JSON data into our report structure.
 	var report PeerScoreReport
-	if err := json.Unmarshal(data, &report); err != nil {
-		return fmt.Errorf("failed to unmarshal JSON: %w", err)
+	if uErr := json.Unmarshal(data, &report); uErr != nil {
+		return fmt.Errorf("failed to unmarshal JSON: %w", uErr)
 	}
 
 	// Prepare template data with enhanced fields for HTML presentation.
@@ -295,8 +295,8 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 	}
 
 	// Ensure the output directory exists before attempting to write the file.
-	if err := os.MkdirAll(filepath.Dir(outputFile), 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
+	if mkErr := os.MkdirAll(filepath.Dir(outputFile), 0755); mkErr != nil {
+		return fmt.Errorf("failed to create output directory: %w", mkErr)
 	}
 
 	// Create the output HTML file for writing.
@@ -312,5 +312,6 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 	}
 
 	log.Printf("HTML report generated: %s", outputFile)
+
 	return nil
 }

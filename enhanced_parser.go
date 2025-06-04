@@ -11,14 +11,21 @@ import (
 	"time"
 )
 
-// EnhancedLogParser provides real-time parsing of Hermes log output
+// Severity level constants.
+const (
+	SeverityNormal  = "NORMAL"
+	SeverityError   = "ERROR"
+	SeverityUnknown = "UNKNOWN"
+)
+
+// EnhancedLogParser provides real-time parsing of Hermes log output.
 type EnhancedLogParser struct {
-	tool            *PeerScoreTool
-	patterns        map[string]*LogPattern
-	connectionChan  chan ConnectionEvent
-	goodbyeChan     chan GoodbyeEvent
-	handshakeChan   chan HandshakeEvent
-	errorChan       chan ErrorEvent
+	tool           *PeerScoreTool
+	patterns       map[string]*LogPattern
+	connectionChan chan ConnectionEvent
+	goodbyeChan    chan GoodbyeEvent
+	handshakeChan  chan HandshakeEvent
+	errorChan      chan ErrorEvent
 }
 
 type LogPattern struct {
@@ -63,7 +70,6 @@ type GoodbyeEvent struct {
 func (e GoodbyeEvent) Type() string         { return "goodbye" }
 func (e GoodbyeEvent) Timestamp() time.Time { return e.Time }
 
-
 type ErrorEvent struct {
 	Message string
 	Time    time.Time
@@ -74,15 +80,16 @@ func (e ErrorEvent) Timestamp() time.Time { return e.Time }
 
 func NewEnhancedLogParser(tool *PeerScoreTool) *EnhancedLogParser {
 	parser := &EnhancedLogParser{
-		tool:            tool,
-		patterns:        make(map[string]*LogPattern),
-		connectionChan:  make(chan ConnectionEvent, 100),
-		goodbyeChan:     make(chan GoodbyeEvent, 100),
-		handshakeChan:   make(chan HandshakeEvent, 100),
-		errorChan:       make(chan ErrorEvent, 100),
+		tool:           tool,
+		patterns:       make(map[string]*LogPattern),
+		connectionChan: make(chan ConnectionEvent, 100),
+		goodbyeChan:    make(chan GoodbyeEvent, 100),
+		handshakeChan:  make(chan HandshakeEvent, 100),
+		errorChan:      make(chan ErrorEvent, 100),
 	}
 
 	parser.setupPatterns()
+
 	return parser
 }
 
@@ -93,13 +100,13 @@ func (p *EnhancedLogParser) setupPatterns() {
 		Regex: regexp.MustCompile(`(\d{2}:\d{2}:\d{2}\.\d+).*Connected with peer.*peer_id=(\w+)`),
 		Handler: func(matches []string) Event {
 			if len(matches) >= 3 {
-				timestamp := p.parseTimestamp(matches[1])
 				return ConnectionEvent{
 					PeerID:    matches[2],
 					Connected: true,
-					Time:      timestamp,
+					Time:      p.parseTimestamp(matches[1]),
 				}
 			}
+
 			return nil
 		},
 	}
@@ -110,17 +117,18 @@ func (p *EnhancedLogParser) setupPatterns() {
 		Regex: regexp.MustCompile(`(\d{2}:\d{2}:\d{2}\.\d+).*Performed successful handshake.*peer_id=(\w+).*seq=(\d+).*agent=([^\s]+).*fork-digest=(\w+)`),
 		Handler: func(matches []string) Event {
 			if len(matches) >= 6 {
-				timestamp := p.parseTimestamp(matches[1])
 				seq, _ := strconv.ParseUint(matches[3], 10, 64)
+
 				return HandshakeEvent{
 					PeerID:     matches[2],
 					Success:    true,
 					Agent:      matches[4],
 					SeqNumber:  seq,
 					ForkDigest: matches[5],
-					Time:       timestamp,
+					Time:       p.parseTimestamp(matches[1]),
 				}
 			}
+
 			return nil
 		},
 	}
@@ -131,13 +139,13 @@ func (p *EnhancedLogParser) setupPatterns() {
 		Regex: regexp.MustCompile(`(\d{2}:\d{2}:\d{2}\.\d+).*Received goodbye message.*peer_id=(\w+).*msg="([^"]+)"`),
 		Handler: func(matches []string) Event {
 			if len(matches) >= 4 {
-				timestamp := p.parseTimestamp(matches[1])
 				return GoodbyeEvent{
 					PeerID: matches[2],
 					Reason: matches[3],
-					Time:   timestamp,
+					Time:   p.parseTimestamp(matches[1]),
 				}
 			}
+
 			return nil
 		},
 	}
@@ -148,13 +156,13 @@ func (p *EnhancedLogParser) setupPatterns() {
 		Regex: regexp.MustCompile(`(\d{2}:\d{2}:\d{2}\.\d+).*Disconnected from handshaked peer.*peer_id=(\w+)`),
 		Handler: func(matches []string) Event {
 			if len(matches) >= 3 {
-				timestamp := p.parseTimestamp(matches[1])
 				return ConnectionEvent{
 					PeerID:    matches[2],
 					Connected: false,
-					Time:      timestamp,
+					Time:      p.parseTimestamp(matches[1]),
 				}
 			}
+
 			return nil
 		},
 	}
@@ -175,12 +183,12 @@ func (p *EnhancedLogParser) setupPatterns() {
 		Regex: regexp.MustCompile(`(\d{2}:\d{2}:\d{2}\.\d+).*Connection to beacon node failed.*err="([^"]+)"`),
 		Handler: func(matches []string) Event {
 			if len(matches) >= 3 {
-				timestamp := p.parseTimestamp(matches[1])
 				return ErrorEvent{
 					Message: "Connection to beacon node failed: " + matches[2],
-					Time:    timestamp,
+					Time:    p.parseTimestamp(matches[1]),
 				}
 			}
+
 			return nil
 		},
 	}
@@ -190,12 +198,12 @@ func (p *EnhancedLogParser) setupPatterns() {
 		Regex: regexp.MustCompile(`(\d{2}:\d{2}:\d{2}\.\d+).*terminated abnormally.*err="([^"]+)"`),
 		Handler: func(matches []string) Event {
 			if len(matches) >= 3 {
-				timestamp := p.parseTimestamp(matches[1])
 				return ErrorEvent{
 					Message: "Hermes terminated abnormally: " + matches[2],
-					Time:    timestamp,
+					Time:    p.parseTimestamp(matches[1]),
 				}
 			}
+
 			return nil
 		},
 	}
@@ -205,12 +213,12 @@ func (p *EnhancedLogParser) setupPatterns() {
 		Regex: regexp.MustCompile(`(\d{2}:\d{2}:\d{2}\.\d+).*Waiting for dialback from Prysm node`),
 		Handler: func(matches []string) Event {
 			if len(matches) >= 2 {
-				timestamp := p.parseTimestamp(matches[1])
 				return ErrorEvent{
 					Message: "Waiting for dialback from Prysm node",
-					Time:    timestamp,
+					Time:    p.parseTimestamp(matches[1]),
 				}
 			}
+
 			return nil
 		},
 	}
@@ -223,9 +231,9 @@ func (p *EnhancedLogParser) parseTimestamp(timeStr string) time.Time {
 
 	t, err := time.Parse("2006-01-02 15:04:05.999999", fullTimeStr)
 	if err != nil {
-		// Fallback to current time if parsing fails
 		return time.Now()
 	}
+
 	return t
 }
 
@@ -259,6 +267,7 @@ func (p *EnhancedLogParser) parseLine(line string) {
 			if event := pattern.Handler(matches); event != nil {
 				p.dispatchEvent(event)
 			}
+
 			break // Only match first pattern
 		}
 	}
@@ -270,7 +279,6 @@ func (p *EnhancedLogParser) dispatchEvent(event Event) {
 		select {
 		case p.connectionChan <- e:
 		default:
-			// Channel full, drop event
 		}
 	case HandshakeEvent:
 		select {
@@ -341,11 +349,11 @@ func (p *EnhancedLogParser) handleHandshakeEvent(event HandshakeEvent) {
 	peer.HandshakeOK = event.Success
 	peer.ClientType = p.normalizeClientType(event.Agent)
 
-
 	result := "success"
 	if !event.Success {
 		result = "failure"
 	}
+
 	log.Printf("Handshake %s with %s (%s)", result, event.PeerID[:12], peer.ClientType)
 }
 
@@ -359,8 +367,9 @@ func (p *EnhancedLogParser) handleGoodbyeEvent(event GoodbyeEvent) {
 	// Track goodbye reasons
 	p.tool.goodbyeReasons[event.Reason]++
 
-	peer, exists := p.tool.peers[event.PeerID]
 	clientType := "unknown"
+
+	peer, exists := p.tool.peers[event.PeerID]
 	if exists {
 		peer.GoodbyeCount++
 		peer.LastGoodbye = event.Reason
@@ -371,35 +380,36 @@ func (p *EnhancedLogParser) handleGoodbyeEvent(event GoodbyeEvent) {
 	if p.tool.goodbyesByClient[clientType] == nil {
 		p.tool.goodbyesByClient[clientType] = make(map[string]int)
 	}
+
 	p.tool.goodbyesByClient[clientType][event.Reason]++
 
 	// Log with severity based on goodbye reason
 	severity := classifyGoodbyeSeverity(event.Reason)
+
 	log.Printf("Goodbye [%s] from %s: %s", severity, event.PeerID[:12], event.Reason)
 }
 
-// classifyGoodbyeSeverity categorizes goodbye reasons by severity
+// classifyGoodbyeSeverity categorizes goodbye reasons by severity.
 func classifyGoodbyeSeverity(reason string) string {
 	switch reason {
 	case "client has too many peers":
-		return "NORMAL"
+		return SeverityNormal
 	case "client shutdown":
-		return "NORMAL"
+		return SeverityNormal
 	case "peer score too low":
-		return "ERROR"
+		return SeverityError
 	case "client banned this node":
-		return "ERROR"
+		return SeverityError
 	case "irrelevant network":
-		return "ERROR"
+		return SeverityError
 	case "unable to verify network":
-		return "ERROR"
+		return SeverityError
 	case "fault/error":
-		return "ERROR"
+		return SeverityError
 	default:
-		return "UNKNOWN"
+		return SeverityUnknown
 	}
 }
-
 
 func (p *EnhancedLogParser) handleErrorEvent(event ErrorEvent) {
 	p.tool.mu.Lock()
@@ -438,12 +448,13 @@ func (p *EnhancedLogParser) normalizeClientType(agent string) string {
 	return "unknown"
 }
 
-// GetPeerStats returns current peer statistics
+// GetPeerStats returns current peer statistics.
 func (p *EnhancedLogParser) GetPeerStats() map[string]*PeerStats {
 	p.tool.mu.RLock()
 	defer p.tool.mu.RUnlock()
 
 	stats := make(map[string]*PeerStats)
+
 	for id, peer := range p.tool.peers {
 		// Create a copy to avoid race conditions
 		peerCopy := *peer // Copy the struct
@@ -453,12 +464,13 @@ func (p *EnhancedLogParser) GetPeerStats() map[string]*PeerStats {
 	return stats
 }
 
-// GetClientDistribution returns the distribution of clients
+// GetClientDistribution returns the distribution of clients.
 func (p *EnhancedLogParser) GetClientDistribution() map[string]int {
 	p.tool.mu.RLock()
 	defer p.tool.mu.RUnlock()
 
 	distribution := make(map[string]int)
+
 	for _, peer := range p.tool.peers {
 		if peer.HandshakeOK {
 			distribution[peer.ClientType]++

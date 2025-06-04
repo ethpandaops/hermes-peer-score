@@ -12,7 +12,7 @@ cd hermes
 go build -o hermes ./cmd/hermes
 ```
 
-## 🛠️ Installation
+## Installation
 
 ```bash
 git clone https://github.com/ethpandaops/hermes-peer-score

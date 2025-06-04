@@ -30,24 +30,24 @@ type PeerStats struct {
 // PeerScoreReport contains the comprehensive analysis results from a peer scoring test.
 // This is the main output structure containing all metrics, scores, and diagnostic information.
 type PeerScoreReport struct {
-	Timestamp            time.Time                    `json:"timestamp"`             // When this report was generated.
-	Config               PeerScoreConfig              `json:"config"`                // Configuration used for this test run.
-	StartTime            time.Time                    `json:"start_time"`            // When the test execution began.
-	EndTime              time.Time                    `json:"end_time"`              // When the test execution completed.
-	Duration             time.Duration                `json:"duration"`              // Total time spent running the test.
-	TotalConnections     int                          `json:"total_connections"`     // Total number of peer connections established.
-	SuccessfulHandshakes int                          `json:"successful_handshakes"` // Number of successful peer handshakes.
-	FailedHandshakes     int                          `json:"failed_handshakes"`     // Number of failed peer handshakes.
-	GoodbyeMessages      int                          `json:"goodbye_messages"`      // Total goodbye messages received from all peers.
-	GoodbyeReasons       map[string]int               `json:"goodbye_reasons"`       // Breakdown of goodbye reasons and their frequency.
-	GoodbyesByClient     map[string]map[string]int    `json:"goodbyes_by_client"`    // Goodbye reasons grouped by client type.
-	PeersByClient        map[string]int               `json:"peers_by_client"`       // Number of peers per client implementation.
-	UniqueClients        int                          `json:"unique_clients"`        // Number of different client implementations discovered.
-	Peers                map[string]*PeerStats        `json:"peers"`                 // Detailed statistics for each individual peer.
-	OverallScore         float64                      `json:"overall_score"`         // Calculated overall peer score (0-100%).
-	Summary              string                       `json:"summary"`               // Human-readable summary of the test results.
-	Errors               []string                     `json:"errors"`                // List of errors encountered during testing.
-	ConnectionFailed     bool                         `json:"connection_failed"`     // Whether the beacon node connection failed.
+	Timestamp            time.Time                 `json:"timestamp"`             // When this report was generated.
+	Config               PeerScoreConfig           `json:"config"`                // Configuration used for this test run.
+	StartTime            time.Time                 `json:"start_time"`            // When the test execution began.
+	EndTime              time.Time                 `json:"end_time"`              // When the test execution completed.
+	Duration             time.Duration             `json:"duration"`              // Total time spent running the test.
+	TotalConnections     int                       `json:"total_connections"`     // Total number of peer connections established.
+	SuccessfulHandshakes int                       `json:"successful_handshakes"` // Number of successful peer handshakes.
+	FailedHandshakes     int                       `json:"failed_handshakes"`     // Number of failed peer handshakes.
+	GoodbyeMessages      int                       `json:"goodbye_messages"`      // Total goodbye messages received from all peers.
+	GoodbyeReasons       map[string]int            `json:"goodbye_reasons"`       // Breakdown of goodbye reasons and their frequency.
+	GoodbyesByClient     map[string]map[string]int `json:"goodbyes_by_client"`    // Goodbye reasons grouped by client type.
+	PeersByClient        map[string]int            `json:"peers_by_client"`       // Number of peers per client implementation.
+	UniqueClients        int                       `json:"unique_clients"`        // Number of different client implementations discovered.
+	Peers                map[string]*PeerStats     `json:"peers"`                 // Detailed statistics for each individual peer.
+	OverallScore         float64                   `json:"overall_score"`         // Calculated overall peer score (0-100%).
+	Summary              string                    `json:"summary"`               // Human-readable summary of the test results.
+	Errors               []string                  `json:"errors"`                // List of errors encountered during testing.
+	ConnectionFailed     bool                      `json:"connection_failed"`     // Whether the beacon node connection failed.
 }
 
 // HTMLTemplateData represents the data structure used to generate HTML reports.

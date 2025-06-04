@@ -52,7 +52,7 @@ func main() {
 // buildPeerScoreConfig constructs the configuration for the peer score tool.
 func buildPeerScoreConfig() PeerScoreConfig {
 	hermesArgs := buildHermesArgs()
-	
+
 	return PeerScoreConfig{
 		HermesPath:     "./hermes",
 		TestDuration:   *duration,
@@ -89,7 +89,7 @@ func buildHermesArgs() []string {
 // logConnectionSettings logs connection details with password redaction for security.
 func logConnectionSettings() {
 	redactedHost := redactPassword(*prysmHost)
-	
+
 	log.Printf("Connection settings:")
 	log.Printf("  Prysm Host: %s", redactedHost)
 	log.Printf("  HTTP Port: %d", *prysmHTTPPort)
@@ -120,10 +120,10 @@ func redactPassword(host string) string {
 // setupGracefulShutdown configures signal handling for graceful shutdown.
 func setupGracefulShutdown() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	
+
 	go func() {
 		<-sigChan
 		log.Println("Received shutdown signal")
@@ -139,7 +139,12 @@ func runPeerScoreTest(ctx context.Context, tool *PeerScoreTool) {
 	if err := tool.StartHermes(ctx); err != nil {
 		log.Fatalf("Failed to start Hermes: %v", err)
 	}
-	defer tool.Stop()
+
+	defer func() {
+		if err := tool.Stop(); err != nil {
+			log.Printf("Error stopping tool: %v", err)
+		}
+	}()
 
 	log.Printf("Running peer score tests for %v...", *duration)
 
@@ -177,6 +182,7 @@ func reportCurrentStatus(tool *PeerScoreTool) {
 
 	peerCount := len(tool.peers)
 	handshaked := 0
+
 	for _, peer := range tool.peers {
 		if peer.HandshakeOK {
 			handshaked++
@@ -212,6 +218,7 @@ func saveJSONReport(report PeerScoreReport) error {
 		return fmt.Errorf("failed to marshal report: %w", err)
 	}
 
+	//nolint:gosec // Controlled input.
 	if err := os.WriteFile(*outputFile, reportJSON, 0644); err != nil {
 		return fmt.Errorf("failed to write report file: %w", err)
 	}
@@ -222,6 +229,7 @@ func saveJSONReport(report PeerScoreReport) error {
 // generateHTMLReport creates an HTML version of the JSON report.
 func generateHTMLReport() error {
 	htmlFile := strings.Replace(*outputFile, ".json", ".html", 1)
+
 	return GenerateHTMLReport(*outputFile, htmlFile)
 }
 
@@ -230,7 +238,7 @@ func printReportSummary(report PeerScoreReport) {
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("PEER SCORE REPORT")
 	fmt.Println(strings.Repeat("=", 60))
-	
+
 	// Core metrics.
 	fmt.Printf("Overall Score: %.1f%%\n", report.OverallScore)
 	fmt.Printf("Test Duration: %v\n", report.Duration)
@@ -238,35 +246,38 @@ func printReportSummary(report PeerScoreReport) {
 	fmt.Printf("Successful Handshakes: %d\n", report.SuccessfulHandshakes)
 	fmt.Printf("Failed Handshakes: %d\n", report.FailedHandshakes)
 	fmt.Printf("Goodbye Messages: %d\n", report.GoodbyeMessages)
-	
+
 	// Goodbye reasons breakdown.
 	if len(report.GoodbyeReasons) > 0 {
 		fmt.Println("Goodbye Reasons:")
+
 		for reason, count := range report.GoodbyeReasons {
 			fmt.Printf("  %s: %d\n", reason, count)
 		}
 	}
-	
+
 	// Client diversity metrics.
 	fmt.Printf("Unique Clients: %d\n", report.UniqueClients)
 	fmt.Println("Client Distribution:")
+
 	for client, count := range report.PeersByClient {
 		fmt.Printf("  %s: %d\n", client, count)
 	}
-	
+
 	// Error reporting.
 	if len(report.Errors) > 0 {
 		fmt.Printf("Errors Encountered: %d\n", len(report.Errors))
+
 		for i, err := range report.Errors {
 			fmt.Printf("  [%d] %s\n", i+1, err)
 		}
 	}
-	
+
 	// Connection failure warning.
 	if report.ConnectionFailed {
 		fmt.Println("WARNING: Connection to beacon node failed!")
 	}
-	
+
 	fmt.Println(strings.Repeat("=", 60))
 	fmt.Printf("Report saved to: %s\n", *outputFile)
 }

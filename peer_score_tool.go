@@ -15,17 +15,17 @@ import (
 // It orchestrates the Hermes process, parses logs in real-time, and aggregates
 // peer connection statistics for scoring and analysis.
 type PeerScoreTool struct {
-	config     PeerScoreConfig                 // Test configuration and parameters.
-	hermesCmd  *exec.Cmd                       // Handle to the running Hermes process.
-	logRegexes map[string]*regexp.Regexp       // Compiled regex patterns for log parsing.
-	mu         sync.RWMutex                    // Protects concurrent access to peer data.
-	peers      map[string]*PeerStats           // Individual peer statistics indexed by peer ID.
-	startTime  time.Time                       // When the test execution began.
+	config     PeerScoreConfig           // Test configuration and parameters.
+	hermesCmd  *exec.Cmd                 // Handle to the running Hermes process.
+	logRegexes map[string]*regexp.Regexp // Compiled regex patterns for log parsing.
+	mu         sync.RWMutex              // Protects concurrent access to peer data.
+	peers      map[string]*PeerStats     // Individual peer statistics indexed by peer ID.
+	startTime  time.Time                 // When the test execution began.
 
 	// Global counters for reporting.
-	totalGoodbyes    int                            // Total goodbye messages received across all peers.
-	goodbyeReasons   map[string]int                 // Aggregated goodbye reasons and their counts.
-	goodbyesByClient map[string]map[string]int      // Goodbye reasons grouped by client type.
+	totalGoodbyes    int                       // Total goodbye messages received across all peers.
+	goodbyeReasons   map[string]int            // Aggregated goodbye reasons and their counts.
+	goodbyesByClient map[string]map[string]int // Goodbye reasons grouped by client type.
 
 	// Error tracking.
 	errors           []string // List of errors encountered during test execution.
@@ -44,10 +44,10 @@ func NewPeerScoreTool(config PeerScoreConfig) *PeerScoreTool {
 		connectionFailed: false,
 		// Pre-compiled regex patterns for efficient log parsing.
 		logRegexes: map[string]*regexp.Regexp{
-			"connected":  regexp.MustCompile(`Connected with peer.*peer_id=(\w+)`),                           // New peer connections.
+			"connected":  regexp.MustCompile(`Connected with peer.*peer_id=(\w+)`),                             // New peer connections.
 			"handshake":  regexp.MustCompile(`Performed successful handshake.*peer_id=(\w+).*agent=([^,\s]+)`), // Successful handshakes with client info.
-			"goodbye":    regexp.MustCompile(`Received goodbye message.*peer_id=(\w+).*msg="([^"]+)"`),        // Peer disconnection messages.
-			"disconnect": regexp.MustCompile(`Disconnected from handshaked peer.*peer_id=(\w+)`),             // Peer disconnections.
+			"goodbye":    regexp.MustCompile(`Received goodbye message.*peer_id=(\w+).*msg="([^"]+)"`),         // Peer disconnection messages.
+			"disconnect": regexp.MustCompile(`Disconnected from handshaked peer.*peer_id=(\w+)`),               // Peer disconnections.
 		},
 	}
 
@@ -59,6 +59,7 @@ func NewPeerScoreTool(config PeerScoreConfig) *PeerScoreTool {
 // goroutines to parse logs for peer events and statistics collection.
 func (pst *PeerScoreTool) StartHermes(ctx context.Context) error {
 	// Start Hermes directly with the provided arguments.
+	//nolint:gosec // Controlled input.
 	pst.hermesCmd = exec.CommandContext(ctx, pst.config.HermesPath, pst.config.HermesArgs...)
 
 	// Capture stdout and stderr for log parsing.
@@ -93,8 +94,10 @@ func (pst *PeerScoreTool) StartHermes(ctx context.Context) error {
 func (pst *PeerScoreTool) Stop() error {
 	if pst.hermesCmd != nil && pst.hermesCmd.Process != nil {
 		log.Printf("Stopping Hermes (PID %d)", pst.hermesCmd.Process.Pid)
+
 		return pst.hermesCmd.Process.Signal(syscall.SIGTERM)
 	}
+
 	return nil
 }
 
@@ -170,14 +173,15 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 	} else if report.TotalConnections > 0 {
 		// Connection success rate (0-100%).
 		connectionScore := float64(report.SuccessfulHandshakes) / float64(report.TotalConnections) * 100
-		
+
 		// Client diversity score (0-100%, maxed at 4 different clients).
-		diversityScore := float64(min(report.UniqueClients, 4)) / 4.0 * 100
+		diversityScore := float64(minInt(report.UniqueClients, 4)) / 4.0 * 100
 
 		// Calculate goodbye penalty for ERROR-level messages.
 		errorGoodbyes := 0
+
 		for reason, count := range report.GoodbyeReasons {
-			if pst.classifyGoodbyeSeverity(reason) == "ERROR" {
+			if pst.classifyGoodbyeSeverity(reason) == SeverityError {
 				errorGoodbyes += count
 			}
 		}
@@ -187,7 +191,7 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 
 		// Combine connection and diversity scores, then apply goodbye penalty.
 		baseScore := (connectionScore + diversityScore) / 2
-		report.OverallScore = max(0.0, baseScore-goodbyePenalty)
+		report.OverallScore = maxFloat(0.0, baseScore-goodbyePenalty)
 	} else {
 		report.OverallScore = 0.0
 	}
@@ -219,38 +223,40 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 func (pst *PeerScoreTool) classifyGoodbyeSeverity(reason string) string {
 	switch reason {
 	case "client has too many peers":
-		return "NORMAL" // Normal network behavior, client is full.
+		return SeverityNormal // Normal network behavior, client is full.
 	case "client shutdown":
-		return "NORMAL" // Normal behavior, peer is shutting down.
+		return SeverityNormal // Normal behavior, peer is shutting down.
 	case "peer score too low":
-		return "ERROR" // Our node is being rejected due to low reputation.
+		return SeverityError // Our node is being rejected due to low reputation.
 	case "client banned this node":
-		return "ERROR" // Our node has been banned by the peer.
+		return SeverityError // Our node has been banned by the peer.
 	case "irrelevant network":
-		return "ERROR" // Network configuration mismatch.
+		return SeverityError // Network configuration mismatch.
 	case "unable to verify network":
-		return "ERROR" // Network verification failure.
+		return SeverityError // Network verification failure.
 	case "fault/error":
-		return "ERROR" // General error condition.
+		return SeverityError // General error condition.
 	default:
-		return "UNKNOWN" // Unrecognized goodbye reason.
+		return SeverityUnknown // Unrecognized goodbye reason.
 	}
 }
 
 // Helper functions for mathematical operations.
 
-// min returns the smaller of two integers.
-func min(a, b int) int {
+// minInt returns the smaller of two integers.
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
+
 	return b
 }
 
-// max returns the larger of two floating-point numbers.
-func max(a, b float64) float64 {
+// maxFloat returns the larger of two floating-point numbers.
+func maxFloat(a, b float64) float64 {
 	if a > b {
 		return a
 	}
+
 	return b
 }
