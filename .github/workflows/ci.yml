@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       duration:
-        description: 'Test duration (e.g., 10m, 1h)'
-        default: '1h'
+        description: 'Test duration (e.g., 10m, 30m, 1h)'
+        default: '30m'
         required: false
       chain:
         description: 'Chain'
