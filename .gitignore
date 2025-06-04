@@ -1,0 +1,48 @@
+hermes
+peer-score-report.json
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+coverage.out
+coverage.html
+
+# Dependency directories (remove the comment below if you want to check in your lock files)
+vendor/
+
+# Go workspace file
+go.work
+
+# Build directory
+build/
+
+# Configuration files (except examples)
+config.yaml
+config.yml
+\!config.example.yaml
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS specific files
+.DS_Store
+
+# Log files
+*.log
+
+# Environment variable files
+.env
+EOF </dev/null
+**/.claude/settings.local.json
