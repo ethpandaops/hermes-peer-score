@@ -534,6 +534,22 @@ const htmlTemplate = `<!DOCTYPE html>
             const table = document.querySelector('#peer-details-table tbody');
             const rows = Array.from(table.querySelectorAll('tr')).filter(row => !row.id.startsWith('details-'));
 
+            // Store details rows before clearing the table
+            const detailsRows = new Map();
+            rows.forEach(row => {
+                const onclickAttr = row.getAttribute('onclick');
+                if (onclickAttr) {
+                    const peerIdMatch = onclickAttr.match(/togglePeerDetails\('([^']+)'\)/);
+                    if (peerIdMatch) {
+                        const peerId = peerIdMatch[1];
+                        const detailsRow = document.getElementById('details-' + peerId);
+                        if (detailsRow) {
+                            detailsRows.set(peerId, detailsRow.cloneNode(true));
+                        }
+                    }
+                }
+            });
+
             // Toggle sort direction if same column clicked
             if (lastSortColumn === columnIndex) {
                 sortAscending = !sortAscending;
@@ -574,7 +590,7 @@ const htmlTemplate = `<!DOCTYPE html>
                     const peerIdMatch = onclickAttr.match(/togglePeerDetails\('([^']+)'\)/);
                     if (peerIdMatch) {
                         const peerId = peerIdMatch[1];
-                        const detailsRow = document.getElementById('details-' + peerId);
+                        const detailsRow = detailsRows.get(peerId);
                         if (detailsRow) {
                             table.appendChild(detailsRow);
                         }
