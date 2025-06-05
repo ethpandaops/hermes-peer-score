@@ -119,6 +119,7 @@ const htmlTemplate = `<!DOCTYPE html>
                     </div>
                 </div>
             </div>
+
         </div>
 
         <!-- Client Distribution -->
@@ -140,7 +141,7 @@ const htmlTemplate = `<!DOCTYPE html>
         {{if .Report.GoodbyeReasons}}
         <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
             <h3 class="text-xl font-bold mb-4">Goodbye Messages ({{.Report.GoodbyeMessages}} total)</h3>
-            
+
             <!-- Overall breakdown -->
             <div class="mb-6">
                 <h4 class="font-semibold text-gray-700 mb-3">Overall Breakdown</h4>
@@ -177,6 +178,312 @@ const htmlTemplate = `<!DOCTYPE html>
             {{end}}
         </div>
         {{end}}
+
+        <!-- Timing Analysis -->
+        {{if gt .Report.TimingAnalysis.TotalConnections 0}}
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4">Timing Analysis</h3>
+
+            <!-- Overall timing statistics -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="font-medium text-gray-700 mb-1">Average Duration</h4>
+                    <p class="text-lg font-semibold">{{.Report.TimingAnalysis.AverageConnectionDuration.Round (time.Second)}}</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="font-medium text-gray-700 mb-1">Median Duration</h4>
+                    <p class="text-lg font-semibold">{{.Report.TimingAnalysis.MedianConnectionDuration.Round (time.Second)}}</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="font-medium text-gray-700 mb-1">Fastest Disconnect</h4>
+                    <p class="text-lg font-semibold">{{.Report.TimingAnalysis.FastestDisconnect.Round (time.Second)}}</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="font-medium text-gray-700 mb-1">Longest Connection</h4>
+                    <p class="text-lg font-semibold">{{.Report.TimingAnalysis.LongestConnection.Round (time.Second)}}</p>
+                </div>
+            </div>
+
+            <!-- Goodbye reason timings -->
+            {{if .Report.TimingAnalysis.GoodbyeReasonTimings}}
+            <div class="mb-6">
+                <h4 class="font-semibold text-gray-700 mb-3">Goodbye Timing Analysis (Overall)</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Time</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Median</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min/Max</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {{range $reason, $timing := .Report.TimingAnalysis.GoodbyeReasonTimings}}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 text-sm text-gray-900">{{$reason}}</td>
+                                <td class="px-4 py-2 text-sm text-gray-900">{{$timing.Count}}</td>
+                                <td class="px-4 py-2 text-sm text-gray-900">{{$timing.AverageDuration.Round (time.Second)}}</td>
+                                <td class="px-4 py-2 text-sm text-gray-900">{{$timing.MedianDuration.Round (time.Second)}}</td>
+                                <td class="px-4 py-2 text-sm text-gray-500">{{$timing.MinDuration.Round (time.Second)}} / {{$timing.MaxDuration.Round (time.Second)}}</td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Goodbye timing by client -->
+            <div class="mb-6">
+                <h4 class="font-semibold text-gray-700 mb-3">Goodbye Timing Analysis by Client</h4>
+                {{range $client, $reasons := .Report.GoodbyesByClient}}
+                <div class="mb-4">
+                    <h5 class="font-medium text-gray-600 mb-2 capitalize">{{$client}}</h5>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Time</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Median</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min/Max</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {{range $reason, $count := $reasons}}
+                                {{$reasonTiming := index $.Report.TimingAnalysis.GoodbyeReasonTimings $reason}}
+                                {{if $reasonTiming}}
+                                {{$clientBreakdown := index $reasonTiming.ClientBreakdown $client}}
+                                {{if $clientBreakdown}}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-2 text-sm text-gray-900">{{$reason}}</td>
+                                    <td class="px-4 py-2 text-sm text-gray-900">{{$clientBreakdown}}</td>
+                                    <td class="px-4 py-2 text-sm text-gray-900">{{$reasonTiming.AverageDuration.Round (time.Second)}}</td>
+                                    <td class="px-4 py-2 text-sm text-gray-900">{{$reasonTiming.MedianDuration.Round (time.Second)}}</td>
+                                    <td class="px-4 py-2 text-sm text-gray-500">{{$reasonTiming.MinDuration.Round (time.Second)}} / {{$reasonTiming.MaxDuration.Round (time.Second)}}</td>
+                                </tr>
+                                {{end}}
+                                {{end}}
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+
+            {{end}}
+
+            <!-- Timing patterns -->
+            {{if .Report.TimingAnalysis.ClientTimingPatterns}}
+            <div class="mb-6">
+                <h4 class="font-semibold text-gray-700 mb-3">Detected Timing Patterns</h4>
+                <div class="space-y-3">
+                    {{range .Report.TimingAnalysis.ClientTimingPatterns}}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <p class="font-medium text-blue-900">{{.ClientType}} - {{.GoodbyeReason}}</p>
+                                <p class="text-sm text-blue-700 mt-1">{{.Pattern}}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {{.Occurrences}} occurrences
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Suspicious patterns -->
+            {{if .Report.TimingAnalysis.SuspiciousPatterns}}
+            <div>
+                <h4 class="font-semibold text-gray-700 mb-3">⚠️ Suspicious Patterns</h4>
+                <div class="space-y-2">
+                    {{range .Report.TimingAnalysis.SuspiciousPatterns}}
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p class="text-sm text-yellow-800">{{.}}</p>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+
+        <!-- Downscore Indicators -->
+        {{if .Report.DownscoreIndicators}}
+        <div class="bg-red-50 border border-red-200 rounded-lg shadow-lg p-6 mb-8">
+            <h3 class="text-xl font-bold text-red-800 mb-4">🚨 Peer Scoring Issues Detected</h3>
+            <div class="space-y-3">
+                {{range .Report.DownscoreIndicators}}
+                <div class="bg-white border border-red-300 rounded-lg p-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400 mt-0.5" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-red-700">{{.}}</p>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Peer Details -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4">Peer Details</h3>
+            <p class="text-sm text-gray-600 mb-4">Click on any row to see detailed timing information</p>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peer ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Goodbyes</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Primary Issue</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {{range $peerID, $peer := .Report.Peers}}
+                        <tr class="hover:bg-gray-50 cursor-pointer transition-colors duration-150 {{if $peer.LastGoodbye}}{{if or (eq $peer.LastGoodbye "peer score too low") (eq $peer.LastGoodbye "client banned this node") (eq $peer.LastGoodbye "irrelevant network") (eq $peer.LastGoodbye "unable to verify network") (eq $peer.LastGoodbye "fault/error")}}bg-red-50 hover:bg-red-100{{else if or (eq $peer.LastGoodbye "client has too many peers") (eq $peer.LastGoodbye "client shutdown")}}bg-blue-50 hover:bg-blue-100{{else}}bg-yellow-50 hover:bg-yellow-100{{end}}{{end}}"
+                             onclick="togglePeerDetails('{{$peerID}}')">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="text-sm font-mono text-gray-900">{{$peerID | slice 0 12}}...</div>
+                                    <svg class="ml-2 h-4 w-4 text-gray-400 transform transition-transform duration-200" id="arrow-{{$peerID}}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 capitalize">
+                                    {{$peer.ClientType}}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{if $peer.Disconnected}}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        Disconnected
+                                    </span>
+                                {{else}}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Connected
+                                    </span>
+                                {{end}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{$peer.ConnectionDuration.Round (time.Second)}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{if eq $peer.GoodbyeCount 0}}
+                                    <span class="text-green-600">None</span>
+                                {{else}}
+                                    {{$peer.GoodbyeCount}}
+                                {{end}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{if $peer.LastGoodbye}}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{if or (eq $peer.LastGoodbye "peer score too low") (eq $peer.LastGoodbye "client banned this node") (eq $peer.LastGoodbye "irrelevant network") (eq $peer.LastGoodbye "unable to verify network") (eq $peer.LastGoodbye "fault/error")}}bg-red-100 text-red-800{{else if or (eq $peer.LastGoodbye "client has too many peers") (eq $peer.LastGoodbye "client shutdown")}}bg-blue-100 text-blue-800{{else}}bg-yellow-100 text-yellow-800{{end}}">
+                                        {{if gt (len $peer.LastGoodbye) 20}}{{$peer.LastGoodbye | slice 0 18}}...{{else}}{{$peer.LastGoodbye}}{{end}}
+                                    </span>
+                                {{else}}
+                                    <span class="text-green-600">None</span>
+                                {{end}}
+                            </td>
+                        </tr>
+                        <tr id="details-{{$peerID}}" class="hidden">
+                            <td colspan="6" class="px-6 py-4 bg-gray-50">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div>
+                                        <h4 class="font-medium text-gray-700 mb-2">Connection Details</h4>
+                                        <div class="space-y-1 text-sm">
+                                            <div><span class="text-gray-600">Connected at:</span> {{$peer.ConnectedAt.Format "15:04:05.000"}}</div>
+                                            {{if $peer.Disconnected}}
+                                            <div><span class="text-gray-600">Disconnected at:</span> {{$peer.DisconnectedAt.Format "15:04:05.000"}}</div>
+                                            {{end}}
+                                            <div><span class="text-gray-600">Handshake:</span> 
+                                                {{if $peer.HandshakeOK}}
+                                                    <span class="text-green-600">✓ Success</span>
+                                                {{else}}
+                                                    <span class="text-red-600">✗ Failed</span>
+                                                {{end}}
+                                            </div>
+                                            <div><span class="text-gray-600">Reconnections:</span> {{$peer.ReconnectionAttempts}}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 class="font-medium text-gray-700 mb-2">Timing Analysis</h4>
+                                        <div class="space-y-1 text-sm">
+                                            {{if not $peer.FirstGoodbyeAt.IsZero}}
+                                            <div><span class="text-gray-600">First goodbye at:</span> {{$peer.FirstGoodbyeAt.Format "15:04:05.000"}}</div>
+                                            <div><span class="text-gray-600">Time to first goodbye:</span> {{$peer.TimeToFirstGoodbye.Round (time.Second)}}</div>
+                                            {{else}}
+                                            <div><span class="text-gray-600">First goodbye:</span> <span class="text-green-600">Never</span></div>
+                                            {{end}}
+                                            <div><span class="text-gray-600">Total duration:</span> {{$peer.ConnectionDuration.Round (time.Second)}}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    {{if gt (len $peer.GoodbyeTimings) 0}}
+                                    <div>
+                                        <h4 class="font-medium text-gray-700 mb-2">Goodbye History</h4>
+                                        <div class="space-y-1 text-sm max-h-24 overflow-y-auto">
+                                            {{range $peer.GoodbyeTimings}}
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600">{{.Timestamp.Format "15:04:05"}}</span>
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium {{if or (eq .Reason "peer score too low") (eq .Reason "client banned this node") (eq .Reason "irrelevant network") (eq .Reason "unable to verify network") (eq .Reason "fault/error")}}bg-red-100 text-red-700{{else if or (eq .Reason "client has too many peers") (eq .Reason "client shutdown")}}bg-blue-100 text-blue-700{{else}}bg-yellow-100 text-yellow-700{{end}}">
+                                                    {{.Reason}}
+                                                </span>
+                                            </div>
+                                            {{end}}
+                                        </div>
+                                    </div>
+                                    {{end}}
+                                </div>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-4 text-sm text-gray-600">
+                <p><strong>Color coding:</strong> 
+                    <span class="inline-block w-3 h-3 bg-red-100 rounded mr-1"></span> Error level (peer score too low, banned, network issues)
+                    <span class="inline-block w-3 h-3 bg-blue-100 rounded mr-1 ml-3"></span> Normal level (too many peers, client shutdown)
+                    <span class="inline-block w-3 h-3 bg-yellow-100 rounded mr-1 ml-3"></span> Unknown reasons
+                </p>
+            </div>
+        </div>
+        
+        <script>
+        function togglePeerDetails(peerId) {
+            const detailsRow = document.getElementById('details-' + peerId);
+            const arrow = document.getElementById('arrow-' + peerId);
+            
+            if (detailsRow.classList.contains('hidden')) {
+                detailsRow.classList.remove('hidden');
+                arrow.style.transform = 'rotate(90deg)';
+            } else {
+                detailsRow.classList.add('hidden');
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+        </script>
 
         <!-- Test Details -->
         <div class="bg-white rounded-lg shadow-lg p-6">
@@ -282,9 +589,22 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 	// These functions provide additional functionality within the template context.
 	tmpl := template.New("report").Funcs(template.FuncMap{
 		"add": func(a, b int) int { return a + b }, // Mathematical addition for template calculations.
-		"time": func() struct{ Second time.Duration } {
-			// Provides access to time.Second for duration formatting in templates.
-			return struct{ Second time.Duration }{Second: time.Second}
+		"time": func() struct{ Second, Millisecond time.Duration } {
+			// Provides access to time units for duration formatting in templates.
+			return struct{ Second, Millisecond time.Duration }{Second: time.Second, Millisecond: time.Millisecond}
+		},
+		"slice": func(start, end int, s string) string {
+			// String slicing function for templates
+			if start < 0 || start >= len(s) {
+				return s
+			}
+			if end < 0 || end > len(s) {
+				end = len(s)
+			}
+			if start >= end {
+				return s
+			}
+			return s[start:end]
 		},
 	})
 

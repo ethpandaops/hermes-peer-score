@@ -21,10 +21,17 @@ var (
 	prysmHost     = flag.String("prysm-host", "", "Prysm host connection string (required)")
 	prysmHTTPPort = flag.Int("prysm-http-port", 443, "Prysm HTTP port")
 	prysmGRPCPort = flag.Int("prysm-grpc-port", 443, "Prysm gRPC port")
+	generateTestHTML = flag.Bool("test-html", false, "Generate test HTML report with sample data")
 )
 
 func main() {
 	flag.Parse()
+
+	// Check if we should generate test HTML
+	if *generateTestHTML {
+		testHTML()
+		return
+	}
 
 	// Validate required parameters.
 	if *prysmHost == "" {

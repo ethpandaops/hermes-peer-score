@@ -4,6 +4,46 @@ import (
 	"time"
 )
 
+// GoodbyeTiming tracks detailed timing information for each goodbye message
+type GoodbyeTiming struct {
+	Reason            string        `json:"reason"`              // The goodbye reason
+	Timestamp         time.Time     `json:"timestamp"`           // When the goodbye was received
+	DurationFromStart time.Duration `json:"duration_from_start"` // Time since connection establishment
+	Sequence          int           `json:"sequence"`            // Order of this goodbye (1st, 2nd, etc.)
+}
+
+// TimingPattern represents a detected pattern in connection/goodbye timing
+type TimingPattern struct {
+	ClientType        string        `json:"client_type"`         // Which client exhibits this pattern
+	GoodbyeReason     string        `json:"goodbye_reason"`      // The goodbye reason associated with the pattern
+	AverageDuration   time.Duration `json:"average_duration"`    // Average time from connection to goodbye
+	Occurrences       int           `json:"occurrences"`         // How many times this pattern occurred
+	Pattern           string        `json:"pattern"`             // Human-readable pattern description
+}
+
+// ConnectionTiming contains timing correlation analysis for the entire test
+type ConnectionTiming struct {
+	TotalConnections           int               `json:"total_connections"`            // Total connections analyzed
+	AverageConnectionDuration  time.Duration     `json:"average_connection_duration"`  // Average time peers stay connected
+	MedianConnectionDuration   time.Duration     `json:"median_connection_duration"`   // Median connection duration
+	FastestDisconnect         time.Duration     `json:"fastest_disconnect"`           // Shortest connection duration
+	LongestConnection         time.Duration     `json:"longest_connection"`           // Longest connection duration
+	GoodbyeReasonTimings      map[string]GoodbyeReasonTiming `json:"goodbye_reason_timings"` // Timing analysis by goodbye reason
+	ClientTimingPatterns      []TimingPattern   `json:"client_timing_patterns"`       // Detected client-specific patterns
+	SuspiciousPatterns        []string          `json:"suspicious_patterns"`          // Patterns that might indicate scoring issues
+}
+
+// GoodbyeReasonTiming analyzes timing patterns for specific goodbye reasons
+type GoodbyeReasonTiming struct {
+	Reason            string        `json:"reason"`              // The goodbye reason
+	Count             int           `json:"count"`               // How many times this reason occurred  
+	AverageDuration   time.Duration `json:"average_duration"`    // Average time from connection to this goodbye
+	MedianDuration    time.Duration `json:"median_duration"`     // Median time to this goodbye
+	MinDuration       time.Duration `json:"min_duration"`        // Fastest occurrence
+	MaxDuration       time.Duration `json:"max_duration"`        // Slowest occurrence
+	ClientBreakdown   map[string]int `json:"client_breakdown"`   // Count by client type
+}
+
 // PeerScoreConfig holds configuration parameters for the peer score tool.
 // It defines test duration, Hermes binary path, and command-line arguments.
 type PeerScoreConfig struct {
@@ -25,6 +65,13 @@ type PeerStats struct {
 	GoodbyeCount   int       `json:"goodbye_count"`   // Number of goodbye messages received from this peer.
 	LastGoodbye    string    `json:"last_goodbye"`    // The most recent goodbye reason from this peer.
 	MessageCount   int       `json:"message_count"`   // Total number of messages exchanged with this peer.
+	
+	// Timing correlation fields for enhanced analysis
+	ConnectionDuration    time.Duration     `json:"connection_duration"`     // How long the peer was connected before goodbye/disconnect
+	FirstGoodbyeAt       time.Time         `json:"first_goodbye_at"`        // When the first goodbye was received
+	GoodbyeTimings       []GoodbyeTiming   `json:"goodbye_timings"`         // Detailed timing for each goodbye message
+	TimeToFirstGoodbye   time.Duration     `json:"time_to_first_goodbye"`   // Duration from connection to first goodbye
+	ReconnectionAttempts int              `json:"reconnection_attempts"`    // Number of times this peer reconnected
 }
 
 // PeerScoreReport contains the comprehensive analysis results from a peer scoring test.
@@ -48,6 +95,10 @@ type PeerScoreReport struct {
 	Summary              string                    `json:"summary"`               // Human-readable summary of the test results.
 	Errors               []string                  `json:"errors"`                // List of errors encountered during testing.
 	ConnectionFailed     bool                      `json:"connection_failed"`     // Whether the beacon node connection failed.
+	
+	// Enhanced timing correlation analysis
+	TimingAnalysis       ConnectionTiming          `json:"timing_analysis"`       // Comprehensive timing correlation analysis
+	DownscoreIndicators  []string                  `json:"downscore_indicators"`  // Indicators suggesting peer downscoring
 }
 
 // HTMLTemplateData represents the data structure used to generate HTML reports.

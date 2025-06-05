@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"regexp"
@@ -324,12 +325,34 @@ func (p *EnhancedLogParser) handleConnectionEvent(event ConnectionEvent) {
 		peer = &PeerStats{
 			PeerID:      event.PeerID,
 			ConnectedAt: event.Time,
+			GoodbyeTimings: make([]GoodbyeTiming, 0),
 		}
 		p.tool.peers[event.PeerID] = peer
 	} else if exists && !event.Connected {
-		// Peer disconnected - mark as disconnected but keep in map for goodbye tracking
+		// Peer disconnected - calculate connection duration and mark as disconnected
 		peer.Disconnected = true
 		peer.DisconnectedAt = event.Time
+		
+		// Calculate connection duration only if we have both times
+		if !peer.ConnectedAt.IsZero() {
+			peer.ConnectionDuration = event.Time.Sub(peer.ConnectedAt)
+		}
+		
+		// If this peer had no goodbye messages but disconnected, create a synthetic goodbye timing
+		if peer.GoodbyeCount == 0 {
+			peer.GoodbyeTimings = append(peer.GoodbyeTimings, GoodbyeTiming{
+				Reason:            "disconnect_without_goodbye",
+				Timestamp:         event.Time,
+				DurationFromStart: peer.ConnectionDuration,
+				Sequence:          1,
+			})
+		}
+	} else if exists && event.Connected {
+		// Peer reconnected - increment reconnection attempts
+		peer.ReconnectionAttempts++
+		peer.ConnectedAt = event.Time // Update connection time for new session
+		peer.Disconnected = false
+		peer.DisconnectedAt = time.Time{} // Reset disconnect time
 	}
 }
 
@@ -374,6 +397,47 @@ func (p *EnhancedLogParser) handleGoodbyeEvent(event GoodbyeEvent) {
 		peer.GoodbyeCount++
 		peer.LastGoodbye = event.Reason
 		clientType = peer.ClientType
+		
+		// Calculate timing information for this goodbye
+		var durationFromStart time.Duration
+		if !peer.ConnectedAt.IsZero() {
+			durationFromStart = event.Time.Sub(peer.ConnectedAt)
+		}
+		
+		// Track first goodbye timing
+		if peer.GoodbyeCount == 1 {
+			peer.FirstGoodbyeAt = event.Time
+			peer.TimeToFirstGoodbye = durationFromStart
+		}
+		
+		// Add detailed timing for this goodbye
+		goodbyeTiming := GoodbyeTiming{
+			Reason:            event.Reason,
+			Timestamp:         event.Time,
+			DurationFromStart: durationFromStart,
+			Sequence:          peer.GoodbyeCount,
+		}
+		peer.GoodbyeTimings = append(peer.GoodbyeTimings, goodbyeTiming)
+		
+		// Update connection duration (useful for peers that goodbye but haven't disconnected yet)
+		if !peer.Disconnected {
+			peer.ConnectionDuration = durationFromStart
+		}
+	} else {
+		// Create a minimal peer record for tracking even if we didn't see the connection
+		peer = &PeerStats{
+			PeerID:         event.PeerID,
+			GoodbyeCount:   1,
+			LastGoodbye:    event.Reason,
+			FirstGoodbyeAt: event.Time,
+			GoodbyeTimings: []GoodbyeTiming{{
+				Reason:            event.Reason,
+				Timestamp:         event.Time,
+				DurationFromStart: 0, // Unknown connection time
+				Sequence:          1,
+			}},
+		}
+		p.tool.peers[event.PeerID] = peer
 	}
 
 	// Track goodbye by client type
@@ -383,10 +447,16 @@ func (p *EnhancedLogParser) handleGoodbyeEvent(event GoodbyeEvent) {
 
 	p.tool.goodbyesByClient[clientType][event.Reason]++
 
-	// Log with severity based on goodbye reason
+	// Log with severity based on goodbye reason and timing
 	severity := classifyGoodbyeSeverity(event.Reason)
+	
+	timingInfo := ""
+	if peer != nil && !peer.ConnectedAt.IsZero() {
+		duration := event.Time.Sub(peer.ConnectedAt)
+		timingInfo = fmt.Sprintf(" (after %v)", duration.Round(time.Second))
+	}
 
-	log.Printf("Goodbye [%s] from %s: %s", severity, event.PeerID[:12], event.Reason)
+	log.Printf("Goodbye [%s] from %s (%s): %s%s", severity, event.PeerID[:12], clientType, event.Reason, timingInfo)
 }
 
 // classifyGoodbyeSeverity categorizes goodbye reasons by severity.
