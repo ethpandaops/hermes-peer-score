@@ -305,10 +305,11 @@ func (pst *PeerScoreTool) AnalyzeConnectionTiming() ConnectionTiming {
 	peers := pst.peers
 
 	analysis := ConnectionTiming{
-		TotalConnections:     0,
-		GoodbyeReasonTimings: make(map[string]GoodbyeReasonTiming),
-		ClientTimingPatterns: make([]TimingPattern, 0),
-		SuspiciousPatterns:   make([]string, 0),
+		TotalConnections:      0,
+		GoodbyeReasonTimings:  make(map[string]GoodbyeReasonTiming),
+		ClientSpecificTimings: make(map[string]map[string]GoodbyeReasonTiming),
+		ClientTimingPatterns:  make([]TimingPattern, 0),
+		SuspiciousPatterns:    make([]string, 0),
 	}
 
 	// Collect all connection durations and goodbye timings
@@ -379,6 +380,9 @@ func (pst *PeerScoreTool) AnalyzeConnectionTiming() ConnectionTiming {
 		reasonTiming := pst.analyzeGoodbyeReasonTiming(reason, durations, clientGoodbyeTimings)
 		analysis.GoodbyeReasonTimings[reason] = reasonTiming
 	}
+
+	// Generate client-specific timing analysis
+	analysis.ClientSpecificTimings = pst.generateClientSpecificTimings(clientGoodbyeTimings)
 
 	// Detect client-specific timing patterns
 	analysis.ClientTimingPatterns = pst.detectTimingPatterns(clientGoodbyeTimings)
@@ -463,6 +467,50 @@ func (pst *PeerScoreTool) detectTimingPatterns(clientGoodbyeTimings map[string]m
 	}
 
 	return patterns
+}
+
+// generateClientSpecificTimings creates timing statistics for each client+reason combination
+func (pst *PeerScoreTool) generateClientSpecificTimings(clientGoodbyeTimings map[string]map[string][]time.Duration) map[string]map[string]GoodbyeReasonTiming {
+	clientSpecific := make(map[string]map[string]GoodbyeReasonTiming)
+	
+	for clientType, reasonTimings := range clientGoodbyeTimings {
+		clientSpecific[clientType] = make(map[string]GoodbyeReasonTiming)
+		
+		for reason, durations := range reasonTimings {
+			if len(durations) == 0 {
+				continue
+			}
+			
+			// Sort durations for statistical analysis
+			sort.Slice(durations, func(i, j int) bool {
+				return durations[i] < durations[j]
+			})
+			
+			// Calculate statistics for this specific client+reason combination
+			total := time.Duration(0)
+			for _, d := range durations {
+				total += d
+			}
+			average := total / time.Duration(len(durations))
+			median := durations[len(durations)/2]
+			
+			// Create client breakdown (just this client)
+			clientBreakdown := make(map[string]int)
+			clientBreakdown[clientType] = len(durations)
+			
+			clientSpecific[clientType][reason] = GoodbyeReasonTiming{
+				Reason:          reason,
+				Count:           len(durations),
+				AverageDuration: average,
+				MedianDuration:  median,
+				MinDuration:     durations[0],
+				MaxDuration:     durations[len(durations)-1],
+				ClientBreakdown: clientBreakdown,
+			}
+		}
+	}
+	
+	return clientSpecific
 }
 
 // classifyTimingPattern classifies timing patterns and returns a description

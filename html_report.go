@@ -253,16 +253,16 @@ const htmlTemplate = `<!DOCTYPE html>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 {{range $reason, $count := $reasons}}
-                                {{$reasonTiming := index $.Report.TimingAnalysis.GoodbyeReasonTimings $reason}}
-                                {{if $reasonTiming}}
-                                {{$clientBreakdown := index $reasonTiming.ClientBreakdown $client}}
-                                {{if $clientBreakdown}}
+                                {{$clientTimings := index $.Report.TimingAnalysis.ClientSpecificTimings $client}}
+                                {{if $clientTimings}}
+                                {{$clientReasonTiming := index $clientTimings $reason}}
+                                {{if $clientReasonTiming}}
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-4 py-2 text-sm text-gray-900">{{$reason}}</td>
-                                    <td class="px-4 py-2 text-sm text-gray-900">{{$clientBreakdown}}</td>
-                                    <td class="px-4 py-2 text-sm text-gray-900">{{$reasonTiming.AverageDuration.Round (time.Second)}}</td>
-                                    <td class="px-4 py-2 text-sm text-gray-900">{{$reasonTiming.MedianDuration.Round (time.Second)}}</td>
-                                    <td class="px-4 py-2 text-sm text-gray-500">{{$reasonTiming.MinDuration.Round (time.Second)}} / {{$reasonTiming.MaxDuration.Round (time.Second)}}</td>
+                                    <td class="px-4 py-2 text-sm text-gray-900">{{$clientReasonTiming.Count}}</td>
+                                    <td class="px-4 py-2 text-sm text-gray-900">{{$clientReasonTiming.AverageDuration.Round (time.Second)}}</td>
+                                    <td class="px-4 py-2 text-sm text-gray-900">{{$clientReasonTiming.MedianDuration.Round (time.Second)}}</td>
+                                    <td class="px-4 py-2 text-sm text-gray-500">{{$clientReasonTiming.MinDuration.Round (time.Second)}} / {{$clientReasonTiming.MaxDuration.Round (time.Second)}}</td>
                                 </tr>
                                 {{end}}
                                 {{end}}

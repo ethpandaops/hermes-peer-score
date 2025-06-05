@@ -29,6 +29,7 @@ type ConnectionTiming struct {
 	FastestDisconnect         time.Duration     `json:"fastest_disconnect"`           // Shortest connection duration
 	LongestConnection         time.Duration     `json:"longest_connection"`           // Longest connection duration
 	GoodbyeReasonTimings      map[string]GoodbyeReasonTiming `json:"goodbye_reason_timings"` // Timing analysis by goodbye reason
+	ClientSpecificTimings     map[string]map[string]GoodbyeReasonTiming `json:"client_specific_timings"` // client -> reason -> timing stats
 	ClientTimingPatterns      []TimingPattern   `json:"client_timing_patterns"`       // Detected client-specific patterns
 	SuspiciousPatterns        []string          `json:"suspicious_patterns"`          // Patterns that might indicate scoring issues
 }

@@ -166,6 +166,41 @@ func createSampleReport() PeerScoreReport {
 				ClientBreakdown: map[string]int{"nimbus": 1},
 			},
 		},
+		ClientSpecificTimings: map[string]map[string]GoodbyeReasonTiming{
+			"lighthouse": {
+				"client has too many peers": {
+					Reason: "client has too many peers",
+					Count: 1,
+					AverageDuration: 60 * time.Second,
+					MedianDuration: 60 * time.Second,
+					MinDuration: 60 * time.Second,
+					MaxDuration: 60 * time.Second,
+					ClientBreakdown: map[string]int{"lighthouse": 1},
+				},
+			},
+			"prysm": {
+				"peer score too low": {
+					Reason: "peer score too low",
+					Count: 1,
+					AverageDuration: 45 * time.Second,
+					MedianDuration: 45 * time.Second,
+					MinDuration: 45 * time.Second,
+					MaxDuration: 45 * time.Second,
+					ClientBreakdown: map[string]int{"prysm": 1},
+				},
+			},
+			"nimbus": {
+				"unable to verify network": {
+					Reason: "unable to verify network",
+					Count: 1,
+					AverageDuration: 30 * time.Second,
+					MedianDuration: 30 * time.Second,
+					MinDuration: 30 * time.Second,
+					MaxDuration: 30 * time.Second,
+					ClientBreakdown: map[string]int{"nimbus": 1},
+				},
+			},
+		},
 		ClientTimingPatterns: []TimingPattern{
 			{
 				ClientType: "lighthouse",
