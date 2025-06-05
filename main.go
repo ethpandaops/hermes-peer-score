@@ -16,11 +16,11 @@ import (
 
 // Configuration and command-line flags.
 var (
-	duration      = flag.Duration("duration", 2*time.Minute, "Test duration for peer scoring")
-	outputFile    = flag.String("output", "peer-score-report.json", "Output file for results")
-	prysmHost     = flag.String("prysm-host", "", "Prysm host connection string (required)")
-	prysmHTTPPort = flag.Int("prysm-http-port", 443, "Prysm HTTP port")
-	prysmGRPCPort = flag.Int("prysm-grpc-port", 443, "Prysm gRPC port")
+	duration         = flag.Duration("duration", 2*time.Minute, "Test duration for peer scoring")
+	outputFile       = flag.String("output", "peer-score-report.json", "Output file for results")
+	prysmHost        = flag.String("prysm-host", "", "Prysm host connection string (required)")
+	prysmHTTPPort    = flag.Int("prysm-http-port", 443, "Prysm HTTP port")
+	prysmGRPCPort    = flag.Int("prysm-grpc-port", 443, "Prysm gRPC port")
 	generateTestHTML = flag.Bool("test-html", false, "Generate test HTML report with sample data")
 )
 
@@ -82,7 +82,6 @@ func buildHermesArgs() []string {
 		"--devp2p.port=31912",
 		"--libp2p.host=0.0.0.0",
 		"--libp2p.port=31912",
-		"--subscription.topics=beacon_block",
 	}
 
 	// Add TLS flag if either HTTP or gRPC port is 443.
