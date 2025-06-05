@@ -343,17 +343,59 @@ const htmlTemplate = `<!DOCTYPE html>
         <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
             <h3 class="text-xl font-bold mb-4">Peer Details</h3>
             <p class="text-sm text-gray-600 mb-4">Click on any row to see detailed timing information</p>
-            
+
             <div class="overflow-x-auto">
-                <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+                <table id="peer-details-table" class="min-w-full bg-white border border-gray-200 rounded-lg">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peer ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Goodbyes</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Primary Issue</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable(0, 'string')" title="Click to sort">
+                                <div class="flex items-center justify-between">
+                                    <span>Peer ID</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    </svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable(1, 'string')" title="Click to sort">
+                                <div class="flex items-center justify-between">
+                                    <span>Client</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    </svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable(2, 'string')" title="Click to sort">
+                                <div class="flex items-center justify-between">
+                                    <span>Status</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    </svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable(3, 'duration')" title="Click to sort">
+                                <div class="flex items-center justify-between">
+                                    <span>Duration</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    </svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable(4, 'number')" title="Click to sort">
+                                <div class="flex items-center justify-between">
+                                    <span>Goodbyes</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    </svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable(5, 'string')" title="Click to sort">
+                                <div class="flex items-center justify-between">
+                                    <span>Primary Issue</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    </svg>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -414,7 +456,7 @@ const htmlTemplate = `<!DOCTYPE html>
                                             {{if $peer.Disconnected}}
                                             <div><span class="text-gray-600">Disconnected at:</span> {{$peer.DisconnectedAt.Format "15:04:05.000"}}</div>
                                             {{end}}
-                                            <div><span class="text-gray-600">Handshake:</span> 
+                                            <div><span class="text-gray-600">Handshake:</span>
                                                 {{if $peer.HandshakeOK}}
                                                     <span class="text-green-600">✓ Success</span>
                                                 {{else}}
@@ -424,7 +466,7 @@ const htmlTemplate = `<!DOCTYPE html>
                                             <div><span class="text-gray-600">Reconnections:</span> {{$peer.ReconnectionAttempts}}</div>
                                         </div>
                                     </div>
-                                    
+
                                     <div>
                                         <h4 class="font-medium text-gray-700 mb-2">Timing Analysis</h4>
                                         <div class="space-y-1 text-sm">
@@ -437,7 +479,7 @@ const htmlTemplate = `<!DOCTYPE html>
                                             <div><span class="text-gray-600">Total duration:</span> {{$peer.ConnectionDuration.Round (time.Second)}}</div>
                                         </div>
                                     </div>
-                                    
+
                                     {{if gt (len $peer.GoodbyeTimings) 0}}
                                     <div>
                                         <h4 class="font-medium text-gray-700 mb-2">Goodbye History</h4>
@@ -460,21 +502,21 @@ const htmlTemplate = `<!DOCTYPE html>
                     </tbody>
                 </table>
             </div>
-            
+
             <div class="mt-4 text-sm text-gray-600">
-                <p><strong>Color coding:</strong> 
+                <p>
                     <span class="inline-block w-3 h-3 bg-red-100 rounded mr-1"></span> Error level (peer score too low, banned, network issues)
                     <span class="inline-block w-3 h-3 bg-blue-100 rounded mr-1 ml-3"></span> Normal level (too many peers, client shutdown)
                     <span class="inline-block w-3 h-3 bg-yellow-100 rounded mr-1 ml-3"></span> Unknown reasons
                 </p>
             </div>
         </div>
-        
+
         <script>
         function togglePeerDetails(peerId) {
             const detailsRow = document.getElementById('details-' + peerId);
             const arrow = document.getElementById('arrow-' + peerId);
-            
+
             if (detailsRow.classList.contains('hidden')) {
                 detailsRow.classList.remove('hidden');
                 arrow.style.transform = 'rotate(90deg)';
@@ -482,6 +524,86 @@ const htmlTemplate = `<!DOCTYPE html>
                 detailsRow.classList.add('hidden');
                 arrow.style.transform = 'rotate(0deg)';
             }
+        }
+
+        let lastSortColumn = -1;
+        let sortAscending = true;
+
+        function sortTable(columnIndex, dataType) {
+            // Find the peer details table specifically by ID
+            const table = document.querySelector('#peer-details-table tbody');
+            const rows = Array.from(table.querySelectorAll('tr')).filter(row => !row.id.startsWith('details-'));
+
+            // Toggle sort direction if same column clicked
+            if (lastSortColumn === columnIndex) {
+                sortAscending = !sortAscending;
+            } else {
+                sortAscending = true;
+                lastSortColumn = columnIndex;
+            }
+
+            rows.sort((a, b) => {
+                let aValue = a.cells[columnIndex].textContent.trim();
+                let bValue = b.cells[columnIndex].textContent.trim();
+
+                // Handle different data types
+                if (dataType === 'number') {
+                    aValue = parseInt(aValue) || 0;
+                    bValue = parseInt(bValue) || 0;
+                } else if (dataType === 'duration') {
+                    aValue = parseDuration(aValue);
+                    bValue = parseDuration(bValue);
+                } else {
+                    // String comparison (case insensitive)
+                    aValue = aValue.toLowerCase();
+                    bValue = bValue.toLowerCase();
+                }
+
+                if (aValue < bValue) return sortAscending ? -1 : 1;
+                if (aValue > bValue) return sortAscending ? 1 : -1;
+                return 0;
+            });
+
+            // Clear the table and re-add sorted rows with their detail rows
+            table.innerHTML = '';
+            rows.forEach(row => {
+                table.appendChild(row);
+                // Also append the details row if it exists
+                const onclickAttr = row.getAttribute('onclick');
+                if (onclickAttr) {
+                    const peerIdMatch = onclickAttr.match(/togglePeerDetails\('([^']+)'\)/);
+                    if (peerIdMatch) {
+                        const peerId = peerIdMatch[1];
+                        const detailsRow = document.getElementById('details-' + peerId);
+                        if (detailsRow) {
+                            table.appendChild(detailsRow);
+                        }
+                    }
+                }
+            });
+        }
+
+        function parseDuration(durationStr) {
+            // Parse duration strings like "1m18s", "45s", "2h30m"
+            if (durationStr === 'Still connected' || durationStr === '-') return 0;
+
+            let totalSeconds = 0;
+            const parts = durationStr.match(/(\d+)([hms])/g);
+
+            if (parts) {
+                parts.forEach(part => {
+                    const value = parseInt(part.slice(0, -1));
+                    const unit = part.slice(-1);
+
+                    switch(unit) {
+                        case 'h': totalSeconds += value * 3600; break;
+                        case 'm': totalSeconds += value * 60; break;
+                        case 's': totalSeconds += value; break;
+                    }
+                });
+            }
+
+            return totalSeconds;
         }
         </script>
 

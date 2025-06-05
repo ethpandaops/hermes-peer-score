@@ -329,23 +329,30 @@ func (p *EnhancedLogParser) handleConnectionEvent(event ConnectionEvent) {
 		}
 		p.tool.peers[event.PeerID] = peer
 	} else if exists && !event.Connected {
-		// Peer disconnected - calculate connection duration and mark as disconnected
-		peer.Disconnected = true
-		peer.DisconnectedAt = event.Time
-		
-		// Calculate connection duration only if we have both times
-		if !peer.ConnectedAt.IsZero() {
-			peer.ConnectionDuration = event.Time.Sub(peer.ConnectedAt)
-		}
-		
-		// If this peer had no goodbye messages but disconnected, create a synthetic goodbye timing
-		if peer.GoodbyeCount == 0 {
-			peer.GoodbyeTimings = append(peer.GoodbyeTimings, GoodbyeTiming{
-				Reason:            "disconnect_without_goodbye",
-				Timestamp:         event.Time,
-				DurationFromStart: peer.ConnectionDuration,
-				Sequence:          1,
-			})
+		// Peer disconnected - only process if not already disconnected
+		if !peer.Disconnected {
+			peer.Disconnected = true
+			peer.DisconnectedAt = event.Time
+			
+			// Calculate connection duration only if we have both times
+			if !peer.ConnectedAt.IsZero() {
+				peer.ConnectionDuration = event.Time.Sub(peer.ConnectedAt)
+			}
+			
+			// If this peer had no goodbye messages but disconnected, create a synthetic goodbye timing
+			if peer.GoodbyeCount == 0 && len(peer.GoodbyeTimings) == 0 {
+				peer.GoodbyeTimings = append(peer.GoodbyeTimings, GoodbyeTiming{
+					Reason:            "disconnect_without_goodbye",
+					Timestamp:         event.Time,
+					DurationFromStart: peer.ConnectionDuration,
+					Sequence:          1,
+				})
+				// Don't set FirstGoodbyeAt for synthetic disconnects - keep it zero to show "Never"
+				// This accurately reflects that we never received an actual goodbye message
+			}
+		} else {
+			// Already disconnected - this might be a duplicate disconnect event
+			log.Printf("WARNING: Received duplicate disconnect for peer %s", event.PeerID)
 		}
 	} else if exists && event.Connected {
 		// Peer reconnected - increment reconnection attempts
