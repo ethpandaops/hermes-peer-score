@@ -72,28 +72,52 @@ jobs:
 
           echo "Using Prysm host in $REGION region"
 
+          # Use optimized split format for better performance
           ./peer-score-tool \
             --prysm-host="$PRYSM_HOST" \
             --prysm-http-port=443 \
             --prysm-grpc-port=443 \
             --duration="$DURATION" \
-            --output=peer-score-report.json
+            --output=peer-score-report.json \
+            --split-reports=true
 
-      - name: Generate HTML Report
+      - name: Setup Reports Directory
         run: |
-          if [ -f peer-score-report.json ]; then
-            mkdir -p reports
-            # Copy JSON report
+          mkdir -p reports
+          
+          # Check if split format was used (directory exists) or legacy format (single file)
+          if [ -d peer-score-report ]; then
+            echo "Split format detected - copying optimized report structure"
+            # Copy the entire split report directory structure
+            cp -r peer-score-report/* reports/
+            
+            # Verify the optimized HTML exists
+            if [ ! -f reports/index.html ]; then
+              echo "ERROR: Optimized HTML report not found in split format"
+              exit 1
+            fi
+            
+            echo "✅ Split format reports copied successfully"
+            echo "📊 Report structure:"
+            ls -la reports/
+            
+          elif [ -f peer-score-report.json ]; then
+            echo "Legacy format detected - copying monolithic files"
+            # Copy legacy JSON report
             cp peer-score-report.json reports/
-            # Copy HTML report (should be generated automatically by tool)
+            
+            # Copy legacy HTML report
             if [ -f peer-score-report.html ]; then
               cp peer-score-report.html reports/index.html
             else
-              echo "HTML report not found, tool may have failed to generate it"
+              echo "ERROR: Legacy HTML report not found"
               exit 1
             fi
+            
+            echo "✅ Legacy format reports copied successfully"
+            
           else
-            echo "No JSON report found"
+            echo "ERROR: No reports found (neither split nor legacy format)"
             exit 1
           fi
 
@@ -115,42 +139,72 @@ jobs:
       - name: Parse Report Results
         id: results
         run: |
-          if [ -f peer-score-report.json ]; then
-            # Extract data from the new JSON format
-            total_connections=$(jq -r '.total_connections // 0' peer-score-report.json)
-            successful_handshakes=$(jq -r '.successful_handshakes // 0' peer-score-report.json)
-            failed_handshakes=$(jq -r '.failed_handshakes // 0' peer-score-report.json)
-            unique_peers=$(jq -r '.peers | length' peer-score-report.json)
-            duration_seconds=$(jq -r '.duration / 1000000000' peer-score-report.json)
-            test_duration=$(jq -r '.config.TestDuration / 1000000000' peer-score-report.json)
+          # Determine which format to parse based on what exists
+          if [ -f reports/summary.json ]; then
+            echo "📊 Parsing split format reports..."
+            # Parse split format - use summary.json and peer-index.json
+            summary_file="reports/summary.json"
+            peer_index_file="reports/peer-index.json"
+            
+            # Extract data from split format
+            total_connections=$(jq -r '.total_connections // 0' "$summary_file")
+            successful_handshakes=$(jq -r '.successful_handshakes // 0' "$summary_file")
+            failed_handshakes=$(jq -r '.failed_handshakes // 0' "$summary_file")
+            unique_peers=$(jq -r '.peer_count // 0' "$summary_file")
+            duration_seconds=$(jq -r '.duration / 1000000000' "$summary_file")
+            test_duration=$(jq -r '.config.test_duration / 1000000000' "$summary_file")
+            
+            # Count unique client types from peer index
+            unique_clients=$(jq -r '[.peers[].client_type] | unique | length' "$peer_index_file")
+            
+            # Count total events from peer index
+            total_events=$(jq -r '[.peers[].total_event_count] | add // 0' "$peer_index_file")
+            
+            echo "format=split" >> $GITHUB_OUTPUT
+            
+          elif [ -f reports/peer-score-report.json ]; then
+            echo "📊 Parsing legacy format reports..."
+            # Parse legacy format
+            report_file="reports/peer-score-report.json"
+            
+            # Extract data from legacy format
+            total_connections=$(jq -r '.total_connections // 0' "$report_file")
+            successful_handshakes=$(jq -r '.successful_handshakes // 0' "$report_file")
+            failed_handshakes=$(jq -r '.failed_handshakes // 0' "$report_file")
+            unique_peers=$(jq -r '.peers | length' "$report_file")
+            duration_seconds=$(jq -r '.duration / 1000000000' "$report_file")
+            test_duration=$(jq -r '.config.test_duration / 1000000000' "$report_file")
             
             # Count unique client types
-            unique_clients=$(jq -r '[.peers[].client_type] | unique | length' peer-score-report.json)
-            
-            # Calculate success rate
-            if [ "$total_connections" -gt 0 ]; then
-              success_rate=$(echo "scale=1; $successful_handshakes * 100 / $total_connections" | bc)
-            else
-              success_rate="0"
-            fi
+            unique_clients=$(jq -r '[.peers[].client_type] | unique | length' "$report_file")
             
             # Count total events
-            total_events=$(jq -r '[.peer_event_counts[] | add] | add // 0' peer-score-report.json)
+            total_events=$(jq -r '[.peer_event_counts[] | add] | add // 0' "$report_file")
             
-            # Set outputs
-            echo "connections=$total_connections" >> $GITHUB_OUTPUT
-            echo "successful_handshakes=$successful_handshakes" >> $GITHUB_OUTPUT
-            echo "failed_handshakes=$failed_handshakes" >> $GITHUB_OUTPUT
-            echo "success_rate=$success_rate" >> $GITHUB_OUTPUT
-            echo "unique_peers=$unique_peers" >> $GITHUB_OUTPUT
-            echo "unique_clients=$unique_clients" >> $GITHUB_OUTPUT
-            echo "duration_seconds=$duration_seconds" >> $GITHUB_OUTPUT
-            echo "test_duration=$test_duration" >> $GITHUB_OUTPUT
-            echo "total_events=$total_events" >> $GITHUB_OUTPUT
+            echo "format=legacy" >> $GITHUB_OUTPUT
+            
           else
-            echo "No JSON report found"
+            echo "❌ No parseable report found"
             exit 1
           fi
+          
+          # Calculate success rate
+          if [ "$total_connections" -gt 0 ]; then
+            success_rate=$(echo "scale=1; $successful_handshakes * 100 / $total_connections" | bc)
+          else
+            success_rate="0"
+          fi
+          
+          # Set common outputs
+          echo "connections=$total_connections" >> $GITHUB_OUTPUT
+          echo "successful_handshakes=$successful_handshakes" >> $GITHUB_OUTPUT
+          echo "failed_handshakes=$failed_handshakes" >> $GITHUB_OUTPUT
+          echo "success_rate=$success_rate" >> $GITHUB_OUTPUT
+          echo "unique_peers=$unique_peers" >> $GITHUB_OUTPUT
+          echo "unique_clients=$unique_clients" >> $GITHUB_OUTPUT
+          echo "duration_seconds=$duration_seconds" >> $GITHUB_OUTPUT
+          echo "test_duration=$test_duration" >> $GITHUB_OUTPUT
+          echo "total_events=$total_events" >> $GITHUB_OUTPUT
 
       - name: Generate Summary
         run: |
@@ -164,13 +218,27 @@ jobs:
           duration_seconds=${{ steps.results.outputs.duration_seconds }}
           test_duration=${{ steps.results.outputs.test_duration }}
           total_events=${{ steps.results.outputs.total_events }}
+          report_format=${{ steps.results.outputs.format }}
 
           {
             echo "## 🔗 Peer Score Report"
             echo ""
+            if [ "$report_format" = "split" ]; then
+              echo "### 🚀 Optimized Report Format"
+              echo "This report uses the new **split format** for better performance:"
+              echo "- ⚡ Fast loading (~50KB initial load vs 25MB+ monolithic)"
+              echo "- 🎯 Progressive data loading (load peer details on-demand)"
+              echo "- 🔍 Built-in search and filtering capabilities"
+              echo ""
+            else
+              echo "### 📄 Legacy Report Format"
+              echo "This report uses the legacy monolithic format."
+              echo ""
+            fi
             echo "### Test Configuration"
             echo "- **Test Duration:** ${test_duration}s"
             echo "- **Actual Duration:** ${duration_seconds}s"
+            echo "- **Report Format:** $report_format"
             echo ""
             echo "### Connection Statistics"
             echo "- **Total Connections:** $connections"
@@ -183,11 +251,17 @@ jobs:
             echo "- **Unique Client Types:** $unique_clients"
             echo "- **Total Events Captured:** $total_events"
             echo ""
-            echo "### Report Files"
+            echo "### Report Access"
             echo "- 📊 [Interactive HTML Report](https://ethpandaops.github.io/hermes-peer-score/)"
-            echo "- 📄 [Raw JSON Data](https://ethpandaops.github.io/hermes-peer-score/peer-score-report.json)"
+            if [ "$report_format" = "split" ]; then
+              echo "- 📋 [Summary Data](https://ethpandaops.github.io/hermes-peer-score/summary.json)"
+              echo "- 👥 [Peer Index](https://ethpandaops.github.io/hermes-peer-score/peer-index.json)"
+              echo "- 📁 [Individual Peer Data](https://ethpandaops.github.io/hermes-peer-score/peers/)"
+            else
+              echo "- 📄 [Raw JSON Data](https://ethpandaops.github.io/hermes-peer-score/peer-score-report.json)"
+            fi
             echo ""
-            echo "_Report generated on $(date) using latest Hermes_"
+            echo "_Report generated on $(date) using latest Hermes with optimized reporting_"
           } >> $GITHUB_STEP_SUMMARY
 
   deploy:
