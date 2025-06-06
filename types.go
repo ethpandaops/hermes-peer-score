@@ -78,3 +78,58 @@ type HTMLTemplateData struct {
 	GeneratedAt time.Time       `json:"generated_at"` // When the HTML report was generated.
 	Report      PeerScoreReport `json:"report"`       // The underlying peer score report data.
 }
+
+// Split reporting structures for optimized loading
+
+// PeerScoreReportSummary contains just the essential summary data for fast initial loading.
+type PeerScoreReportSummary struct {
+	Config               PeerScoreConfig `json:"config"`                 // Configuration used for this test run.
+	Timestamp            time.Time       `json:"timestamp"`              // When this report was generated.
+	StartTime            time.Time       `json:"start_time"`             // When the test execution began.
+	EndTime              time.Time       `json:"end_time"`               // When the test execution completed.
+	Duration             time.Duration   `json:"duration"`               // Total time spent running the test.
+	TotalConnections     int             `json:"total_connections"`      // Total number of peer connections established.
+	SuccessfulHandshakes int             `json:"successful_handshakes"`  // Number of successful peer identifications.
+	FailedHandshakes     int             `json:"failed_handshakes"`      // Number of failed peer identifications.
+	PeerCount            int             `json:"peer_count"`             // Total number of unique peers discovered.
+	ReportDirectory      string          `json:"report_directory"`       // Directory containing the split report files.
+}
+
+// PeerIndexEntry provides essential information about a peer for the index page.
+type PeerIndexEntry struct {
+	PeerID              string     `json:"peer_id"`              // Unique peer identifier.
+	ClientType          string     `json:"client_type"`          // Ethereum client implementation.
+	ClientAgent         string     `json:"client_agent"`         // Raw agent string from most recent identification.
+	TotalConnections    int        `json:"total_connections"`    // Total number of connection sessions.
+	TotalMessageCount   int        `json:"total_message_count"`  // Total messages across all sessions.
+	FirstSeenAt         *time.Time `json:"first_seen_at"`        // When we first encountered this peer.
+	LastSeenAt          *time.Time `json:"last_seen_at"`         // When we last interacted with this peer.
+	HasDetailedData     bool       `json:"has_detailed_data"`    // Whether detailed data file exists for this peer.
+	TotalEventCount     int        `json:"total_event_count"`    // Total number of events for this peer.
+}
+
+// PeerIndex contains the list of all peers with their basic information.
+type PeerIndex struct {
+	GeneratedAt time.Time          `json:"generated_at"` // When this index was generated.
+	Peers       []PeerIndexEntry   `json:"peers"`        // List of all peers with basic info.
+}
+
+// PeerDetailedData contains all the detailed information for a specific peer.
+type PeerDetailedData struct {
+	PeerID             string              `json:"peer_id"`              // Unique peer identifier.
+	ClientType         string              `json:"client_type"`          // Ethereum client implementation.
+	ClientAgent        string              `json:"client_agent"`         // Raw agent string.
+	ConnectionSessions []ConnectionSession `json:"connection_sessions"`  // All connection sessions for this peer.
+	TotalConnections   int                 `json:"total_connections"`    // Total number of connection attempts.
+	TotalMessageCount  int                 `json:"total_message_count"`  // Total messages across all sessions.
+	FirstSeenAt        *time.Time          `json:"first_seen_at"`        // When we first encountered this peer.
+	LastSeenAt         *time.Time          `json:"last_seen_at"`         // When we last interacted with this peer.
+	EventCounts        map[string]int      `json:"event_counts"`         // Event counts for this peer.
+}
+
+// SplitHTMLTemplateData contains only the summary data for the initial HTML page load.
+type SplitHTMLTemplateData struct {
+	GeneratedAt time.Time              `json:"generated_at"` // When the HTML report was generated.
+	Summary     PeerScoreReportSummary `json:"summary"`      // Summary report data.
+	PeerIndex   PeerIndex              `json:"peer_index"`   // Index of all peers.
+}

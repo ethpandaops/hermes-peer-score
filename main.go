@@ -18,6 +18,8 @@ var (
 	prysmHost     = flag.String("prysm-host", "", "Prysm host connection string (required)")
 	prysmHTTPPort = flag.Int("prysm-http-port", 443, "Prysm HTTP port")
 	prysmGRPCPort = flag.Int("prysm-grpc-port", 443, "Prysm gRPC port")
+	splitReports  = flag.Bool("split-reports", true, "Generate split reports for better performance (default: true)")
+	legacyFormat  = flag.Bool("legacy-format", false, "Generate monolithic JSON/HTML files (old format)")
 )
 
 func main() {
