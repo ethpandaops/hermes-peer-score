@@ -4,7 +4,8 @@ go 1.24.0
 
 toolchain go1.24.3
 
-//replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250513093811-320c1c3ee6e2
+replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250513093811-320c1c3ee6e2
+
 //replace github.com/probe-lab/hermes => ../hermes
 //replace github.com/ethpandaops/xatu => ../xatu
 
@@ -59,8 +60,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dennis-tra/go-kinesis v0.0.0-20240326083914-7acf5f8dc24e // indirect
-	github.com/dgraph-io/ristretto v0.2.0 // indirect
-	github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da // indirect
+	github.com/dgraph-io/ristretto/v2 v2.2.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/elastic/gosigar v0.14.3 // indirect
@@ -182,7 +182,6 @@ require (
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20240618144021-706c95b2dd15 // indirect
 	github.com/prysmaticlabs/gohashtree v0.0.4-beta.0.20240624100937-73632381301b // indirect
 	github.com/prysmaticlabs/prombbolt v0.0.0-20210126082820-9b7adba6db7c // indirect
-	github.com/prysmaticlabs/prysm/v5 v5.3.2-0.20250317054927-5c24978702e0 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
 	github.com/quic-go/quic-go v0.50.0 // indirect
 	github.com/quic-go/webtransport-go v0.8.1-0.20241018022711-4ac2c9250e66 // indirect
