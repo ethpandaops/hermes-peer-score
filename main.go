@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,6 +19,8 @@ var (
 	prysmHost     = flag.String("prysm-host", "", "Prysm host connection string (required)")
 	prysmHTTPPort = flag.Int("prysm-http-port", 443, "Prysm HTTP port")
 	prysmGRPCPort = flag.Int("prysm-grpc-port", 443, "Prysm gRPC port")
+	htmlOnly      = flag.Bool("html-only", false, "Generate HTML report from existing JSON file without running peer score test")
+	inputJSON     = flag.String("input-json", "peer-score-report.json", "Input JSON file for HTML-only mode")
 )
 
 func main() {
@@ -28,6 +31,12 @@ func main() {
 	log.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 	})
+
+	// If HTML-only mode is enabled, just generate HTML from existing JSON
+	if *htmlOnly {
+		generateHTMLOnlyMode(log)
+		return
+	}
 
 	// Set up graceful shutdown handling.
 	ctx, cancel := setupGracefulShutdown(log)
@@ -54,6 +63,38 @@ func main() {
 
 	// Generate and save reports.
 	generateReports(ctx, log, tool)
+}
+
+// generateHTMLOnlyMode generates HTML report from existing JSON file without running the peer scoring test.
+func generateHTMLOnlyMode(log logrus.FieldLogger) {
+	log.Info("Running in HTML-only mode")
+	
+	// Check if input JSON file exists
+	if _, err := os.Stat(*inputJSON); os.IsNotExist(err) {
+		log.Fatalf("Input JSON file does not exist: %s", *inputJSON)
+	}
+	
+	// Determine output HTML file name
+	htmlFile := *outputFile
+	if *outputFile == "peer-score-report.json" {
+		// Use the input JSON name but with .html extension
+		htmlFile = strings.Replace(*inputJSON, ".json", ".html", 1)
+	} else {
+		// Use the specified output file
+		if !strings.HasSuffix(htmlFile, ".html") {
+			htmlFile = strings.Replace(htmlFile, ".json", ".html", 1)
+		}
+	}
+	
+	log.Infof("Generating HTML report from: %s", *inputJSON)
+	log.Infof("Output HTML file: %s", htmlFile)
+	
+	// Generate HTML report
+	if err := GenerateHTMLReport(*inputJSON, htmlFile); err != nil {
+		log.Fatalf("Failed to generate HTML report: %v", err)
+	}
+	
+	log.Infof("HTML report generated successfully: %s", htmlFile)
 }
 
 // setupGracefulShutdown configures signal handling for graceful shutdown.

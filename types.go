@@ -13,6 +13,22 @@ type TopicScore struct {
 	InvalidMessageDeliveries float64       `json:"invalid_message_deliveries"`
 }
 
+// GoodbyeEvent represents a goodbye message received from a peer.
+type GoodbyeEvent struct {
+	Timestamp time.Time `json:"timestamp"` // When the goodbye message was received.
+	Code      uint64    `json:"code"`      // The goodbye code (0=client shutdown, 1=irrelevant network, etc.).
+	Reason    string    `json:"reason"`    // Human-readable reason for the goodbye.
+}
+
+// MeshEvent represents a GRAFT/PRUNE event for mesh participation tracking.
+type MeshEvent struct {
+	Timestamp time.Time `json:"timestamp"` // When the mesh event occurred.
+	Type      string    `json:"type"`      // "GRAFT" or "PRUNE"
+	Direction string    `json:"direction"` // "sent" or "received"
+	Topic     string    `json:"topic"`     // The topic/subnet for this mesh operation.
+	Reason    string    `json:"reason"`    // Reason for PRUNE events (empty for GRAFT).
+}
+
 // PeerScoreSnapshot represents a snapshot of a peer's score at a specific time.
 type PeerScoreSnapshot struct {
 	Timestamp            time.Time    `json:"timestamp"`
@@ -42,6 +58,8 @@ type ConnectionSession struct {
 	ConnectionDuration time.Duration       `json:"connection_duration"` // How long this session lasted.
 	Disconnected       bool                `json:"disconnected"`        // Whether this session has disconnected.
 	PeerScores         []PeerScoreSnapshot `json:"peer_scores"`         // All peer score snapshots for this session.
+	GoodbyeEvents      []GoodbyeEvent      `json:"goodbye_events"`      // All goodbye messages received during this session.
+	MeshEvents         []MeshEvent         `json:"mesh_events"`         // All GRAFT/PRUNE events for this session.
 }
 
 // PeerStats contains detailed statistics for an individual peer across all connection sessions.

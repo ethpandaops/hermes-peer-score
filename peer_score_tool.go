@@ -98,7 +98,7 @@ func (pst *PeerScoreTool) StartHermes(ctx context.Context) error {
 	cfg.ForkVersion = currentForkVersion
 	cfg.PubSubSubscriptionRequestLimit = 200
 	cfg.PubSubQueueSize = 200
-	cfg.Libp2pPeerscoreSnapshotFreq = 30 * time.Second
+	cfg.Libp2pPeerscoreSnapshotFreq = 5 * time.Second
 	cfg.GossipSubMessageEncoder = encoder.SszNetworkEncoder{}
 	cfg.RPCEncoder = encoder.SszNetworkEncoder{}
 	cfg.Tracer = otel.GetTracerProvider().Tracer("hermes")
@@ -183,6 +183,14 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 				}
 			}
 
+			// Deep copy goodbye events
+			goodbyeEventsCopy := make([]GoodbyeEvent, len(session.GoodbyeEvents))
+			copy(goodbyeEventsCopy, session.GoodbyeEvents)
+
+			// Deep copy mesh events
+			meshEventsCopy := make([]MeshEvent, len(session.MeshEvents))
+			copy(meshEventsCopy, session.MeshEvents)
+
 			sessionCopy := ConnectionSession{
 				ConnectedAt:        session.ConnectedAt,
 				IdentifiedAt:       session.IdentifiedAt,
@@ -191,6 +199,8 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 				ConnectionDuration: session.ConnectionDuration,
 				Disconnected:       session.Disconnected,
 				PeerScores:         peerScoresCopy,
+				GoodbyeEvents:      goodbyeEventsCopy,
+				MeshEvents:         meshEventsCopy,
 			}
 
 			// Calculate connection duration for active sessions

@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       duration:
-        description: 'Test duration (e.g., 10m, 30m, 1h)'
-        default: '30m'
+        description: 'Test duration (e.g., 5m, 10m)'
+        default: '5m'
         required: false
       chain:
         description: 'Chain'
@@ -59,7 +59,7 @@ jobs:
 
       - name: Run Peer Score Test
         env:
-          DURATION: ${{ github.event.inputs.duration || '30m' }}
+          DURATION: ${{ github.event.inputs.duration || '5m' }}
           CHAIN: ${{ github.event.inputs.chain || 'mainnet' }}
           REGION: ${{ github.event.inputs.region || 'SFO' }}
         run: |
@@ -123,20 +123,20 @@ jobs:
             unique_peers=$(jq -r '.peers | length' peer-score-report.json)
             duration_seconds=$(jq -r '.duration / 1000000000' peer-score-report.json)
             test_duration=$(jq -r '.config.TestDuration / 1000000000' peer-score-report.json)
-            
+
             # Count unique client types
             unique_clients=$(jq -r '[.peers[].client_type] | unique | length' peer-score-report.json)
-            
+
             # Calculate success rate
             if [ "$total_connections" -gt 0 ]; then
               success_rate=$(echo "scale=1; $successful_handshakes * 100 / $total_connections" | bc)
             else
               success_rate="0"
             fi
-            
+
             # Count total events
             total_events=$(jq -r '[.peer_event_counts[] | add] | add // 0' peer-score-report.json)
-            
+
             # Set outputs
             echo "connections=$total_connections" >> $GITHUB_OUTPUT
             echo "successful_handshakes=$successful_handshakes" >> $GITHUB_OUTPUT
