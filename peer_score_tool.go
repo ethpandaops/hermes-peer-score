@@ -23,7 +23,7 @@ import (
 // It orchestrates the Hermes process, parses logs in real-time, and aggregates
 // peer connection statistics for scoring and analysis.
 type PeerScoreTool struct {
-	ctx               context.Context
+	ctx               context.Context //nolint:containedctx // ok.
 	log               logrus.FieldLogger
 	config            PeerScoreConfig           // Test configuration and parameters.
 	peers             map[string]*PeerStats     // Individual peer statistics indexed by peer ID.
@@ -165,9 +165,11 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 	for peerID, peer := range pst.peers {
 		// Deep copy connection sessions
 		sessionsCopy := make([]ConnectionSession, len(peer.ConnectionSessions))
+
 		for i, session := range peer.ConnectionSessions {
 			// Deep copy peer scores
 			peerScoresCopy := make([]PeerScoreSnapshot, len(session.PeerScores))
+
 			for j, score := range session.PeerScores {
 				// Deep copy topics
 				topicsCopy := make([]TopicScore, len(score.Topics))
@@ -250,6 +252,7 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 
 		// Count successful/failed handshakes per session
 		hasActiveSession := false
+
 		for _, session := range peer.ConnectionSessions {
 			if session.IdentifiedAt != nil {
 				successfulHandshakes++

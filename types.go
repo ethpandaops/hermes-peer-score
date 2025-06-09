@@ -31,12 +31,12 @@ type MeshEvent struct {
 
 // PeerScoreSnapshot represents a snapshot of a peer's score at a specific time.
 type PeerScoreSnapshot struct {
-	Timestamp            time.Time    `json:"timestamp"`
-	Score                float64      `json:"score"`
-	AppSpecificScore     float64      `json:"app_specific_score"`
-	IPColocationFactor   float64      `json:"ip_colocation_factor"`
-	BehaviourPenalty     float64      `json:"behaviour_penalty"`
-	Topics               []TopicScore `json:"topics"`
+	Timestamp          time.Time    `json:"timestamp"`
+	Score              float64      `json:"score"`
+	AppSpecificScore   float64      `json:"app_specific_score"`
+	IPColocationFactor float64      `json:"ip_colocation_factor"`
+	BehaviourPenalty   float64      `json:"behaviour_penalty"`
+	Topics             []TopicScore `json:"topics"`
 }
 
 // PeerScoreConfig holds configuration parameters for the peer score tool.
@@ -65,29 +65,29 @@ type ConnectionSession struct {
 // PeerStats contains detailed statistics for an individual peer across all connection sessions.
 // This tracks the lifecycle and behavior of each peer discovered during testing.
 type PeerStats struct {
-	PeerID             string              `json:"peer_id"`              // Unique peer identifier (libp2p peer ID).
-	ClientType         string              `json:"client_type"`          // Ethereum client implementation (lighthouse, prysm, etc.).
-	ClientAgent        string              `json:"client_agent"`         // Raw agent of the client (from most recent identification).
-	ConnectionSessions []ConnectionSession `json:"connection_sessions"`  // All connection sessions for this peer.
-	TotalConnections   int                 `json:"total_connections"`    // Total number of connection attempts.
-	TotalMessageCount  int                 `json:"total_message_count"`  // Total messages across all sessions.
-	FirstSeenAt        *time.Time          `json:"first_seen_at"`        // When we first encountered this peer.
-	LastSeenAt         *time.Time          `json:"last_seen_at"`         // When we last interacted with this peer.
+	PeerID             string              `json:"peer_id"`             // Unique peer identifier (libp2p peer ID).
+	ClientType         string              `json:"client_type"`         // Ethereum client implementation (lighthouse, prysm, etc.).
+	ClientAgent        string              `json:"client_agent"`        // Raw agent of the client (from most recent identification).
+	ConnectionSessions []ConnectionSession `json:"connection_sessions"` // All connection sessions for this peer.
+	TotalConnections   int                 `json:"total_connections"`   // Total number of connection attempts.
+	TotalMessageCount  int                 `json:"total_message_count"` // Total messages across all sessions.
+	FirstSeenAt        *time.Time          `json:"first_seen_at"`       // When we first encountered this peer.
+	LastSeenAt         *time.Time          `json:"last_seen_at"`        // When we last interacted with this peer.
 }
 
 // PeerScoreReport contains the comprehensive analysis results from a peer scoring test.
 // This is the main output structure containing all metrics, scores, and diagnostic information.
 type PeerScoreReport struct {
-	Config               PeerScoreConfig            `json:"config"`                 // Configuration used for this test run.
-	Timestamp            time.Time                  `json:"timestamp"`              // When this report was generated.
-	StartTime            time.Time                  `json:"start_time"`             // When the test execution began.
-	EndTime              time.Time                  `json:"end_time"`               // When the test execution completed.
-	Duration             time.Duration              `json:"duration"`               // Total time spent running the test.
-	TotalConnections     int                        `json:"total_connections"`      // Total number of peer connections established.
-	SuccessfulHandshakes int                        `json:"successful_handshakes"`  // Number of successful peer identifications.
-	FailedHandshakes     int                        `json:"failed_handshakes"`      // Number of failed peer identifications.
-	Peers                map[string]*PeerStats      `json:"peers"`                  // Detailed statistics for each individual peer.
-	PeerEventCounts      map[string]map[string]int  `json:"peer_event_counts"`      // Count of event types by peer ID.
+	Config               PeerScoreConfig           `json:"config"`                // Configuration used for this test run.
+	Timestamp            time.Time                 `json:"timestamp"`             // When this report was generated.
+	StartTime            time.Time                 `json:"start_time"`            // When the test execution began.
+	EndTime              time.Time                 `json:"end_time"`              // When the test execution completed.
+	Duration             time.Duration             `json:"duration"`              // Total time spent running the test.
+	TotalConnections     int                       `json:"total_connections"`     // Total number of peer connections established.
+	SuccessfulHandshakes int                       `json:"successful_handshakes"` // Number of successful peer identifications.
+	FailedHandshakes     int                       `json:"failed_handshakes"`     // Number of failed peer identifications.
+	Peers                map[string]*PeerStats     `json:"peers"`                 // Detailed statistics for each individual peer.
+	PeerEventCounts      map[string]map[string]int `json:"peer_event_counts"`     // Count of event types by peer ID.
 }
 
 // HTMLTemplateData represents the data structure used to generate HTML reports.

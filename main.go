@@ -35,6 +35,7 @@ func main() {
 	// If HTML-only mode is enabled, just generate HTML from existing JSON
 	if *htmlOnly {
 		generateHTMLOnlyMode(log)
+
 		return
 	}
 
@@ -68,12 +69,12 @@ func main() {
 // generateHTMLOnlyMode generates HTML report from existing JSON file without running the peer scoring test.
 func generateHTMLOnlyMode(log logrus.FieldLogger) {
 	log.Info("Running in HTML-only mode")
-	
+
 	// Check if input JSON file exists
 	if _, err := os.Stat(*inputJSON); os.IsNotExist(err) {
 		log.Fatalf("Input JSON file does not exist: %s", *inputJSON)
 	}
-	
+
 	// Determine output HTML file name
 	htmlFile := *outputFile
 	if *outputFile == "peer-score-report.json" {
@@ -85,15 +86,15 @@ func generateHTMLOnlyMode(log logrus.FieldLogger) {
 			htmlFile = strings.Replace(htmlFile, ".json", ".html", 1)
 		}
 	}
-	
+
 	log.Infof("Generating HTML report from: %s", *inputJSON)
 	log.Infof("Output HTML file: %s", htmlFile)
-	
+
 	// Generate HTML report
 	if err := GenerateHTMLReport(*inputJSON, htmlFile); err != nil {
 		log.Fatalf("Failed to generate HTML report: %v", err)
 	}
-	
+
 	log.Infof("HTML report generated successfully: %s", htmlFile)
 }
 
@@ -179,6 +180,7 @@ func logCurrentStatus(_ context.Context, log logrus.FieldLogger, tool *PeerScore
 		for _, session := range peer.ConnectionSessions {
 			if session.IdentifiedAt != nil {
 				identified++
+
 				break // Count each peer only once
 			}
 		}

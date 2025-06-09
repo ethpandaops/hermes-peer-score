@@ -39,7 +39,7 @@ type ToolConfig struct {
 	Subnets map[string]*eth.SubnetConfig
 }
 
-// SetDefaults applies default values to the ToolConfig if fields are zero values
+// SetDefaults applies default values to the ToolConfig if fields are zero values.
 func (n *ToolConfig) SetDefaults() {
 	if n.DialTimeout == 0 {
 		n.DialTimeout = 5 * time.Second

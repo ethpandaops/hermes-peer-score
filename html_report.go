@@ -34,32 +34,32 @@ const htmlTemplate = `<!DOCTYPE html>
         .score-positive { color: #10b981; }
         .score-negative { color: #ef4444; }
         .score-neutral { color: #6b7280; }
-        
+
         /* Fix scrolling issues in session blocks */
         .session-details {
             max-height: none !important;
             overflow: visible !important;
         }
-        
+
         /* Ensure tables are scrollable horizontally but not height restricted */
         .table-container {
             overflow-x: auto;
             overflow-y: visible;
             max-height: none !important;
         }
-        
+
         /* Fix for timeline sections */
         .timeline-container {
             max-height: none !important;
             overflow: visible !important;
         }
-        
+
         /* Ensure session timeline is fully visible */
         .session-timeline {
             max-height: none !important;
             overflow: visible !important;
         }
-        
+
         /* Collapsible data sections */
         .data-section-content {
             display: none;
@@ -70,20 +70,20 @@ const htmlTemplate = `<!DOCTYPE html>
             overflow-y: auto;
             overflow-x: auto;
         }
-        
+
         /* Scrollable table containers for large datasets */
         .scrollable-table {
             max-height: 300px;
             overflow-y: auto;
             overflow-x: auto;
         }
-        
+
         /* Timeline section with controlled height */
         .timeline-scrollable {
             max-height: 350px;
             overflow-y: auto;
         }
-        
+
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -514,7 +514,7 @@ const htmlTemplate = `<!DOCTYPE html>
                                                             </h6>
                                                         </div>
                                                         <div class="data-section-content" id="scores-{{$peerID}}-{{$sessionIdx}}">
-                                                            
+
                                                             <div class="scrollable-table">
                                                             <table class="min-w-full bg-white border border-gray-200 rounded">
                                                                 <thead class="bg-gray-50">
@@ -622,7 +622,7 @@ const htmlTemplate = `<!DOCTYPE html>
         function toggleDataSection(id) {
             const content = document.getElementById(id);
             const arrow = document.getElementById(id + '-arrow');
-            
+
             if (content.classList.contains('active')) {
                 content.classList.remove('active');
                 if (arrow) arrow.style.transform = 'rotate(0deg)';
@@ -688,6 +688,7 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 			if f < 0 {
 				return -f
 			}
+
 			return f
 		}, // Absolute value for comparisons.
 		"lastIndex": func(s, sep string) int {
@@ -695,6 +696,7 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 			if idx == -1 {
 				return 0
 			}
+
 			return idx
 		}, // Find last index of substring.
 		"time": func() struct{ Second, Millisecond time.Duration } {
@@ -706,12 +708,15 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 			if start < 0 || start >= len(s) {
 				return s
 			}
+
 			if end < 0 || end > len(s) {
 				end = len(s)
 			}
+
 			if start >= end {
 				return s
 			}
+
 			return s[start:end]
 		},
 		"sortByTimestamp": func(events []map[string]interface{}) []map[string]interface{} {
@@ -729,6 +734,7 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 					}
 				}
 			}
+
 			return sortedEvents
 		},
 		"sortPeersByEvents": func(peers map[string]*PeerStats, eventCounts map[string]map[string]int) []string {

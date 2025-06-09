@@ -13,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const unknown = "unknown"
+
 func (pst *PeerScoreTool) handleHermesEvent(ctx context.Context, event *host.TraceEvent) error {
 	switch event.Type {
 	case "CONNECTED":
@@ -61,6 +63,7 @@ func (pst *PeerScoreTool) handleConnectionEvent(_ context.Context, event *host.T
 	data, err := libp2p.TraceEventToConnected(event)
 	if err != nil {
 		pst.log.WithError(err).Error("failed to convert event to connected event")
+
 		return
 	}
 
@@ -124,6 +127,7 @@ func (pst *PeerScoreTool) handleDisconnectionEvent(_ context.Context, event *hos
 	data, err := libp2p.TraceEventToDisconnected(event)
 	if err != nil {
 		pst.log.WithError(err).Error("failed to convert event to disconnected event")
+
 		return
 	}
 
@@ -137,6 +141,7 @@ func (pst *PeerScoreTool) handleDisconnectionEvent(_ context.Context, event *hos
 	if !exists {
 		// We've never seen this peer. Log it, unlikely to happen and not data we can use anyway.
 		pst.log.WithField("peer_id", peerID).Warn("Received disconnection event for peer we've never seen")
+
 		return
 	}
 
@@ -144,11 +149,13 @@ func (pst *PeerScoreTool) handleDisconnectionEvent(_ context.Context, event *hos
 	currentSession := pst.getCurrentSession(peer)
 	if currentSession == nil {
 		pst.log.WithField("peer_id", peerID).Warn("Received disconnection event but no active session found")
+
 		return
 	}
 
 	if currentSession.Disconnected {
 		pst.log.WithField("peer_id", peerID).Warn("Received disconnection event but session already marked as disconnected")
+
 		return
 	}
 
@@ -175,6 +182,7 @@ func (pst *PeerScoreTool) handleStatusEvent(_ context.Context, event *host.Trace
 	payload, ok := event.Payload.(map[string]any)
 	if !ok {
 		pst.log.Errorf("handleStatusEvent: failed to convert request status payload to map[string]any")
+
 		return
 	}
 
@@ -183,6 +191,7 @@ func (pst *PeerScoreTool) handleStatusEvent(_ context.Context, event *host.Trace
 		pst.log.WithFields(logrus.Fields{
 			"peer_id": peerID,
 		}).Warn("handleStatusEvent: failed to parse peer_id from host payload")
+
 		return
 	}
 
@@ -223,6 +232,7 @@ func (pst *PeerScoreTool) handleStatusEvent(_ context.Context, event *host.Trace
 			"peer_id":      peerID,
 			"client_agent": normalizeClientType(agentVersion),
 		}).Info("Identified peer (new)")
+
 		return
 	}
 
@@ -239,7 +249,7 @@ func (pst *PeerScoreTool) handleStatusEvent(_ context.Context, event *host.Trace
 		currentSession.IdentifiedAt = &now
 
 		if currentSession.Disconnected {
-			if normalizeClientType(agentVersion) != "unknown" {
+			if normalizeClientType(agentVersion) != unknown {
 				pst.log.WithFields(logrus.Fields{
 					"peer_id":      peerID,
 					"client_agent": normalizeClientType(agentVersion),
@@ -266,6 +276,7 @@ func (pst *PeerScoreTool) handlePeerScoreEvent(_ context.Context, event *host.Tr
 	peerID := getPeerID(event)
 	if peerID == "" {
 		pst.log.Warn("handlePeerScoreEvent: could not extract peer ID from event")
+
 		return
 	}
 
@@ -273,6 +284,7 @@ func (pst *PeerScoreTool) handlePeerScoreEvent(_ context.Context, event *host.Tr
 	scoreSnapshot, err := pst.parsePeerScoreFromPayload(event.Payload)
 	if err != nil {
 		pst.log.WithError(err).Warn("handlePeerScoreEvent: failed to parse peer score from payload")
+
 		return
 	}
 
@@ -296,8 +308,8 @@ func (pst *PeerScoreTool) handlePeerScoreEvent(_ context.Context, event *host.Tr
 
 		pst.peers[peerID] = &PeerStats{
 			PeerID:             peerID,
-			ClientType:         "unknown",
-			ClientAgent:        "unknown",
+			ClientType:         unknown,
+			ClientAgent:        unknown,
 			ConnectionSessions: []ConnectionSession{session},
 			TotalConnections:   1,
 			FirstSeenAt:        &now,
@@ -346,6 +358,7 @@ func (pst *PeerScoreTool) handleGoodbyeEvent(_ context.Context, event *host.Trac
 	peerID := getPeerID(event)
 	if peerID == "" {
 		pst.log.Warn("handleGoodbyeEvent: could not extract peer ID from event")
+
 		return
 	}
 
@@ -364,6 +377,7 @@ func (pst *PeerScoreTool) handleGoodbyeEvent(_ context.Context, event *host.Trac
 			"payload_type": fmt.Sprintf("%T", event.Payload),
 			"payload":      event.Payload,
 		}).WithError(err).Warn("handleGoodbyeEvent: failed to parse goodbye from payload")
+
 		return
 	}
 
@@ -436,7 +450,7 @@ func (pst *PeerScoreTool) handleGoodbyeEvent(_ context.Context, event *host.Trac
 	}
 }
 
-// parsePeerScoreFromPayload extracts peer score data from the event payload
+// parsePeerScoreFromPayload extracts peer score data from the event payload.
 func (pst *PeerScoreTool) parsePeerScoreFromPayload(payload interface{}) (*PeerScoreSnapshot, error) {
 	// Try to parse as map[string]any (the format from composePeerScoreEventFromRawMap)
 	if payloadMap, ok := payload.(map[string]any); ok {
@@ -446,7 +460,7 @@ func (pst *PeerScoreTool) parsePeerScoreFromPayload(payload interface{}) (*PeerS
 	return nil, fmt.Errorf("unsupported payload type for peer score event: %T", payload)
 }
 
-// parsePeerScoreFromMap parses peer score data from a map[string]any payload
+// parsePeerScoreFromMap parses peer score data from a map[string]any payload.
 func (pst *PeerScoreTool) parsePeerScoreFromMap(payloadMap map[string]any) (*PeerScoreSnapshot, error) {
 	snapshot := &PeerScoreSnapshot{
 		Timestamp: time.Now(),
@@ -508,15 +522,14 @@ func (pst *PeerScoreTool) parsePeerScoreFromMap(payloadMap map[string]any) (*Pee
 	return snapshot, nil
 }
 
-// getCurrentSession returns the current active session for a peer, or nil if no active session exists
+// getCurrentSession returns the current active session for a peer, or nil if no active session exists.
 func (pst *PeerScoreTool) getCurrentSession(peer *PeerStats) *ConnectionSession {
 	if len(peer.ConnectionSessions) == 0 {
 		return nil
 	}
 
 	// Return the last session
-	lastSession := &peer.ConnectionSessions[len(peer.ConnectionSessions)-1]
-	return lastSession
+	return &peer.ConnectionSessions[len(peer.ConnectionSessions)-1]
 }
 
 // shouldIgnoreEventForDisconnectedPeer checks if we should ignore an event for a peer that's already disconnected.
@@ -555,6 +568,7 @@ func (pst *PeerScoreTool) shouldIgnoreEventForDisconnectedPeer(peerID string, ev
 			"disconnected_at": currentSession.DisconnectedAt,
 			"event_timestamp": eventTime,
 		}).Debug("Ignoring event for disconnected peer")
+
 		return true
 	}
 
@@ -605,7 +619,7 @@ func getPeerID(event *host.TraceEvent) string {
 	return ""
 }
 
-// extractPeerIDFromStruct uses reflection to extract a PeerID or RemotePeer field from any struct
+// extractPeerIDFromStruct uses reflection to extract a PeerID or RemotePeer field from any struct.
 func extractPeerIDFromStruct(payload interface{}) string {
 	if payload == nil {
 		return ""
@@ -618,6 +632,7 @@ func extractPeerIDFromStruct(payload interface{}) string {
 		if val.IsNil() {
 			return ""
 		}
+
 		val = val.Elem()
 	}
 
@@ -658,7 +673,7 @@ func extractPeerIDFromStruct(payload interface{}) string {
 	return ""
 }
 
-// parseGoodbyeFromPayload extracts goodbye data from the event payload
+// parseGoodbyeFromPayload extracts goodbye data from the event payload.
 func (pst *PeerScoreTool) parseGoodbyeFromPayload(payload interface{}) (*GoodbyeEvent, error) {
 	// Try to parse as map[string]any (the format from hermes reqresp handler)
 	if payloadMap, ok := payload.(map[string]any); ok {
@@ -667,6 +682,7 @@ func (pst *PeerScoreTool) parseGoodbyeFromPayload(payload interface{}) (*Goodbye
 		for k := range payloadMap {
 			keys = append(keys, k)
 		}
+
 		pst.log.WithFields(logrus.Fields{
 			"payload_keys": keys,
 			"payload_map":  payloadMap,
@@ -678,7 +694,7 @@ func (pst *PeerScoreTool) parseGoodbyeFromPayload(payload interface{}) (*Goodbye
 	return nil, fmt.Errorf("unsupported payload type for goodbye event: %T", payload)
 }
 
-// parseGoodbyeFromMap parses goodbye data from a map[string]any payload
+// parseGoodbyeFromMap parses goodbye data from a map[string]any payload.
 func (pst *PeerScoreTool) parseGoodbyeFromMap(payloadMap map[string]any) (*GoodbyeEvent, error) {
 	goodbyeEvent := &GoodbyeEvent{
 		Timestamp: time.Now(),
@@ -698,7 +714,7 @@ func (pst *PeerScoreTool) parseGoodbyeFromMap(payloadMap map[string]any) (*Goodb
 		return goodbyeEvent, nil
 	}
 
-	// Parse Code - handle various types that might come from hermes
+	// Parse Code - handle various types that might come from hermes.
 	codeValue, exists := payloadMap["Code"]
 	if !exists {
 		return nil, fmt.Errorf("missing Code field in goodbye payload")
@@ -714,8 +730,10 @@ func (pst *PeerScoreTool) parseGoodbyeFromMap(payloadMap map[string]any) (*Goodb
 	case uint64:
 		goodbyeEvent.Code = v
 	case int64:
+		//nolint:gosec // fine.
 		goodbyeEvent.Code = uint64(v)
 	case int:
+		//nolint:gosec // fine.
 		goodbyeEvent.Code = uint64(v)
 	case float64:
 		goodbyeEvent.Code = uint64(v)
@@ -738,7 +756,7 @@ func (pst *PeerScoreTool) parseGoodbyeFromMap(payloadMap map[string]any) (*Goodb
 	if reason, ok := payloadMap["Reason"].(string); ok {
 		goodbyeEvent.Reason = reason
 	} else {
-		goodbyeEvent.Reason = "unknown"
+		goodbyeEvent.Reason = unknown
 	}
 
 	return goodbyeEvent, nil
@@ -748,6 +766,7 @@ func (pst *PeerScoreTool) handleGraftEvent(_ context.Context, event *host.TraceE
 	peerID := getPeerID(event)
 	if peerID == "" {
 		pst.log.Warn("handleGraftEvent: could not extract peer ID from event")
+
 		return
 	}
 
@@ -759,6 +778,7 @@ func (pst *PeerScoreTool) handleGraftEvent(_ context.Context, event *host.TraceE
 			"payload_type": fmt.Sprintf("%T", event.Payload),
 			"payload":      event.Payload,
 		}).WithError(err).Warn("handleGraftEvent: failed to parse GRAFT from payload")
+
 		return
 	}
 
@@ -782,8 +802,8 @@ func (pst *PeerScoreTool) handleGraftEvent(_ context.Context, event *host.TraceE
 
 		pst.peers[peerID] = &PeerStats{
 			PeerID:             peerID,
-			ClientType:         "unknown",
-			ClientAgent:        "unknown",
+			ClientType:         unknown,
+			ClientAgent:        unknown,
 			ConnectionSessions: []ConnectionSession{session},
 			TotalConnections:   1,
 			FirstSeenAt:        &now,
@@ -835,6 +855,7 @@ func (pst *PeerScoreTool) handlePruneEvent(_ context.Context, event *host.TraceE
 	peerID := getPeerID(event)
 	if peerID == "" {
 		pst.log.Warn("handlePruneEvent: could not extract peer ID from event")
+
 		return
 	}
 
@@ -846,6 +867,7 @@ func (pst *PeerScoreTool) handlePruneEvent(_ context.Context, event *host.TraceE
 			"payload_type": fmt.Sprintf("%T", event.Payload),
 			"payload":      event.Payload,
 		}).WithError(err).Warn("handlePruneEvent: failed to parse PRUNE from payload")
+
 		return
 	}
 
@@ -869,8 +891,8 @@ func (pst *PeerScoreTool) handlePruneEvent(_ context.Context, event *host.TraceE
 
 		pst.peers[peerID] = &PeerStats{
 			PeerID:             peerID,
-			ClientType:         "unknown",
-			ClientAgent:        "unknown",
+			ClientType:         unknown,
+			ClientAgent:        unknown,
 			ConnectionSessions: []ConnectionSession{session},
 			TotalConnections:   1,
 			FirstSeenAt:        &now,
@@ -921,7 +943,7 @@ func (pst *PeerScoreTool) handlePruneEvent(_ context.Context, event *host.TraceE
 	}
 }
 
-// parseMeshEventFromPayload extracts mesh event data from the event payload
+// parseMeshEventFromPayload extracts mesh event data from the event payload.
 func (pst *PeerScoreTool) parseMeshEventFromPayload(payload interface{}, eventType string) (*MeshEvent, error) {
 	// Try to parse as map[string]any (the format from hermes gossipsub tracer)
 	if payloadMap, ok := payload.(map[string]any); ok {
@@ -931,12 +953,12 @@ func (pst *PeerScoreTool) parseMeshEventFromPayload(payload interface{}, eventTy
 	return nil, fmt.Errorf("unsupported payload type for mesh event: %T", payload)
 }
 
-// parseMeshEventFromMap parses mesh event data from a map[string]any payload
+// parseMeshEventFromMap parses mesh event data from a map[string]any payload.
 func (pst *PeerScoreTool) parseMeshEventFromMap(payloadMap map[string]any, eventType string) (*MeshEvent, error) {
 	meshEvent := &MeshEvent{
 		Timestamp: time.Now(),
 		Type:      eventType,
-		Direction: "unknown", // Will determine based on context
+		Direction: unknown, // Will determine based on context
 	}
 
 	// Parse Topic
@@ -949,7 +971,7 @@ func (pst *PeerScoreTool) parseMeshEventFromMap(payloadMap map[string]any, event
 	// GRAFT and PRUNE events represent OUR mesh management actions from OUR perspective:
 	// GRAFT = WE are adding the specified peer TO our mesh for this topic
 	// PRUNE = WE are removing the specified peer FROM our mesh for this topic
-	// 
+	//
 	// The PeerID in the event payload is the peer WE are acting upon, not a peer acting on us.
 	// This is our node making local mesh topology decisions for GossipSub.
 	meshEvent.Direction = "outgoing"
