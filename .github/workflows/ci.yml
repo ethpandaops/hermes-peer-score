@@ -121,19 +121,80 @@ jobs:
           mkdir -p temp_existing
           
           # Try to download and extract existing report structure (only last 28 days)
-          for i in {0..27}; do
+          for i in {1..27}; do
             DATE=$(date -u -d "-$i days" +"%Y-%m-%d")
             echo "Checking for reports from $DATE..."
             
-            # Try to download JSON files for this date
-            JSON_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/$DATE/"
-            if curl -f -s -I "$JSON_URL" >/dev/null 2>&1; then
-              echo "Found reports for $DATE, downloading..."
+            # Try to download the directory listing to see what files exist
+            DIR_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/$DATE/"
+            if curl -f -s -I "$DIR_URL" >/dev/null 2>&1; then
+              echo "Found directory for $DATE, attempting to preserve files..."
               mkdir -p "reports/$DATE"
               
-              # Download any existing files for this date
-              # This is a best-effort approach
-              curl -f -s "https://${{ github.repository_owner }}.github.io/hermes-peer-score/$DATE/" > temp_page.html 2>/dev/null || true
+              # Download the directory listing to parse available files
+              DIR_LISTING=$(curl -f -s "$DIR_URL" 2>/dev/null || echo "")
+              
+              if [ ! -z "$DIR_LISTING" ]; then
+                # Extract filenames from the HTML directory listing
+                # Look for peer-score-report files
+                echo "$DIR_LISTING" | grep -oE 'href="[^"]*peer-score-report-[^"]*"' | sed 's/href="//;s/"//' | while read FILE; do
+                  if [ ! -z "$FILE" ]; then
+                    FILE_URL="$DIR_URL$FILE"
+                    echo "  Downloading: $FILE"
+                    curl -f -s "$FILE_URL" -o "reports/$DATE/$FILE" 2>/dev/null || {
+                      echo "    Failed to download $FILE"
+                      rm -f "reports/$DATE/$FILE" 2>/dev/null || true
+                    }
+                  fi
+                done
+                
+                # If no files were found via directory listing, try common patterns
+                if [ $(ls "reports/$DATE/" 2>/dev/null | wc -l) -eq 0 ]; then
+                  echo "  No files found via directory listing, trying common patterns..."
+                  
+                  # Try to download files with common timestamp patterns (hourly from 09:00 to 15:00 UTC)
+                  for hour in {09..15}; do
+                    for minute in {00..59..15}; do  # Every 15 minutes
+                      TIMESTAMP_PATTERN="$DATE\_$hour-$minute-"
+                      
+                      # Try different second values
+                      for second in {00..59..10}; do  # Every 10 seconds
+                        FULL_TIMESTAMP="$DATE\_$hour-$minute-$second"
+                        
+                        # Try to download JSON, HTML, and JS files
+                        for ext in json html js; do
+                          if [ "$ext" = "js" ]; then
+                            FILENAME="peer-score-report-$FULL_TIMESTAMP-data.$ext"
+                          else
+                            FILENAME="peer-score-report-$FULL_TIMESTAMP.$ext"
+                          fi
+                          
+                          FILE_URL="$DIR_URL$FILENAME"
+                          if curl -f -s -I "$FILE_URL" >/dev/null 2>&1; then
+                            echo "    Found and downloading: $FILENAME"
+                            curl -f -s "$FILE_URL" -o "reports/$DATE/$FILENAME" 2>/dev/null && {
+                              echo "    Successfully downloaded: $FILENAME"
+                              # If we found one file with this timestamp, try the others
+                              break 3  # Break out of all loops for this hour
+                            }
+                          fi
+                        done
+                      done
+                    done
+                  done
+                fi
+                
+                # Clean up empty directories
+                if [ $(ls "reports/$DATE/" 2>/dev/null | wc -l) -eq 0 ]; then
+                  echo "  No files found for $DATE, removing empty directory"
+                  rmdir "reports/$DATE" 2>/dev/null || true
+                else
+                  FILE_COUNT=$(ls "reports/$DATE/" 2>/dev/null | wc -l)
+                  echo "  Successfully preserved $FILE_COUNT files for $DATE"
+                fi
+              fi
+            else
+              echo "  No directory found for $DATE"
             fi
           done
           
@@ -373,6 +434,22 @@ jobs:
               
               # Replace the reports section
               html = re.sub(r'\{\{range \.Reports\}\}.*?\{\{end\}\}', reports_html, html, flags=re.DOTALL)
+              
+              # Clean up any remaining template syntax that might be left over
+              # Remove any standalone {{.Variable}} that weren't replaced
+              html = re.sub(r'\{\{[^}]+\}\}', '', html)
+              
+              # Remove any {{if}} or {{end}} blocks that might remain
+              html = re.sub(r'\{\{if [^}]+\}\}', '', html)
+              html = re.sub(r'\{\{end\}\}', '', html)
+              
+              # Clean up any malformed template remnants (like the ">{{.SuccessRate}}%" issue)
+              html = re.sub(r'["\'>]\{\{[^}]+\}\}[^<]*', '', html)
+              
+              # Additional cleanup for specific problematic patterns
+              html = re.sub(r'>\{\{[^}]+\}\}[^<]*', '>', html)  # Remove >{{...}}text patterns
+              html = re.sub(r'"\{\{[^}]+\}\}[^"]*"', '""', html)  # Remove "{{...}}text" patterns
+              html = re.sub(r"'\{\{[^}]+\}\}[^']*'", "''", html)  # Remove '{{...}}text' patterns
               
               # Write the final index
               with open('reports/index.html', 'w') as f:
