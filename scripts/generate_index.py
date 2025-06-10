@@ -36,7 +36,7 @@ def parse_report_metadata(json_file):
 def generate_reports_grid_html(reports):
     """Generate the HTML for the reports grid (simplified version)."""
     reports_grid_html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="reportsGrid">'
-    
+
     for report in reports:
         html_path = report.get('html_path', '#')
         html_link = f'href="{html_path}"' if html_path and html_path != '#' else 'href="#" onclick="alert(\'HTML report not available for this date\')"'
@@ -50,7 +50,6 @@ def generate_reports_grid_html(reports):
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">{report['formatted_date']}</h3>
-                        <p class="text-sm text-gray-600">{report['date']}</p>
                     </div>
                     <div class="text-right">
                         <div class="text-xs text-gray-500">Duration</div>
@@ -69,7 +68,7 @@ def generate_reports_grid_html(reports):
                     </a>
                 </div>
             </div>'''
-    
+
     reports_grid_html += '</div>'
     return reports_grid_html
 
@@ -82,7 +81,7 @@ def generate_latest_report_html(latest_report):
                 <div class="flex items-center space-x-2 mb-2">
                     <h2 class="text-xl font-semibold text-blue-900">Latest Report</h2>
                 </div>
-                <p class="text-blue-700 mb-3">{latest_report['date']} - {latest_report['formatted_date']}</p>
+                <p class="text-blue-700 mb-3">{latest_report['formatted_date']}</p>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                         <span class="text-blue-600 font-medium">Duration:</span>
@@ -121,20 +120,20 @@ def clean_html_template_syntax(html):
     # Remove complete template blocks that weren't handled
     html = re.sub(r'\{\{if [^}]+\}\}.*?\{\{end\}\}', '', html, flags=re.DOTALL)
     html = re.sub(r'\{\{range [^}]+\}\}.*?\{\{end\}\}', '', html, flags=re.DOTALL)
-    
+
     # Remove any standalone {{.Variable}} that weren't replaced
     html = re.sub(r'\{\{[^}]+\}\}', '', html)
-    
+
     # Clean up malformed remnants and broken div structures
     html = re.sub(r'">[^<]*%[^<]*</div>', '"></div>', html)
     html = re.sub(r'>\s*">[^<]*</div>', '></div>', html)
     html = re.sub(r'href=""[^>]*class=', 'href="#" class=', html)
-    
+
     # Remove orphaned closing divs and fragments
     html = re.sub(r'^\s*</div>\s*$', '', html, flags=re.MULTILINE)
     html = re.sub(r'^\s*">[^<]*$', '', html, flags=re.MULTILINE)
     html = re.sub(r'^\s*/$', '', html, flags=re.MULTILINE)
-    
+
     # Remove any lines that are just template fragments
     lines = html.split('\n')
     cleaned_lines = []
@@ -142,16 +141,16 @@ def clean_html_template_syntax(html):
         stripped = line.strip()
         # Skip lines that are clearly broken template remnants
         if (re.search(r'^\s*">[^<]*%|^\s*</div>\s*">[^<]*%|^\s*/[^<]*</div>', line) or
-            stripped == '/' or 
+            stripped == '/' or
             stripped.startswith('">') or
             stripped == '</div>' and len(cleaned_lines) > 0 and not cleaned_lines[-1].strip().startswith('<div')):
             continue
         cleaned_lines.append(line)
-    
+
     # Remove any double empty lines
     html = '\n'.join(cleaned_lines)
     html = re.sub(r'\n\s*\n\s*\n', '\n\n', html)
-    
+
     return html
 
 
@@ -162,10 +161,10 @@ def generate_reports_manifest(reports):
         "total_reports": len(reports),
         "reports": []
     }
-    
+
     for report in reports:
         report_files = []
-        
+
         # Add JSON file
         json_filename = f"peer-score-report-{report['timestamp']}.json"
         report_files.append({
@@ -173,7 +172,7 @@ def generate_reports_manifest(reports):
             "path": f"{report['date']}/{json_filename}",
             "type": "json"
         })
-        
+
         # Add HTML file if it exists
         if report.get('html_path'):
             html_filename = f"peer-score-report-{report['timestamp']}.html"
@@ -182,7 +181,7 @@ def generate_reports_manifest(reports):
                 "path": f"{report['date']}/{html_filename}",
                 "type": "html"
             })
-        
+
         # Add JS data file
         js_filename = f"peer-score-report-{report['timestamp']}-data.js"
         report_files.append({
@@ -190,7 +189,7 @@ def generate_reports_manifest(reports):
             "path": f"{report['date']}/{js_filename}",
             "type": "javascript"
         })
-        
+
         manifest_data["reports"].append({
             "date": report['date'],
             "timestamp": report['timestamp'],
@@ -201,7 +200,7 @@ def generate_reports_manifest(reports):
             "success_rate": report['success_rate'],
             "files": report_files
         })
-    
+
     return manifest_data
 
 
@@ -237,7 +236,7 @@ def generate_index():
 
             # Determine file paths
             html_file = json_file.with_suffix('.html')
-            
+
             html_path = f"{date_dir}/{html_file.name}" if html_file.exists() else None
             json_path = f"{date_dir}/{json_file.name}"
 
@@ -282,7 +281,7 @@ def generate_index():
 
     # Generate and replace reports grid - replace the entire template section
     reports_grid_html = generate_reports_grid_html(reports)
-    
+
     # Find and replace the template grid section (from the template comment to the end of the grid div, including the template range)
     grid_start = html.find('<!-- Reports Grid -->')
     if grid_start != -1:
