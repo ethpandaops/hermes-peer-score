@@ -112,39 +112,13 @@
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">{{.FormattedDate}}</h3>
+                        <p class="text-sm text-gray-600">{{.Date}}</p>
                     </div>
                     <div class="text-right">
                         <div class="text-xs text-gray-500">Duration</div>
                         <div class="text-sm font-medium text-blue-600">{{.TestDuration}}s</div>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
-                    <div>
-                        <div class="text-gray-500">Unique Peers</div>
-                        <div class="font-semibold text-gray-900">{{.UniquePeers}}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Connections</div>
-                        <div class="font-semibold text-gray-900">{{.TotalConnections}}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Success Rate</div>
-                        <div class="font-semibold {{if ge .SuccessRate 80.0}}text-green-600{{else if ge .SuccessRate 60.0}}text-yellow-600{{else}}text-red-600{{end}}">{{.SuccessRate}}%</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Handshakes</div>
-                        <div class="font-semibold text-gray-900">{{.SuccessfulHandshakes}}/{{.TotalConnections}}</div>
-                    </div>
-                </div>
-
-                {{if .HasAIAnalysis}}
-                <div class="mb-4">
-                    <span class="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                        🤖 AI Analysis Available
-                    </span>
-                </div>
-                {{end}}
 
                 <div class="flex space-x-2">
                     <a href="{{.HTMLPath}}"

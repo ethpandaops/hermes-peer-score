@@ -418,50 +418,76 @@ jobs:
                   # Remove the latest report section entirely
                   html = re.sub(r'\{\{if \.LatestReport\}\}.*?\{\{end\}\}', '', html, flags=re.DOTALL)
 
-              # Generate reports grid (simplified to avoid template cleanup issues)
-              reports_html = ''
+              # Generate complete reports grid section (simplified to avoid template cleanup issues)
+              reports_grid_html = f'''<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="reportsGrid">'''
+              
               for report in reports:
                   html_path = report.get('html_path', '#')
                   html_link = f'href="{html_path}"' if html_path and html_path != '#' else 'href="#" onclick="alert(\'HTML report not available for this date\')"'
 
-                  reports_html += f'''<div class="report-card bg-white rounded-lg shadow-md p-6 data-report"
-                       data-date="{report['date']}"
-                       data-peers="{report['unique_peers']}"
-                       data-connections="{report['total_connections']}"
-                       data-success="{report['success_rate']}">
-                      <div class="flex items-center justify-between mb-4">
-                          <div>
-                              <h3 class="text-lg font-semibold text-gray-900">{report['formatted_date']}</h3>
-                              <p class="text-sm text-gray-600">{report['date']}</p>
+                  reports_grid_html += f'''
+                      <div class="report-card bg-white rounded-lg shadow-md p-6 data-report"
+                           data-date="{report['date']}"
+                           data-peers="{report['unique_peers']}"
+                           data-connections="{report['total_connections']}"
+                           data-success="{report['success_rate']}">
+                          <div class="flex items-center justify-between mb-4">
+                              <div>
+                                  <h3 class="text-lg font-semibold text-gray-900">{report['formatted_date']}</h3>
+                                  <p class="text-sm text-gray-600">{report['date']}</p>
+                              </div>
+                              <div class="text-right">
+                                  <div class="text-xs text-gray-500">Duration</div>
+                                  <div class="text-sm font-medium text-blue-600">{report['test_duration']}s</div>
+                              </div>
                           </div>
-                          <div class="text-right">
-                              <div class="text-xs text-gray-500">Duration</div>
-                              <div class="text-sm font-medium text-blue-600">{report['test_duration']}s</div>
+
+                          <div class="flex space-x-2">
+                              <a {html_link}
+                                 class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors">
+                                  📊 View Report
+                              </a>
+                              <a href="{report['json_path']}"
+                                 class="inline-flex items-center justify-center px-3 py-2 bg-gray-600 text-white rounded text-sm font-medium hover:bg-gray-700 transition-colors">
+                                  📄 JSON
+                              </a>
                           </div>
-                      </div>
+                      </div>'''
+              
+              reports_grid_html += '''
+                  </div>'''
 
-                      <div class="flex space-x-2">
-                          <a {html_link}
-                             class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors">
-                              📊 View Report
-                          </a>
-                          <a href="{report['json_path']}"
-                             class="inline-flex items-center justify-center px-3 py-2 bg-gray-600 text-white rounded text-sm font-medium hover:bg-gray-700 transition-colors">
-                              📄 JSON
-                          </a>
-                      </div>
-                  </div>
-                  '''
+              # Replace the entire reports grid section (including the container div and all template content)
+              # This pattern matches from the grid div opening to the corresponding closing div
+              grid_pattern = r'<!-- Reports Grid -->.*?<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="reportsGrid">.*?</div>'
+              grid_replacement = f'<!-- Reports Grid -->\\n        {reports_grid_html}'
+              
+              html = re.sub(grid_pattern, grid_replacement, html, flags=re.DOTALL)
 
-              # Replace the reports section
-              html = re.sub(r'\{\{range \.Reports\}\}.*?\{\{end\}\}', reports_html, html, flags=re.DOTALL)
-
-              # Clean up any remaining template syntax (simplified since we removed complex metrics)
+              # Clean up any remaining template syntax thoroughly
               # Remove complete template blocks that weren't handled
               html = re.sub(r'\{\{if [^}]+\}\}.*?\{\{end\}\}', '', html, flags=re.DOTALL)
               
               # Remove any standalone {{.Variable}} that weren't replaced
               html = re.sub(r'\{\{[^}]+\}\}', '', html)
+              
+              # Clean up malformed remnants like ">%</div>" and similar patterns
+              html = re.sub(r'">[^<]*%[^<]*</div>', '"></div>', html)
+              html = re.sub(r'>\s*">[^<]*</div>', '></div>', html)
+              html = re.sub(r'href=""[^>]*class=', 'href="#" class=', html)
+              
+              # Remove any lines that are just template fragments
+              lines = html.split('\n')
+              cleaned_lines = []
+              for line in lines:
+                  # Skip lines that are clearly broken template remnants
+                  if re.search(r'^\s*">[^<]*%|^\s*</div>\s*">[^<]*%|^\s*/[^<]*</div>', line):
+                      continue
+                  if line.strip() == '/' or line.strip().startswith('">'):
+                      continue
+                  cleaned_lines.append(line)
+              
+              html = '\n'.join(cleaned_lines)
 
               # Write the final index
               with open('reports/index.html', 'w') as f:
