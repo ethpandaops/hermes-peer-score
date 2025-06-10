@@ -289,7 +289,7 @@ jobs:
                       reports.append({
                           'date': report_date.strftime('%Y-%m-%d'),
                           'timestamp': timestamp_part,
-                          'formatted_date': report_date.strftime('%B %d, %Y'),
+                          'formatted_date': report_date.strftime('%B %d, %Y at %H:%M'),
                           'html_path': html_path,
                           'json_path': json_path,
                           **metadata
