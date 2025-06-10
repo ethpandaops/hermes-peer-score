@@ -116,7 +116,7 @@ def generate_latest_report_html(latest_report):
 
 
 def clean_html_template_syntax(html):
-    """Clean up any remaining template syntax."""
+    """Clean up any remaining template syntax - conservative approach."""
     # Remove complete template blocks that weren't handled
     html = re.sub(r'\{\{if [^}]+\}\}.*?\{\{end\}\}', '', html, flags=re.DOTALL)
     html = re.sub(r'\{\{range [^}]+\}\}.*?\{\{end\}\}', '', html, flags=re.DOTALL)
@@ -124,31 +124,14 @@ def clean_html_template_syntax(html):
     # Remove any standalone {{.Variable}} that weren't replaced
     html = re.sub(r'\{\{[^}]+\}\}', '', html)
 
-    # Clean up malformed remnants and broken div structures
-    html = re.sub(r'">[^<]*%[^<]*</div>', '"></div>', html)
-    html = re.sub(r'>\s*">[^<]*</div>', '></div>', html)
+    # Fix href attributes
     html = re.sub(r'href=""[^>]*class=', 'href="#" class=', html)
 
-    # Remove orphaned closing divs and fragments
-    html = re.sub(r'^\s*</div>\s*$', '', html, flags=re.MULTILINE)
+    # Remove simple template fragments
     html = re.sub(r'^\s*">[^<]*$', '', html, flags=re.MULTILINE)
     html = re.sub(r'^\s*/$', '', html, flags=re.MULTILINE)
 
-    # Remove any lines that are just template fragments
-    lines = html.split('\n')
-    cleaned_lines = []
-    for line in lines:
-        stripped = line.strip()
-        # Skip lines that are clearly broken template remnants
-        if (re.search(r'^\s*">[^<]*%|^\s*</div>\s*">[^<]*%|^\s*/[^<]*</div>', line) or
-            stripped == '/' or
-            stripped.startswith('">') or
-            stripped == '</div>' and len(cleaned_lines) > 0 and not cleaned_lines[-1].strip().startswith('<div')):
-            continue
-        cleaned_lines.append(line)
-
-    # Remove any double empty lines
-    html = '\n'.join(cleaned_lines)
+    # Remove double empty lines
     html = re.sub(r'\n\s*\n\s*\n', '\n\n', html)
 
     return html
@@ -282,15 +265,10 @@ def generate_index():
     # Generate and replace reports grid - replace the entire template section
     reports_grid_html = generate_reports_grid_html(reports)
 
-    # Find and replace the template grid section (from the template comment to the end of the grid div, including the template range)
-    grid_start = html.find('<!-- Reports Grid -->')
-    if grid_start != -1:
-        # Find the end of the grid section by looking for the closing div after the template range
-        grid_end = html.find('</div>', html.find('{{end}}', grid_start))
-        if grid_end != -1:
-            grid_end += 6  # Include the closing </div>
-            # Replace the entire section
-            html = html[:grid_start] + f'<!-- Reports Grid -->\n        {reports_grid_html}' + html[grid_end:]
+    # Replace the entire grid section including the template range using regex
+    grid_pattern = r'<!-- Reports Grid -->\s*<div class="grid[^>]*?id="reportsGrid"[^>]*>\s*\{\{range [^}]+\}\}.*?\{\{end\}\}\s*</div>'
+    grid_replacement = f'<!-- Reports Grid -->\n        {reports_grid_html}'
+    html = re.sub(grid_pattern, grid_replacement, html, flags=re.DOTALL)
 
     # Clean up any remaining template syntax
     html = clean_html_template_syntax(html)
