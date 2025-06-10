@@ -127,7 +127,7 @@ CRITICAL CONTEXT: Hermes is a GossipSub listener and network tracer that connect
 
 Your analysis should focus on understanding why OTHER PEERS are disconnecting FROM Hermes, not the other way around. Hermes wants to maintain stable connections to observe network behavior, so disconnections represent a loss of monitoring capability.
 
-IMPORTANT NOTES: 
+IMPORTANT NOTES:
 - "Stream reset errors" are normal cleanup events after disconnections
 - "Client has too many peers" means OTHER clients are dropping Hermes because they've reached their peer limits
 - Hermes participates in the gossipsub network to monitor, but is not implementing peer scoring itself
@@ -196,12 +196,16 @@ Focus on improving Hermes as a passive network monitoring tool that other peers 
 	req.Header.Set("Authorization", "Bearer "+c.APIKey)
 
 	client := &http.Client{Timeout: 120 * time.Second}
+
 	log.Printf("Sending request to OpenRouter API... (timeout: 120s)\n")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send request: %w", err)
 	}
+
 	log.Printf("Received response from OpenRouter API (status: %s)\n", resp.Status)
+
 	defer resp.Body.Close()
 
 	responseBody, err := io.ReadAll(resp.Body)
@@ -269,6 +273,7 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 
 		// Track total messages and find most active peer
 		totalMessages += peer.TotalMessageCount
+
 		if peer.TotalMessageCount > mostActivePeerMsgCount {
 			mostActivePeerMsgCount = peer.TotalMessageCount
 			mostActivePeerID = peerID
@@ -287,6 +292,7 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 			if len(session.PeerScores) > 0 {
 				peersWithScores++
 			}
+
 			if len(session.MeshEvents) > 0 {
 				peersWithMeshEvents++
 			}
@@ -322,6 +328,7 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 			if d < 30*time.Second {
 				summary.ConnectionMetrics.ShortConnections++
 			}
+
 			if d > 5*time.Minute {
 				summary.ConnectionMetrics.LongConnections++
 			}
@@ -350,10 +357,13 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 		reason string
 		count  int
 	}
+
 	var reasons []reasonCount
+
 	for reason, count := range disconnectReasons {
 		reasons = append(reasons, reasonCount{reason, count})
 	}
+
 	sort.Slice(reasons, func(i, j int) bool {
 		return reasons[i].count > reasons[j].count
 	})
@@ -363,6 +373,7 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 	if len(reasons) < maxReasons {
 		maxReasons = len(reasons)
 	}
+
 	for i := 0; i < maxReasons; i++ {
 		summary.TopDisconnectReasons = append(summary.TopDisconnectReasons, DisconnectReasonCount{
 			Reason: reasons[i].reason,

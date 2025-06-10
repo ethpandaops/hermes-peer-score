@@ -941,11 +941,13 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 			}
 		}
 
-		goodbyeCount := 0
-		meshCount := 0
-		var minScore, maxScore float64
-		hasScores := false
-		scoreInitialized := false
+		var (
+			goodbyeCount       = 0
+			meshCount          = 0
+			minScore, maxScore float64
+			hasScores          = false
+			scoreInitialized   = false
+		)
 
 		for _, session := range peer.ConnectionSessions {
 			goodbyeCount += len(session.GoodbyeEvents)
@@ -962,6 +964,7 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 					if scoreSnapshot.Score < minScore {
 						minScore = scoreSnapshot.Score
 					}
+
 					if scoreSnapshot.Score > maxScore {
 						maxScore = scoreSnapshot.Score
 					}
@@ -975,13 +978,17 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 		}
 
 		// Determine last session status and time
-		var lastSessionStatus string
-		var lastSessionTime string
+		var (
+			lastSessionStatus string
+			lastSessionTime   string
+		)
 
 		if len(peer.ConnectionSessions) > 0 {
 			// Find the most recent session (by connected_at time)
-			var mostRecentSession *ConnectionSession
-			var mostRecentTime time.Time
+			var (
+				mostRecentSession *ConnectionSession
+				mostRecentTime    time.Time
+			)
 
 			for i := range peer.ConnectionSessions {
 				session := &peer.ConnectionSessions[i]
@@ -994,11 +1001,13 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 			if mostRecentSession != nil {
 				if mostRecentSession.Disconnected {
 					lastSessionStatus = "Disconnected"
+
 					if mostRecentSession.DisconnectedAt != nil {
 						lastSessionTime = mostRecentSession.DisconnectedAt.Format("15:04:05")
 					}
 				} else {
 					lastSessionStatus = "Connected"
+
 					if mostRecentSession.ConnectedAt != nil {
 						lastSessionTime = mostRecentSession.ConnectedAt.Format("15:04:05")
 					}
@@ -1144,14 +1153,18 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 		log.Printf("Summary data size: %d bytes (%d KB)", summarySize, summarySize/1024)
 
 		log.Printf("Creating AI client and sending analysis request...")
+
 		client := NewClaudeAPIClient(apiKey)
+
 		analysis, err := client.AnalyzeReport(log, summary)
 		if err != nil {
 			log.Printf("Warning: Failed to generate AI analysis: %v", err)
+
 			finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
 		} else {
 			// Clean the AI-generated content to prevent JavaScript errors
 			finalAIAnalysis = cleanAIHTML(analysis)
+
 			log.Printf("AI analysis generated successfully")
 		}
 	}
