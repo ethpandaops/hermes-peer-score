@@ -124,7 +124,7 @@ jobs:
           mkdir -p temp_existing
           
           # Try to download and extract existing report structure (only last 28 days)
-          for i in {1..27}; do
+          for i in {0..27}; do
             DATE=$(date -u -d "-$i days" +"%Y-%m-%d")
             echo "Checking for reports from $DATE..."
             
