@@ -1,6 +1,7 @@
 hermes
 peer-score-tool
 peer-score-report.json
+peer-score-report.html
 
 # Binaries for programs and plugins
 *.exe

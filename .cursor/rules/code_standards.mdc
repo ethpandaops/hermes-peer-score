@@ -1,0 +1,69 @@
+---
+description: Code standards and conventions for the Hermes Peer Score Tool
+globs: ["*.go"]
+alwaysApply: true
+---
+
+# Go Code Standards
+
+## Language Standards
+- Use Go 1.24+ features and idioms
+- Follow standard Go formatting with `gofmt`
+- Use `go mod` for dependency management
+- Leverage Go's built-in concurrency patterns
+
+## Naming Conventions
+- Use camelCase for variables and functions (e.g., `peerCount`, `logCurrentStatus`)
+- Use PascalCase for exported types and functions (e.g., `PeerScoreTool`, `GenerateHTMLReport`)
+- Use descriptive names that clearly indicate purpose
+- Prefix unexported struct fields appropriately
+- Use meaningful package names that reflect functionality
+
+## Code Organization
+- Group related functionality in logical files:
+  - `main.go` - Entry point and CLI orchestration
+  - `*_tool.go` - Core tool implementations
+  - `config.go` - Configuration structures
+  - `types.go` - Data type definitions
+  - `*_report.go` - Report generation logic
+- Keep functions focused and single-purpose
+- Use package-level variables for configuration flags
+- Organize imports in standard library, third-party, local order
+
+## Error Handling
+- Always handle errors explicitly
+- Use structured logging with context
+- Provide meaningful error messages
+- Use `log.Fatal` for unrecoverable errors during startup
+- Return errors from functions rather than logging internally when possible
+
+## Concurrency Patterns
+- Use mutex locks for shared data protection (e.g., `peersMu.RLock/Lock`)
+- Implement graceful shutdown with context cancellation
+- Use goroutines for background tasks (e.g., status reporting)
+- Channel communication for event coordination
+
+## Logging Standards
+- Use structured logging with logrus
+- Include relevant context fields in log entries
+- Use appropriate log levels (Info, Error, Fatal)
+- Redact sensitive information (passwords, keys) in logs
+- Provide progress indicators for long-running operations
+
+## Documentation
+- Add comments for exported functions and types
+- Document complex algorithms and business logic
+- Include usage examples in function comments where helpful
+- Keep comments concise and focused on "why" rather than "what"
+
+## Testing Considerations
+- Design code to be testable with dependency injection
+- Use interfaces for external dependencies
+- Structure code to allow mocking of external services
+- Consider testability when designing function signatures
+
+## Security Practices
+- Redact sensitive information in logs and output
+- Validate user inputs and configuration
+- Use secure defaults for network connections
+- Handle credentials securely (environment variables, not hardcoded)

@@ -1,0 +1,72 @@
+---
+description: Development workflow and practices for the Hermes Peer Score Tool
+alwaysApply: true
+---
+
+# Development Workflow
+
+## Git Workflow
+- Use `master` as the main branch
+- Create feature branches for new development
+- Use descriptive commit messages that explain the "why"
+- Squash commits when appropriate to maintain clean history
+
+## Build and Testing
+- Use `go build` for compiling the binary
+- Run `go mod tidy` to maintain clean dependencies
+- Test locally before committing changes
+- Ensure the tool builds and runs with basic functionality
+
+## Development Environment
+- Go 1.24+ required
+- Dependencies managed through `go.mod`
+- Local development against test Prysm instances recommended
+- Use environment variables for sensitive configuration (API keys)
+
+## Code Quality
+- Run `gofmt` before committing
+- Use `go vet` to catch common issues
+- Consider using `golint` for style consistency
+- Review code for security issues, especially credential handling
+
+## Configuration Management
+- Use CLI flags for runtime configuration
+- Support environment variables for sensitive data
+- Validate configuration early in the application startup
+- Provide helpful error messages for configuration issues
+
+## Dependency Management
+- Pin dependency versions in go.mod for reproducible builds
+- Review dependency updates for security and compatibility
+- Use replace directives when necessary for development
+- Document any non-standard dependency requirements
+
+## Release Process
+- Tag releases with semantic versioning
+- Generate release notes documenting new features and fixes
+- Test releases in realistic environments before tagging
+- Maintain backward compatibility for configuration and output formats
+
+## CI/CD Integration
+- Tool supports CI/CD pipeline integration
+- Historical report management through Python scripts
+- Clear history input support for automated environments
+- JSON and HTML output formats for different use cases
+
+## Monitoring and Observability
+- Structured logging for operational visibility
+- Progress reporting for long-running operations
+- Graceful shutdown handling for clean termination
+- Status reporting during execution
+
+## External Integrations
+- Prysm beacon node connectivity (gRPC/HTTP)
+- Hermes gossipsub listener integration
+- Optional AI analysis through OpenRouter API
+- Report generation and management automation
+
+## Security Considerations
+- Redact sensitive information in logs and output
+- Secure handling of API keys and credentials
+- Network connection security (TLS when available)
+- Input validation for external data
