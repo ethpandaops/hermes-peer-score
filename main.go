@@ -22,6 +22,7 @@ var (
 	htmlOnly      = flag.Bool("html-only", false, "Generate HTML report from existing JSON file without running peer score test")
 	inputJSON     = flag.String("input-json", "peer-score-report.json", "Input JSON file for HTML-only mode")
 	claudeAPIKey  = flag.String("openrouter-api-key", "", "OpenRouter API key for AI analysis (can also be set via OPENROUTER_API_KEY env var)")
+	skipAI        = flag.Bool("skip-ai", false, "Skip AI analysis even if API key is available")
 )
 
 func main() {
@@ -39,7 +40,6 @@ func main() {
 
 		return
 	}
-
 
 	// Set up graceful shutdown handling.
 	ctx, cancel := setupGracefulShutdown(log)
@@ -101,20 +101,19 @@ func generateHTMLOnlyMode(log logrus.FieldLogger) {
 	// Generate HTML report with optional AI analysis
 	if apiKey != "" {
 		log.Info("OpenRouter API key found - including AI analysis in HTML report")
-		if err := GenerateHTMLReportWithAI(*inputJSON, htmlFile, apiKey, ""); err != nil {
+		if err := GenerateHTMLReportWithAI(log, *inputJSON, htmlFile, apiKey, ""); err != nil {
 			log.Fatalf("Failed to generate HTML report with AI analysis: %v", err)
 		}
 	} else {
 		log.Info("No OpenRouter API key found - generating HTML report without AI analysis")
 		log.Info("To include AI analysis, set OPENROUTER_API_KEY environment variable or use -openrouter-api-key flag")
-		if err := GenerateHTMLReport(*inputJSON, htmlFile); err != nil {
+		if err := GenerateHTMLReport(log, *inputJSON, htmlFile); err != nil {
 			log.Fatalf("Failed to generate HTML report: %v", err)
 		}
 	}
 
 	log.Infof("HTML report generated successfully: %s", htmlFile)
 }
-
 
 // setupGracefulShutdown configures signal handling for graceful shutdown.
 func setupGracefulShutdown(log logrus.FieldLogger) (context.Context, context.CancelFunc) {

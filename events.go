@@ -771,7 +771,7 @@ func (pst *PeerScoreTool) handleGraftEvent(_ context.Context, event *host.TraceE
 	}
 
 	// Parse the mesh event data from the payload
-	meshEvent, err := pst.parseMeshEventFromPayload(event.Payload, "GRAFT")
+	meshEvent, err := pst.parseMeshEventFromPayload(event.Payload, "GRAFT", event.Timestamp)
 	if err != nil {
 		pst.log.WithFields(logrus.Fields{
 			"peer_id":      peerID,
@@ -860,7 +860,7 @@ func (pst *PeerScoreTool) handlePruneEvent(_ context.Context, event *host.TraceE
 	}
 
 	// Parse the mesh event data from the payload
-	meshEvent, err := pst.parseMeshEventFromPayload(event.Payload, "PRUNE")
+	meshEvent, err := pst.parseMeshEventFromPayload(event.Payload, "PRUNE", event.Timestamp)
 	if err != nil {
 		pst.log.WithFields(logrus.Fields{
 			"peer_id":      peerID,
@@ -944,19 +944,19 @@ func (pst *PeerScoreTool) handlePruneEvent(_ context.Context, event *host.TraceE
 }
 
 // parseMeshEventFromPayload extracts mesh event data from the event payload.
-func (pst *PeerScoreTool) parseMeshEventFromPayload(payload interface{}, eventType string) (*MeshEvent, error) {
+func (pst *PeerScoreTool) parseMeshEventFromPayload(payload interface{}, eventType string, eventTimestamp time.Time) (*MeshEvent, error) {
 	// Try to parse as map[string]any (the format from hermes gossipsub tracer)
 	if payloadMap, ok := payload.(map[string]any); ok {
-		return pst.parseMeshEventFromMap(payloadMap, eventType)
+		return pst.parseMeshEventFromMap(payloadMap, eventType, eventTimestamp)
 	}
 
 	return nil, fmt.Errorf("unsupported payload type for mesh event: %T", payload)
 }
 
 // parseMeshEventFromMap parses mesh event data from a map[string]any payload.
-func (pst *PeerScoreTool) parseMeshEventFromMap(payloadMap map[string]any, eventType string) (*MeshEvent, error) {
+func (pst *PeerScoreTool) parseMeshEventFromMap(payloadMap map[string]any, eventType string, eventTimestamp time.Time) (*MeshEvent, error) {
 	meshEvent := &MeshEvent{
-		Timestamp: time.Now(),
+		Timestamp: eventTimestamp,
 		Type:      eventType,
 		Direction: unknown, // Will determine based on context
 	}

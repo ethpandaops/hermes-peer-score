@@ -4,20 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // OptimizedHTMLTemplateData represents the minimal data structure for the optimized HTML report
 type OptimizedHTMLTemplateData struct {
-	GeneratedAt   time.Time       `json:"generated_at"`
-	Summary       SummaryData     `json:"summary"`
-	DataFile      string          `json:"data_file"`
-	AIAnalysis    string          `json:"ai_analysis"`
-	AIAnalysisHTML template.HTML   `json:"-"`
+	GeneratedAt    time.Time     `json:"generated_at"`
+	Summary        SummaryData   `json:"summary"`
+	DataFile       string        `json:"data_file"`
+	AIAnalysis     string        `json:"ai_analysis"`
+	AIAnalysisHTML template.HTML `json:"-"`
 }
 
 // SummaryData contains high-level summary information for the report
@@ -151,9 +153,8 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                         Export Filtered JSON
                     </button>
                     {{if .AIAnalysis}}
-                    <button onclick="openAIAnalysisModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 flex items-center space-x-2">
-                        <span>🤖</span>
-                        <span>AI Analysis</span>
+                    <button onclick="openAIAnalysisModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+                        AI Analysis
                     </button>
                     {{end}}
                 </div>
@@ -217,9 +218,8 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
                 <div class="p-6 border-b border-gray-200">
                     <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                            <span>🤖</span>
-                            <span>AI Analysis</span>
+                        <h3 class="text-lg font-semibold text-gray-900">
+                            AI Analysis
                         </h3>
                         <button onclick="closeAIAnalysisModal()" class="text-gray-400 hover:text-gray-600">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,7 +236,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
     </div>
     {{end}}
 
-    <script src="{{.DataFile}}"></script>
+    <script src="{{.DataFile}}" onerror="console.error('Failed to load data file: {{.DataFile}}')"></script>
     <script>
         let allPeers = [];
         let filteredPeers = [];
@@ -299,6 +299,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             if (loadingText) loadingText.textContent = 'Loading peer data...';
 
             if (typeof reportData !== 'undefined') {
+                console.log('Report data loaded successfully:', Object.keys(reportData));
                 allPeers = reportData.peers || [];
                 filteredPeers = [...allPeers];
                 sortPeers();
@@ -306,6 +307,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                 setupEventListeners();
                 updateResultsInfo();
             } else {
+                console.error('reportData is undefined - data file may have failed to load');
                 document.getElementById('peerList').innerHTML =
                     '<div class="text-center py-8 text-red-500">Error: Could not load peer data</div>';
             }
@@ -521,6 +523,45 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             }, 500);
         }
 
+        // Generate HTML for event counts table
+        function generateEventCountsHtml(peerId) {
+            const eventCounts = reportData.peerEventCounts && reportData.peerEventCounts[peerId];
+
+            if (!eventCounts || Object.keys(eventCounts).length === 0) {
+                return '<div class="p-4 text-center text-gray-500">No event data available</div>';
+            }
+
+            // Sort events by count (descending)
+            const sortedEvents = Object.entries(eventCounts).sort((a, b) => b[1] - a[1]);
+
+            let html = ` + "`" + `
+                <table class="min-w-full bg-white border border-gray-200 rounded text-xs">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Event Type</th>
+                            <th class="px-3 py-2 text-left">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+            ` + "`" + `;
+
+            sortedEvents.forEach(([eventType, count]) => {
+                html += ` + "`" + `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-2 text-xs text-gray-900"><code>${eventType}</code></td>
+                        <td class="px-3 py-2 text-xs text-gray-700">${count.toLocaleString()}</td>
+                    </tr>
+                ` + "`" + `;
+            });
+
+            html += ` + "`" + `
+                    </tbody>
+                </table>
+            ` + "`" + `;
+
+            return html;
+        }
+
         function renderPeerDetails(peerData) {
             // Render the full detailed view with all peer information
             let sessionsHtml = '';
@@ -563,7 +604,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
 
                     const scoreSnapshotsHtml = session.peer_scores ? session.peer_scores.map((snapshot, idx) => {
                         const rowId = ` + "`" + `${sessionId}-score-${idx}` + "`" + `;
-                        const topicsHtml = snapshot.topics && snapshot.topics.length > 0 ? 
+                        const topicsHtml = snapshot.topics && snapshot.topics.length > 0 ?
                             snapshot.topics.map(topic => ` + "`" + `
                                 <div class="mb-2 p-2 bg-gray-50 rounded text-xs">
                                     <div class="font-medium text-gray-700 mb-1">Topic: ${topic.topic}</div>
@@ -575,7 +616,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                     </div>
                                 </div>
                             ` + "`" + `).join('') : '<div class="text-gray-500 text-xs p-2">No topic data available</div>';
-                        
+
                         return ` + "`" + `
                             <tr class="hover:bg-gray-50">
                                 <td class="px-3 py-2 text-xs">${new Date(snapshot.timestamp).toLocaleTimeString()}</td>
@@ -584,8 +625,8 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                 <td class="px-3 py-2 text-xs">${snapshot.ip_colocation_factor.toFixed(3)}</td>
                                 <td class="px-3 py-2 text-xs">${snapshot.behaviour_penalty.toFixed(3)}</td>
                                 <td class="px-3 py-2 text-xs">
-                                    ${snapshot.topics && snapshot.topics.length > 0 ? 
-                                        ` + "`" + `<button class="text-blue-600 hover:text-blue-800 underline cursor-pointer" onclick="toggleSection('${rowId}')">${snapshot.topics.length} topics</button>` + "`" + ` : 
+                                    ${snapshot.topics && snapshot.topics.length > 0 ?
+                                        ` + "`" + `<button class="text-blue-600 hover:text-blue-800 underline cursor-pointer" onclick="toggleSection('${rowId}')">${snapshot.topics.length} topics</button>` + "`" + ` :
                                         'None'
                                     }
                                 </td>
@@ -610,6 +651,9 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                         <span class="font-medium text-gray-900">Session ${sessionIdx + 1}</span>
                                         <span class="text-sm text-gray-600">${session.connection_duration ? (session.connection_duration / 1000000000).toFixed(2) + 's' : 'Unknown duration'}</span>
                                         <span class="text-sm text-gray-600">${session.message_count || 0} messages</span>
+                                        ${session.peer_scores ? ` + "`" + `<span class="text-sm text-gray-600">${session.peer_scores.length} score snapshots</span>` + "`" + ` : ''}
+                                        ${session.goodbye_events && session.goodbye_events.length > 0 ? ` + "`" + `<span class="text-sm text-orange-600">${session.goodbye_events.length} goodbye events</span>` + "`" + ` : ''}
+                                        ${session.mesh_events && session.mesh_events.length > 0 ? ` + "`" + `<span class="text-sm text-purple-600">${session.mesh_events.length} mesh events</span>` + "`" + ` : ''}
                                         <span class="px-2 py-1 text-xs ${session.disconnected ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} rounded">
                                             ${session.disconnected ? 'Disconnected' : 'Connected'}
                                         </span>
@@ -678,6 +722,52 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- Mesh Events Section -->
+                                    ${session.mesh_events && session.mesh_events.length > 0 ? ` + "`" + `
+                                    <div>
+                                        <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-mesh')">
+                                            <div class="flex items-center justify-between">
+                                                <h6 class="font-medium text-gray-800">Mesh Participation Events (${session.mesh_events.length} events)</h6>
+                                                <svg class="w-4 h-4 text-gray-500 transform transition-transform" id="${sessionId}-mesh-arrow">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="hidden mt-2" id="${sessionId}-mesh">
+                                            <div class="max-h-64 overflow-y-auto">
+                                                <table class="min-w-full bg-white border border-gray-200 rounded text-xs">
+                                                    <thead class="bg-gray-50">
+                                                        <tr>
+                                                            <th class="px-3 py-2 text-left">Time</th>
+                                                            <th class="px-3 py-2 text-left">Type</th>
+                                                            <th class="px-3 py-2 text-left">Direction</th>
+                                                            <th class="px-3 py-2 text-left">Topic</th>
+                                                            <th class="px-3 py-2 text-left">Reason</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-100">
+                                                        ${session.mesh_events.map(meshEvent => ` + "`" + `
+                                                            <tr class="hover:bg-gray-50">
+                                                                <td class="px-3 py-2 text-xs">${new Date(meshEvent.timestamp).toLocaleTimeString()}</td>
+                                                                <td class="px-3 py-2 text-xs">
+                                                                    <span class="px-2 py-1 text-xs rounded ${meshEvent.type === 'GRAFT' ? 'bg-green-100 text-green-800' : meshEvent.type === 'PRUNE' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}">
+                                                                        ${meshEvent.type}
+                                                                    </span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-xs text-gray-700">${meshEvent.direction || '-'}</td>
+                                                                <td class="px-3 py-2 text-xs">
+                                                                    <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded">${meshEvent.topic}</span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-xs text-gray-600">${meshEvent.reason || '-'}</td>
+                                                            </tr>
+                                                        ` + "`" + `).join('')}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` + "`" + ` : ''}
                                 </div>
                             </div>
                         </div>
@@ -731,8 +821,24 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
 
                     <!-- Connection Sessions -->
                     <div>
-                        <h5 class="font-medium text-gray-900 mb-4">Connection Sessions</h5>
                         ${sessionsHtml || '<div class="text-center py-8 text-gray-500">No session data available</div>'}
+                    </div>
+
+                    <!-- Event Counts -->
+                    <div>
+                        <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('peer-events-${peerData.peer_id}')">
+                            <div class="flex items-center justify-between">
+                                <h5 class="font-medium text-gray-900">Event Counts</h5>
+                                <svg class="w-4 h-4 text-gray-500 transform transition-transform" id="peer-events-${peerData.peer_id}-arrow">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="hidden mt-2" id="peer-events-${peerData.peer_id}">
+                            <div class="max-h-64 overflow-y-auto">
+                                ${generateEventCountsHtml(peerData.peer_id)}
+                            </div>
+                        </div>
                     </div>
                 </div>
             ` + "`" + `;
@@ -811,7 +917,6 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
 </body>
 </html>`
 
-
 // Helper functions for the optimized report generation
 
 // extractSummaryData creates a summary from the full report data
@@ -872,12 +977,12 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 		// Determine last session status and time
 		var lastSessionStatus string
 		var lastSessionTime string
-		
+
 		if len(peer.ConnectionSessions) > 0 {
 			// Find the most recent session (by connected_at time)
 			var mostRecentSession *ConnectionSession
 			var mostRecentTime time.Time
-			
+
 			for i := range peer.ConnectionSessions {
 				session := &peer.ConnectionSessions[i]
 				if session.ConnectedAt != nil && (mostRecentSession == nil || session.ConnectedAt.After(mostRecentTime)) {
@@ -885,7 +990,7 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 					mostRecentTime = *session.ConnectedAt
 				}
 			}
-			
+
 			if mostRecentSession != nil {
 				if mostRecentSession.Disconnected {
 					lastSessionStatus = "Disconnected"
@@ -921,13 +1026,52 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 	return summary
 }
 
+// cleanAIHTML sanitizes AI-generated HTML content to prevent JavaScript errors
+func cleanAIHTML(content string) string {
+	if content == "" {
+		return content
+	}
+
+	// Remove any null bytes or other control characters that could break JavaScript
+	re := regexp.MustCompile(`[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]`)
+	content = re.ReplaceAllString(content, "")
+
+	// Replace any problematic characters that could break JSON/JavaScript
+	content = strings.ReplaceAll(content, "\u0000", "")
+	content = strings.ReplaceAll(content, "\ufffd", "") // Replacement character
+
+	// Escape Go template syntax that AI might accidentally generate
+	// This is critical because {{}} syntax would break the Go template parsing
+	content = strings.ReplaceAll(content, "{{", "&#123;&#123;")
+	content = strings.ReplaceAll(content, "}}", "&#125;&#125;")
+
+	// Escape other problematic template-like syntax
+	content = strings.ReplaceAll(content, "${", "&#36;&#123;")
+
+	// Trim any trailing whitespace
+	content = strings.TrimSpace(content)
+
+	return content
+}
+
 // generateDataFile creates a JavaScript file containing the report data
 func generateDataFile(report PeerScoreReport, dataFile string) error {
+	// Clean all peer data to ensure no invalid characters
+	cleanedPeers := make(map[string]*PeerStats)
+	for peerID, peer := range report.Peers {
+		cleanedPeer := *peer
+		// Clean client agent strings that might contain invalid characters
+		cleanedPeer.ClientAgent = cleanAIHTML(peer.ClientAgent)
+		cleanedPeer.ClientType = cleanAIHTML(peer.ClientType)
+		cleanedPeers[peerID] = &cleanedPeer
+	}
+
 	// Create the data structure that will be embedded in the JS file
 	data := map[string]interface{}{
-		"peers":         extractSummaryData(report).PeerSummaries,
-		"detailedPeers": report.Peers, // Full detailed data for on-demand loading
-		"summary":       extractSummaryData(report),
+		"peers":           extractSummaryData(report).PeerSummaries,
+		"detailedPeers":   cleanedPeers,           // Full detailed data for on-demand loading
+		"peerEventCounts": report.PeerEventCounts, // Event counts by peer ID
+		"summary":         extractSummaryData(report),
 	}
 
 	jsonData, err := json.MarshalIndent(data, "", "  ")
@@ -935,10 +1079,27 @@ func generateDataFile(report PeerScoreReport, dataFile string) error {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
+	// Validate that the JSON is valid by unmarshaling it
+	var testData interface{}
+	if err := json.Unmarshal(jsonData, &testData); err != nil {
+		return fmt.Errorf("generated JSON is invalid: %w", err)
+	}
+
 	// Create JavaScript file with embedded data
 	jsContent := fmt.Sprintf("const reportData = %s;", string(jsonData))
 
-	return os.WriteFile(dataFile, []byte(jsContent), 0644)
+	// Validate that the JavaScript content looks reasonable
+	if len(jsContent) < 50 {
+		return fmt.Errorf("generated JavaScript content is suspiciously small: %d bytes", len(jsContent))
+	}
+
+	fmt.Printf("Writing data file: %s (size: %d bytes)\n", dataFile, len(jsContent))
+	if err := os.WriteFile(dataFile, []byte(jsContent), 0644); err != nil {
+		return fmt.Errorf("failed to write data file: %w", err)
+	}
+
+	fmt.Printf("Data file written successfully\n")
+	return nil
 }
 
 // GenerateHTMLReport creates an optimized HTML report from a JSON report file.
@@ -949,12 +1110,12 @@ func generateDataFile(report PeerScoreReport, dataFile string) error {
 //   - outputFile: Path where the HTML report should be written
 //
 // Returns an error if file operations or template processing fails.
-func GenerateHTMLReport(jsonFile, outputFile string) error {
-	return GenerateHTMLReportWithAI(jsonFile, outputFile, "", "")
+func GenerateHTMLReport(log logrus.FieldLogger, jsonFile, outputFile string) error {
+	return GenerateHTMLReportWithAI(log, jsonFile, outputFile, "", "")
 }
 
 // GenerateHTMLReportWithAI creates an optimized HTML report with optional AI analysis
-func GenerateHTMLReportWithAI(jsonFile, outputFile, apiKey, aiAnalysis string) error {
+func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiKey, aiAnalysis string) error {
 	// Read the JSON report file from disk.
 	data, err := os.ReadFile(jsonFile)
 	if err != nil {
@@ -974,13 +1135,21 @@ func GenerateHTMLReportWithAI(jsonFile, outputFile, apiKey, aiAnalysis string) e
 	} else if apiKey != "" {
 		log.Printf("Generating AI analysis...")
 		summary := SummarizeReport(&report)
+
+		// Check summary size and log it
+		summaryJSON, _ := json.Marshal(summary)
+		summarySize := len(summaryJSON)
+		log.Printf("Summary data size: %d bytes (%d KB)", summarySize, summarySize/1024)
+
+		log.Printf("Creating AI client and sending analysis request...")
 		client := NewClaudeAPIClient(apiKey)
-		analysis, err := client.AnalyzeReport(summary)
+		analysis, err := client.AnalyzeReport(log, summary)
 		if err != nil {
 			log.Printf("Warning: Failed to generate AI analysis: %v", err)
-			finalAIAnalysis = "⚠️ AI analysis failed to generate. Please check your API key and try again."
+			finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
 		} else {
-			finalAIAnalysis = analysis
+			// Clean the AI-generated content to prevent JavaScript errors
+			finalAIAnalysis = cleanAIHTML(analysis)
 			log.Printf("AI analysis generated successfully")
 		}
 	}
@@ -993,10 +1162,10 @@ func GenerateHTMLReportWithAI(jsonFile, outputFile, apiKey, aiAnalysis string) e
 
 	// Prepare template data with summary information only
 	templateData := OptimizedHTMLTemplateData{
-		GeneratedAt:   time.Now(),
-		Summary:       extractSummaryData(report),
-		DataFile:      filepath.Base(dataFile),
-		AIAnalysis:    finalAIAnalysis,
+		GeneratedAt:    time.Now(),
+		Summary:        extractSummaryData(report),
+		DataFile:       filepath.Base(dataFile),
+		AIAnalysis:     finalAIAnalysis,
 		AIAnalysisHTML: template.HTML(finalAIAnalysis), // AI now returns HTML directly
 	}
 

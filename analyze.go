@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"sort"
-	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // ClaudeAPIClient handles communication with the Claude API
@@ -115,7 +115,7 @@ func NewClaudeAPIClient(apiKey string) *ClaudeAPIClient {
 }
 
 // AnalyzeReport sends the report summary to Claude for analysis
-func (c *ClaudeAPIClient) AnalyzeReport(summary *ReportSummary) (string, error) {
+func (c *ClaudeAPIClient) AnalyzeReport(log logrus.FieldLogger, summary *ReportSummary) (string, error) {
 	summaryJSON, err := json.MarshalIndent(summary, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal summary: %w", err)
@@ -129,7 +129,7 @@ IMPORTANT NOTE: "Stream reset errors" are typically normal and expected behavior
 
 Analyze the data with these priorities:
 1. **Peer Churn Analysis** - Identify excessive disconnections, short-lived connections, and reconnection patterns
-2. **Connection Stability Issues** - Look for signs of network instability or Hermes-specific connection problems  
+2. **Connection Stability Issues** - Look for signs of network instability or Hermes-specific connection problems
 3. **Disconnect Reason Patterns** - Investigate goodbye codes and reasons that might indicate Hermes behavior issues (excluding stream reset errors which are normal)
 4. **Client Interaction Problems** - Identify if certain client types have worse interactions with Hermes
 5. **Performance Bottlenecks** - Spot patterns suggesting Hermes resource constraints or configuration issues
@@ -146,6 +146,7 @@ IMPORTANT: Provide your response as clean HTML using Tailwind CSS classes. Use t
 - Lists: ul with "list-disc ml-6 space-y-1 mb-3", li with "text-gray-700"
 - Bold text: strong with "font-semibold"
 - Code/metrics: span with "bg-gray-100 px-1 py-0.5 rounded text-sm font-mono"
+- This HTML will be embedded via Javascript, so to avoid any issues, ensure basic, clean HTML is used only
 
 Do not include any markdown formatting - return only HTML.`
 
@@ -190,11 +191,13 @@ Focus on diagnosing potential problems with Hermes itself rather than general ne
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.APIKey)
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 120 * time.Second}
+	log.Printf("Sending request to OpenRouter API... (timeout: 120s)\n")
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send request: %w", err)
 	}
+	log.Printf("Received response from OpenRouter API (status: %s)\n", resp.Status)
 	defer resp.Body.Close()
 
 	responseBody, err := io.ReadAll(resp.Body)
@@ -338,7 +341,7 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 		summary.PeerBehaviorSummary.AvgMessagesPerPeer = float64(totalMessages) / float64(len(report.Peers))
 	}
 
-	// Top disconnect reasons (limit to top 10)
+	// Top disconnect reasons (limit to top 5 to keep summary compact)
 	type reasonCount struct {
 		reason string
 		count  int
@@ -351,8 +354,8 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 		return reasons[i].count > reasons[j].count
 	})
 
-	// Take top 10
-	maxReasons := 10
+	// Take top 5 to keep data size manageable
+	maxReasons := 5
 	if len(reasons) < maxReasons {
 		maxReasons = len(reasons)
 	}
@@ -364,129 +367,4 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 	}
 
 	return summary
-}
-
-// AnalyzePeerScoreReport performs AI analysis of a peer score report
-func AnalyzePeerScoreReport(inputFile, outputFile, apiKey string) error {
-	// Read and parse the report
-	reportData, err := os.ReadFile(inputFile)
-	if err != nil {
-		return fmt.Errorf("failed to read report file: %w", err)
-	}
-
-	var report PeerScoreReport
-	if err := json.Unmarshal(reportData, &report); err != nil {
-		return fmt.Errorf("failed to parse report JSON: %w", err)
-	}
-
-	// Create summary for analysis
-	summary := SummarizeReport(&report)
-
-	// Initialize Claude API client
-	client := NewClaudeAPIClient(apiKey)
-
-	// Get AI analysis
-	analysis, err := client.AnalyzeReport(summary)
-	if err != nil {
-		return fmt.Errorf("failed to get AI analysis: %w", err)
-	}
-
-	// Prepare output content
-	outputContent := fmt.Sprintf(`# Peer Score Report Analysis
-
-Generated: %s
-Report File: %s
-
-## AI Analysis
-
-%s
-
-## Report Summary Data
-
-### Overview
-- Test Duration: %s
-- Total Peers: %d
-- Total Connections: %d
-- Successful Handshakes: %d
-- Failed Handshakes: %d
-- Success Rate: %.1f%%
-
-### Connection Metrics
-- Average Connection Duration: %s
-- Median Connection Duration: %s
-- Short Connections (<30s): %d
-- Long Connections (>5min): %d
-- Reconnection Rate: %.1f%%
-
-### Client Distribution
-%s
-
-### Top Disconnect Reasons
-%s
-
-### Peer Behavior
-- Peers with Scores: %d
-- Average Messages per Peer: %.1f
-- Peers with Mesh Events: %d
-- Most Active Peer: %s (%d messages)
-
----
-*Analysis generated using Claude AI*
-`,
-		time.Now().Format(time.RFC3339),
-		inputFile,
-		analysis,
-		summary.Overview.TestDuration,
-		summary.Overview.TotalPeers,
-		summary.Overview.TotalConnections,
-		summary.Overview.SuccessfulHandshakes,
-		summary.Overview.FailedHandshakes,
-		summary.Overview.SuccessRate,
-		summary.ConnectionMetrics.AvgConnectionDuration,
-		summary.ConnectionMetrics.MedianConnectionDuration,
-		summary.ConnectionMetrics.ShortConnections,
-		summary.ConnectionMetrics.LongConnections,
-		summary.ConnectionMetrics.ReconnectionRate,
-		formatClientDistribution(summary.ClientDistribution),
-		formatDisconnectReasons(summary.TopDisconnectReasons),
-		summary.PeerBehaviorSummary.PeersWithScores,
-		summary.PeerBehaviorSummary.AvgMessagesPerPeer,
-		summary.PeerBehaviorSummary.PeersWithMeshEvents,
-		summary.PeerBehaviorSummary.MostActivePeerID,
-		summary.PeerBehaviorSummary.MostActivePeerMsgCount,
-	)
-
-	// Write output file
-	if err := os.WriteFile(outputFile, []byte(outputContent), 0644); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
-	}
-
-	return nil
-}
-
-// formatClientDistribution formats client distribution for display
-func formatClientDistribution(clients map[string]int) string {
-	if len(clients) == 0 {
-		return "No client data available"
-	}
-
-	var lines []string
-	for client, count := range clients {
-		lines = append(lines, fmt.Sprintf("- %s: %d", client, count))
-	}
-	sort.Strings(lines)
-	return strings.Join(lines, "\n")
-}
-
-// formatDisconnectReasons formats disconnect reasons for display
-func formatDisconnectReasons(reasons []DisconnectReasonCount) string {
-	if len(reasons) == 0 {
-		return "No disconnect reasons recorded"
-	}
-
-	var lines []string
-	for _, reason := range reasons {
-		lines = append(lines, fmt.Sprintf("- %s: %d", reason.Reason, reason.Count))
-	}
-	return strings.Join(lines, "\n")
 }

@@ -21,7 +21,7 @@ func generateReports(ctx context.Context, log logrus.FieldLogger, tool *PeerScor
 	}
 
 	// Generate HTML report from JSON.
-	if err := generateHTMLReport(); err != nil {
+	if err := generateHTMLReport(log); err != nil {
 		log.Printf("Failed to generate HTML report: %v", err)
 	}
 
@@ -31,21 +31,24 @@ func generateReports(ctx context.Context, log logrus.FieldLogger, tool *PeerScor
 
 // saveJSONReport marshals and saves the report as JSON.
 func saveJSONReport(report PeerScoreReport) error {
+	fmt.Printf("Marshaling report to JSON...\n")
 	reportJSON, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal report: %w", err)
 	}
 
+	fmt.Printf("Writing JSON report to file: %s (size: %d bytes)\n", *outputFile, len(reportJSON))
 	//nolint:gosec // Controlled input.
 	if err := os.WriteFile(*outputFile, reportJSON, 0644); err != nil {
 		return fmt.Errorf("failed to write report file: %w", err)
 	}
 
+	fmt.Printf("JSON report saved successfully\n")
 	return nil
 }
 
 // generateHTMLReport creates an HTML version of the JSON report.
-func generateHTMLReport() error {
+func generateHTMLReport(log logrus.FieldLogger) error {
 	htmlFile := strings.Replace(*outputFile, ".json", ".html", 1)
 
 	// Get API key for AI analysis (optional)
@@ -55,11 +58,14 @@ func generateHTMLReport() error {
 	}
 
 	// Generate HTML report with optional AI analysis
-	if apiKey != "" {
-		return GenerateHTMLReportWithAI(*outputFile, htmlFile, apiKey, "")
+	if apiKey != "" && !*skipAI {
+		fmt.Printf("API key found - generating HTML with AI analysis\n")
+		return GenerateHTMLReportWithAI(log, *outputFile, htmlFile, apiKey, "")
+	} else {
+		fmt.Printf("No API key or AI disabled - generating HTML without AI analysis\n")
 	}
-	
-	return GenerateHTMLReport(*outputFile, htmlFile)
+
+	return GenerateHTMLReport(log, *outputFile, htmlFile)
 }
 
 // printReportSummary displays a comprehensive summary of the test results.

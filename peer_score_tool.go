@@ -156,6 +156,8 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 	defer pst.peersMu.RUnlock()
 	defer pst.peerEventCountsMu.RUnlock()
 
+	pst.log.Infof("Starting deep copy of %d peers...", len(pst.peers))
+
 	now := time.Now()
 	endTime := now
 	duration := endTime.Sub(pst.startTime)
@@ -238,6 +240,8 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 
 		peers[peerID] = peerCopy
 	}
+
+	pst.log.Info("Deep copy completed, calculating summary statistics...")
 
 	// Calculate summary statistics
 	totalConnections := 0
