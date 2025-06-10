@@ -88,6 +88,12 @@ jobs:
             # Copy HTML report (should be generated automatically by tool)
             if [ -f peer-score-report.html ]; then
               cp peer-score-report.html reports/index.html
+              # Copy the JavaScript data file that's generated with the HTML report
+              if [ -f peer-score-report-data.js ]; then
+                cp peer-score-report-data.js reports/
+              else
+                echo "Warning: JavaScript data file not found, HTML report may not function properly"
+              fi
             else
               echo "HTML report not found, tool may have failed to generate it"
               exit 1

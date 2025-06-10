@@ -90,9 +90,3 @@ type PeerScoreReport struct {
 	PeerEventCounts      map[string]map[string]int `json:"peer_event_counts"`     // Count of event types by peer ID.
 }
 
-// HTMLTemplateData represents the data structure used to generate HTML reports.
-// This extends the basic report with additional computed fields needed for web presentation.
-type HTMLTemplateData struct {
-	GeneratedAt time.Time       `json:"generated_at"` // When the HTML report was generated.
-	Report      PeerScoreReport `json:"report"`       // The underlying peer score report data.
-}
