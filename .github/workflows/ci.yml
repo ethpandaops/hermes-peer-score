@@ -378,14 +378,15 @@ jobs:
                       <span class="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
                           🤖 AI Analysis Available
                       </span>
-                  </div>''' if report['has_ai_analysis'] else ''
+                  </div>''' if report.get('has_ai_analysis', False) else ''
                   
-                  success_color = 'text-green-600' if report['success_rate'] >= 80 else 'text-yellow-600' if report['success_rate'] >= 60 else 'text-red-600'
+                  success_rate = report.get('success_rate', 0)
+                  success_color = 'text-green-600' if success_rate >= 80 else 'text-yellow-600' if success_rate >= 60 else 'text-red-600'
                   
-                  html_link = f'href="{report["html_path"]}"' if report['html_path'] else 'href="#" onclick="alert(\'HTML report not available for this date\')"'
+                  html_path = report.get('html_path', '#')
+                  html_link = f'href="{html_path}"' if html_path and html_path != '#' else 'href="#" onclick="alert(\'HTML report not available for this date\')"'
                   
-                  reports_html += f'''
-                  <div class="report-card bg-white rounded-lg shadow-md p-6 data-report" 
+                  reports_html += f'''<div class="report-card bg-white rounded-lg shadow-md p-6 data-report" 
                        data-date="{report['date']}" 
                        data-peers="{report['unique_peers']}" 
                        data-connections="{report['total_connections']}" 
@@ -419,9 +420,9 @@ jobs:
                               <div class="font-semibold text-gray-900">{report['successful_handshakes']}/{report['total_connections']}</div>
                           </div>
                       </div>
-          
+
                       {ai_badge}
-          
+
                       <div class="flex space-x-2">
                           <a {html_link}
                              class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors">
@@ -455,21 +456,30 @@ jobs:
               # Remove lines that are just template remnants
               lines = html.split('\n')
               cleaned_lines = []
-              skip_until_div = False
               
               for line in lines:
                   # Skip lines that are clearly template remnants
                   if re.search(r'^\s*["\'>].*\{\{|^\s*\}\}|^\s*/\s*$', line):
                       continue
                   # Skip malformed div content
-                  if '>/div>' in line or line.strip() == '/':
+                  if '>/div>' in line or line.strip() == '/' or line.strip().startswith('">'):
                       continue
                   # Skip empty href attributes
                   if 'href=""' in line and 'class=' in line:
                       continue
+                  # Skip lines that are just template fragments like ">%</div>"
+                  if re.search(r'^\s*">[^<]*</div>', line):
+                      continue
+                  # Skip malformed handshakes lines
+                  if 'text-gray-900">/</div>' in line or 'text-gray-900">/</div>' in line:
+                      continue
                   cleaned_lines.append(line)
               
               html = '\n'.join(cleaned_lines)
+              
+              # Final cleanup: remove any remaining ">%" patterns
+              html = re.sub(r'">[^<]*%[^<]*</div>', '">[CLEANED]</div>', html)
+              html = re.sub(r'>\s*">[^<]*</div>', '></div>', html)
               
               # Write the final index
               with open('reports/index.html', 'w') as f:
