@@ -12,27 +12,27 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ClaudeAPIClient handles communication with the Claude API
+// ClaudeAPIClient handles communication with the Claude API.
 type ClaudeAPIClient struct {
 	APIKey  string
 	BaseURL string
 	Model   string
 }
 
-// ClaudeRequest represents the request structure for OpenRouter API
+// ClaudeRequest represents the request structure for OpenRouter API.
 type ClaudeRequest struct {
 	Model     string          `json:"model"`
 	MaxTokens int             `json:"max_tokens"`
 	Messages  []ClaudeMessage `json:"messages"`
 }
 
-// ClaudeMessage represents a message in the Claude API request
+// ClaudeMessage represents a message in the Claude API request.
 type ClaudeMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-// ClaudeResponse represents the response from OpenRouter API
+// ClaudeResponse represents the response from OpenRouter API.
 type ClaudeResponse struct {
 	Choices []struct {
 		Message struct {
@@ -53,7 +53,7 @@ type ClaudeResponse struct {
 	} `json:"usage"`
 }
 
-// ReportSummary contains key metrics extracted from the peer score report
+// ReportSummary contains key metrics extracted from the peer score report.
 type ReportSummary struct {
 	Overview             OverviewMetrics         `json:"overview"`
 	ConnectionMetrics    ConnectionMetrics       `json:"connection_metrics"`
@@ -63,7 +63,7 @@ type ReportSummary struct {
 	TestConfiguration    TestConfigSummary       `json:"test_configuration"`
 }
 
-// OverviewMetrics contains high-level test metrics
+// OverviewMetrics contains high-level test metrics.
 type OverviewMetrics struct {
 	TestDuration         string  `json:"test_duration"`
 	TotalPeers           int     `json:"total_peers"`
@@ -73,7 +73,7 @@ type OverviewMetrics struct {
 	SuccessRate          float64 `json:"success_rate"`
 }
 
-// ConnectionMetrics contains connection-related statistics
+// ConnectionMetrics contains connection-related statistics.
 type ConnectionMetrics struct {
 	AvgConnectionDuration    string  `json:"avg_connection_duration"`
 	MedianConnectionDuration string  `json:"median_connection_duration"`
@@ -82,13 +82,13 @@ type ConnectionMetrics struct {
 	ReconnectionRate         float64 `json:"reconnection_rate"`
 }
 
-// DisconnectReasonCount represents disconnect reason statistics
+// DisconnectReasonCount represents disconnect reason statistics.
 type DisconnectReasonCount struct {
 	Reason string `json:"reason"`
 	Count  int    `json:"count"`
 }
 
-// PeerBehaviorSummary contains peer behavior analysis
+// PeerBehaviorSummary contains peer behavior analysis.
 type PeerBehaviorSummary struct {
 	PeersWithScores        int     `json:"peers_with_scores"`
 	AvgMessagesPerPeer     float64 `json:"avg_messages_per_peer"`
@@ -97,7 +97,7 @@ type PeerBehaviorSummary struct {
 	MostActivePeerMsgCount int     `json:"most_active_peer_message_count"`
 }
 
-// TestConfigSummary contains test configuration details
+// TestConfigSummary contains test configuration details.
 type TestConfigSummary struct {
 	TestDuration   string `json:"test_duration"`
 	ReportInterval string `json:"report_interval"`
@@ -105,7 +105,7 @@ type TestConfigSummary struct {
 	PrysmHost      string `json:"prysm_host"`
 }
 
-// NewClaudeAPIClient creates a new Claude API client
+// NewClaudeAPIClient creates a new Claude API client.
 func NewClaudeAPIClient(apiKey string) *ClaudeAPIClient {
 	return &ClaudeAPIClient{
 		APIKey:  apiKey,
@@ -114,7 +114,7 @@ func NewClaudeAPIClient(apiKey string) *ClaudeAPIClient {
 	}
 }
 
-// AnalyzeReport sends the report summary to Claude for analysis
+// AnalyzeReport sends the report summary to Claude for analysis.
 func (c *ClaudeAPIClient) AnalyzeReport(log logrus.FieldLogger, summary *ReportSummary) (string, error) {
 	summaryJSON, err := json.MarshalIndent(summary, "", "  ")
 	if err != nil {
@@ -229,7 +229,7 @@ Focus on improving Hermes as a passive network monitoring tool that other peers 
 	return claudeResp.Choices[0].Message.Content, nil
 }
 
-// SummarizeReport extracts key metrics from the full peer score report
+// SummarizeReport extracts key metrics from the full peer score report.
 func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 	summary := &ReportSummary{
 		Overview: OverviewMetrics{
@@ -316,6 +316,7 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 		for _, d := range connectionDurations {
 			totalDuration += d
 		}
+
 		avgDuration := totalDuration / time.Duration(len(connectionDurations))
 		summary.ConnectionMetrics.AvgConnectionDuration = avgDuration.String()
 
@@ -358,7 +359,7 @@ func SummarizeReport(report *PeerScoreReport) *ReportSummary {
 		count  int
 	}
 
-	var reasons []reasonCount
+	reasons := make([]reasonCount, 0)
 
 	for reason, count := range disconnectReasons {
 		reasons = append(reasons, reasonCount{reason, count})

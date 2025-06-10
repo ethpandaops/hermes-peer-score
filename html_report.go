@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// OptimizedHTMLTemplateData represents the minimal data structure for the optimized HTML report
+// OptimizedHTMLTemplateData represents the minimal data structure for the optimized HTML report.
 type OptimizedHTMLTemplateData struct {
 	GeneratedAt    time.Time     `json:"generated_at"`
 	Summary        SummaryData   `json:"summary"`
@@ -22,7 +22,7 @@ type OptimizedHTMLTemplateData struct {
 	AIAnalysisHTML template.HTML `json:"-"`
 }
 
-// SummaryData contains high-level summary information for the report
+// SummaryData contains high-level summary information for the report.
 type SummaryData struct {
 	TestDuration         float64       `json:"test_duration"`
 	StartTime            time.Time     `json:"start_time"`
@@ -34,7 +34,7 @@ type SummaryData struct {
 	PeerSummaries        []PeerSummary `json:"peer_summaries"`
 }
 
-// PeerSummary contains minimal information about a peer for the overview
+// PeerSummary contains minimal information about a peer for the overview.
 type PeerSummary struct {
 	PeerID            string  `json:"peer_id"`
 	ShortPeerID       string  `json:"short_peer_id"`
@@ -51,7 +51,7 @@ type PeerSummary struct {
 	LastSessionTime   string  `json:"last_session_time"`
 }
 
-// optimizedHTMLTemplate contains the optimized HTML template that loads data dynamically
+// optimizedHTMLTemplate contains the optimized HTML template that loads data dynamically.
 const optimizedHTMLTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -919,7 +919,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
 
 // Helper functions for the optimized report generation
 
-// extractSummaryData creates a summary from the full report data
+// extractSummaryData creates a summary from the full report data.
 func extractSummaryData(report PeerScoreReport) SummaryData {
 	summary := SummaryData{
 		TestDuration:         report.Duration.Seconds(),
@@ -935,6 +935,7 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 	// Create peer summaries sorted by event count
 	for peerID, peer := range report.Peers {
 		eventCount := 0
+
 		if events, exists := report.PeerEventCounts[peerID]; exists {
 			for _, count := range events {
 				eventCount += count
@@ -1035,17 +1036,17 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 	return summary
 }
 
-// cleanAIHTML sanitizes AI-generated HTML content to prevent JavaScript errors
+// cleanAIHTML sanitizes AI-generated HTML content to prevent JavaScript errors.
 func cleanAIHTML(content string) string {
 	if content == "" {
 		return content
 	}
 
-	// Remove any null bytes or other control characters that could break JavaScript
+	// Remove any null bytes or other control characters that could break JavaScript.
 	re := regexp.MustCompile(`[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]`)
 	content = re.ReplaceAllString(content, "")
 
-	// Replace any problematic characters that could break JSON/JavaScript
+	// Replace any problematic characters that could break JSON/JavaScript.
 	content = strings.ReplaceAll(content, "\u0000", "")
 	content = strings.ReplaceAll(content, "\ufffd", "") // Replacement character
 
@@ -1063,10 +1064,11 @@ func cleanAIHTML(content string) string {
 	return content
 }
 
-// generateDataFile creates a JavaScript file containing the report data
+// generateDataFile creates a JavaScript file containing the report data.
 func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile string) error {
 	// Clean all peer data to ensure no invalid characters
 	cleanedPeers := make(map[string]*PeerStats)
+
 	for peerID, peer := range report.Peers {
 		cleanedPeer := *peer
 		// Clean client agent strings that might contain invalid characters
@@ -1104,6 +1106,7 @@ func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile s
 
 	log.Printf("Writing data file: %s (size: %d bytes)\n", dataFile, len(jsContent))
 
+	//nolint:gosec // controlled.
 	if err := os.WriteFile(dataFile, []byte(jsContent), 0644); err != nil {
 		return fmt.Errorf("failed to write data file: %w", err)
 	}
@@ -1125,7 +1128,7 @@ func GenerateHTMLReport(log logrus.FieldLogger, jsonFile, outputFile string) err
 	return GenerateHTMLReportWithAI(log, jsonFile, outputFile, "", "")
 }
 
-// GenerateHTMLReportWithAI creates an optimized HTML report with optional AI analysis
+// GenerateHTMLReportWithAI creates an optimized HTML report with optional AI analysis.
 func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiKey, aiAnalysis string) error {
 	// Read the JSON report file from disk.
 	data, err := os.ReadFile(jsonFile)
@@ -1145,20 +1148,22 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 		finalAIAnalysis = aiAnalysis
 	} else if apiKey != "" {
 		log.Printf("Generating AI analysis...")
+
 		summary := SummarizeReport(&report)
 
 		// Check summary size and log it
 		summaryJSON, _ := json.Marshal(summary)
 		summarySize := len(summaryJSON)
+
 		log.Printf("Summary data size: %d bytes (%d KB)", summarySize, summarySize/1024)
 
 		log.Printf("Creating AI client and sending analysis request...")
 
 		client := NewClaudeAPIClient(apiKey)
 
-		analysis, err := client.AnalyzeReport(log, summary)
-		if err != nil {
-			log.Printf("Warning: Failed to generate AI analysis: %v", err)
+		analysis, aerr := client.AnalyzeReport(log, summary)
+		if aerr != nil {
+			log.Printf("Warning: Failed to generate AI analysis: %v", aerr)
 
 			finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
 		} else {
@@ -1171,8 +1176,8 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 
 	// Generate the data file alongside the HTML report
 	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
-	if err := generateDataFile(log, report, dataFile); err != nil {
-		return fmt.Errorf("failed to generate data file: %w", err)
+	if gerr := generateDataFile(log, report, dataFile); gerr != nil {
+		return fmt.Errorf("failed to generate data file: %w", gerr)
 	}
 
 	// Prepare template data with summary information only
@@ -1181,7 +1186,7 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 		Summary:        extractSummaryData(report),
 		DataFile:       filepath.Base(dataFile),
 		AIAnalysis:     finalAIAnalysis,
-		AIAnalysisHTML: template.HTML(finalAIAnalysis), // AI now returns HTML directly
+		AIAnalysisHTML: template.HTML(finalAIAnalysis), //nolint:gosec // data sanitized further down.
 	}
 
 	// Create the optimized HTML template

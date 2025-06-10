@@ -131,10 +131,11 @@ func (n *ToolConfig) HostWithRedactedSecrets() string {
 	return userParts[0] + ":****@" + parts[1]
 }
 
-// MarshalJSON implements custom JSON marshaling to redact sensitive information
+// MarshalJSON implements custom JSON marshaling to redact sensitive information.
 func (n *ToolConfig) MarshalJSON() ([]byte, error) {
 	// Create a copy of the struct with redacted sensitive fields
 	type Alias ToolConfig
+
 	return json.Marshal(&struct {
 		*Alias
 		PrysmHost string `json:"PrysmHost"`

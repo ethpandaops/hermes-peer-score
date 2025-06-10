@@ -89,4 +89,3 @@ type PeerScoreReport struct {
 	Peers                map[string]*PeerStats     `json:"peers"`                 // Detailed statistics for each individual peer.
 	PeerEventCounts      map[string]map[string]int `json:"peer_event_counts"`     // Count of event types by peer ID.
 }
-

@@ -101,12 +101,14 @@ func generateHTMLOnlyMode(log logrus.FieldLogger) {
 	// Generate HTML report with optional AI analysis
 	if apiKey != "" {
 		log.Info("OpenRouter API key found - including AI analysis in HTML report")
+
 		if err := GenerateHTMLReportWithAI(log, *inputJSON, htmlFile, apiKey, ""); err != nil {
 			log.Fatalf("Failed to generate HTML report with AI analysis: %v", err)
 		}
 	} else {
 		log.Info("No OpenRouter API key found - generating HTML report without AI analysis")
 		log.Info("To include AI analysis, set OPENROUTER_API_KEY environment variable or use -openrouter-api-key flag")
+
 		if err := GenerateHTMLReport(log, *inputJSON, htmlFile); err != nil {
 			log.Fatalf("Failed to generate HTML report: %v", err)
 		}
