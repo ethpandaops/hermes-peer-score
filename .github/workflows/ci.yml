@@ -22,6 +22,11 @@ on:
           - SYD
         default: 'SFO'
         required: false
+      clear_history:
+        description: 'Clear all historical reports and start fresh'
+        type: boolean
+        default: false
+        required: false
 
 jobs:
   peer-score-test:
@@ -124,44 +129,63 @@ jobs:
       - name: Generate Historical Index
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CLEAR_HISTORY: ${{ github.event.inputs.clear_history || 'false' }}
         run: |
-          # Download existing reports manifest from GitHub Pages to preserve history
-          echo "Attempting to preserve existing reports from GitHub Pages using manifest..."
-          
-          # Try to download the existing reports manifest
-          MANIFEST_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/reports-manifest.json"
-          echo "Downloading reports manifest from: $MANIFEST_URL"
-          
-          if curl -f -s "$MANIFEST_URL" -o reports-manifest.json 2>/dev/null; then
-            echo "Found existing reports manifest, downloading historical reports..."
-            
-            # Set cutoff date for 28-day retention
-            CUTOFF_DATE=$(date -u -d "28 days ago" +"%Y-%m-%d")
-            echo "Cutoff date for retention: $CUTOFF_DATE"
-            
-            # Download historical reports using the manifest
-            CUTOFF_DATE="$CUTOFF_DATE" python3 scripts/download_reports.py
+          if [ "$CLEAR_HISTORY" = "true" ]; then
+            echo "🧹 Clear history requested - starting fresh without downloading historical reports"
+            echo "Skipping historical report preservation..."
           else
-            echo "No existing reports manifest found - this might be the first run"
+            # Download existing reports manifest from GitHub Pages to preserve history
+            echo "Attempting to preserve existing reports from GitHub Pages using manifest..."
+            
+            # Try to download the existing reports manifest
+            MANIFEST_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/reports-manifest.json"
+            echo "Downloading reports manifest from: $MANIFEST_URL"
+            
+            if curl -f -s "$MANIFEST_URL" -o reports-manifest.json 2>/dev/null; then
+              echo "Found existing reports manifest, downloading historical reports..."
+              
+              # Set cutoff date for 28-day retention
+              CUTOFF_DATE=$(date -u -d "28 days ago" +"%Y-%m-%d")
+              echo "Cutoff date for retention: $CUTOFF_DATE"
+              
+              # Download historical reports using the manifest
+              CUTOFF_DATE="$CUTOFF_DATE" python3 scripts/download_reports.py
+            else
+              echo "No existing reports manifest found - this might be the first run"
+            fi
           fi
 
-          # Clean up any directories older than 28 days
-          echo "Cleaning up reports older than 28 days..."
-          find reports -maxdepth 1 -type d -name "20*" | while read dir; do
-            DIR_DATE=$(basename "$dir")
-            if [ "$DIR_DATE" != "reports" ]; then
-              # Calculate if this directory is older than 28 days
-              DIR_EPOCH=$(date -d "$DIR_DATE" +%s 2>/dev/null || echo "0")
-              CUTOFF_EPOCH=$(date -d "28 days ago" +%s)
-
-              if [ "$DIR_EPOCH" -lt "$CUTOFF_EPOCH" ] && [ "$DIR_EPOCH" -gt "0" ]; then
-                echo "Removing old reports from $DIR_DATE"
+          if [ "$CLEAR_HISTORY" = "true" ]; then
+            echo "🧹 Clearing all historical reports as requested..."
+            # Remove all report directories except the current one
+            find reports -maxdepth 1 -type d -name "20*" | while read dir; do
+              DIR_DATE=$(basename "$dir")
+              CURRENT_DATE=$(date -u +"%Y-%m-%d")
+              if [ "$DIR_DATE" != "$CURRENT_DATE" ]; then
+                echo "Removing historical reports from $DIR_DATE"
                 rm -rf "$dir"
               fi
-            fi
-          done
+            done
+          else
+            # Clean up any directories older than 28 days
+            echo "Cleaning up reports older than 28 days..."
+            find reports -maxdepth 1 -type d -name "20*" | while read dir; do
+              DIR_DATE=$(basename "$dir")
+              if [ "$DIR_DATE" != "reports" ]; then
+                # Calculate if this directory is older than 28 days
+                DIR_EPOCH=$(date -d "$DIR_DATE" +%s 2>/dev/null || echo "0")
+                CUTOFF_EPOCH=$(date -d "28 days ago" +%s)
 
-          echo "Preservation and cleanup complete, generating new index..."
+                if [ "$DIR_EPOCH" -lt "$CUTOFF_EPOCH" ] && [ "$DIR_EPOCH" -gt "0" ]; then
+                  echo "Removing old reports from $DIR_DATE"
+                  rm -rf "$dir"
+                fi
+              fi
+            done
+          fi
+
+          echo "Cleanup complete, generating new index..."
 
           # Generate the historical index page and manifest
           python3 scripts/generate_index.py
@@ -233,10 +257,16 @@ jobs:
           duration_seconds=${{ steps.results.outputs.duration_seconds }}
           test_duration=${{ steps.results.outputs.test_duration }}
           total_events=${{ steps.results.outputs.total_events }}
+          clear_history=${{ github.event.inputs.clear_history || 'false' }}
 
           {
             echo "## 🔗 Peer Score Report"
             echo ""
+            if [ "$clear_history" = "true" ]; then
+              echo "### 🧹 History Cleared"
+              echo "- **Historical reports were cleared** - Starting fresh with this report"
+              echo ""
+            fi
             echo "### Test Configuration"
             echo "- **Test Duration:** ${test_duration}s"
             echo "- **Actual Duration:** ${duration_seconds}s"
