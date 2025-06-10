@@ -439,20 +439,37 @@ jobs:
               html = re.sub(r'\{\{range \.Reports\}\}.*?\{\{end\}\}', reports_html, html, flags=re.DOTALL)
               
               # Clean up any remaining template syntax that might be left over
-              # Remove any standalone {{.Variable}} that weren't replaced
+              # First pass: Remove complete template blocks that weren't handled
+              html = re.sub(r'\{\{if [^}]+\}\}.*?\{\{end\}\}', '', html, flags=re.DOTALL)
+              
+              # Second pass: Remove any standalone {{.Variable}} that weren't replaced
               html = re.sub(r'\{\{[^}]+\}\}', '', html)
               
-              # Remove any {{if}} or {{end}} blocks that might remain
-              html = re.sub(r'\{\{if [^}]+\}\}', '', html)
-              html = re.sub(r'\{\{end\}\}', '', html)
-              
-              # Clean up any malformed template remnants (like the ">{{.SuccessRate}}%" issue)
+              # Third pass: Clean up malformed HTML/template remnants
               html = re.sub(r'["\'>]\{\{[^}]+\}\}[^<]*', '', html)
-              
-              # Additional cleanup for specific problematic patterns
               html = re.sub(r'>\{\{[^}]+\}\}[^<]*', '>', html)  # Remove >{{...}}text patterns
               html = re.sub(r'"\{\{[^}]+\}\}[^"]*"', '""', html)  # Remove "{{...}}text" patterns
               html = re.sub(r"'\{\{[^}]+\}\}[^']*'", "''", html)  # Remove '{{...}}text' patterns
+              
+              # Fourth pass: Remove orphaned template fragments and fix broken HTML
+              # Remove lines that are just template remnants
+              lines = html.split('\n')
+              cleaned_lines = []
+              skip_until_div = False
+              
+              for line in lines:
+                  # Skip lines that are clearly template remnants
+                  if re.search(r'^\s*["\'>].*\{\{|^\s*\}\}|^\s*/\s*$', line):
+                      continue
+                  # Skip malformed div content
+                  if '>/div>' in line or line.strip() == '/':
+                      continue
+                  # Skip empty href attributes
+                  if 'href=""' in line and 'class=' in line:
+                      continue
+                  cleaned_lines.append(line)
+              
+              html = '\n'.join(cleaned_lines)
               
               # Write the final index
               with open('reports/index.html', 'w') as f:
