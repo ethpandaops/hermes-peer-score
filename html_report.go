@@ -13,9 +13,11 @@ import (
 
 // OptimizedHTMLTemplateData represents the minimal data structure for the optimized HTML report
 type OptimizedHTMLTemplateData struct {
-	GeneratedAt time.Time   `json:"generated_at"`
-	Summary     SummaryData `json:"summary"`
-	DataFile    string      `json:"data_file"`
+	GeneratedAt   time.Time       `json:"generated_at"`
+	Summary       SummaryData     `json:"summary"`
+	DataFile      string          `json:"data_file"`
+	AIAnalysis    string          `json:"ai_analysis"`
+	AIAnalysisHTML template.HTML   `json:"-"`
 }
 
 // SummaryData contains high-level summary information for the report
@@ -73,6 +75,9 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             font-weight: bold;
             text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
+        .ai-analysis-content {
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -90,6 +95,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                 </div>
             </div>
         </div>
+
 
         <!-- Summary Statistics -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -140,9 +146,17 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                         <option value="client">Client Type</option>
                     </select>
                 </div>
-                <button onclick="exportFilteredData()" class="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700">
-                    Export Filtered JSON
-                </button>
+                <div class="flex space-x-2">
+                    <button onclick="exportFilteredData()" class="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700">
+                        Export Filtered JSON
+                    </button>
+                    {{if .AIAnalysis}}
+                    <button onclick="openAIAnalysisModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 flex items-center space-x-2">
+                        <span>🤖</span>
+                        <span>AI Analysis</span>
+                    </button>
+                    {{end}}
+                </div>
             </div>
         </div>
 
@@ -195,6 +209,32 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             </div>
         </div>
     </div>
+
+    <!-- AI Analysis Modal -->
+    {{if .AIAnalysis}}
+    <div id="aiAnalysisModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                            <span>🤖</span>
+                            <span>AI Analysis</span>
+                        </h3>
+                        <button onclick="closeAIAnalysisModal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                    <div class="ai-analysis-content">{{.AIAnalysisHTML}}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{end}}
 
     <script src="{{.DataFile}}"></script>
     <script>
@@ -701,18 +741,30 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
         function toggleSection(sectionId) {
             const content = document.getElementById(sectionId);
             const arrow = document.getElementById(sectionId + '-arrow');
+            const toggle = document.getElementById(sectionId + '-toggle');
 
             if (content.classList.contains('hidden')) {
                 content.classList.remove('hidden');
                 if (arrow) arrow.style.transform = 'rotate(180deg)';
+                if (toggle) toggle.textContent = sectionId === 'ai-analysis' ? 'Hide Analysis' : 'Hide';
             } else {
                 content.classList.add('hidden');
                 if (arrow) arrow.style.transform = 'rotate(0deg)';
+                if (toggle) toggle.textContent = sectionId === 'ai-analysis' ? 'Show Analysis' : 'Show';
             }
         }
 
         function closePeerModal() {
             document.getElementById('peerModal').classList.add('hidden');
+        }
+
+        // AI Analysis Modal functions
+        function openAIAnalysisModal() {
+            document.getElementById('aiAnalysisModal').classList.remove('hidden');
+        }
+
+        function closeAIAnalysisModal() {
+            document.getElementById('aiAnalysisModal').classList.add('hidden');
         }
 
         function exportFilteredData() {
@@ -739,15 +791,26 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             URL.revokeObjectURL(url);
         }
 
-        // Close modal when clicking outside
+        // Close modals when clicking outside
         document.getElementById('peerModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closePeerModal();
             }
         });
+
+        // Close AI analysis modal when clicking outside (if it exists)
+        const aiModal = document.getElementById('aiAnalysisModal');
+        if (aiModal) {
+            aiModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeAIAnalysisModal();
+                }
+            });
+        }
     </script>
 </body>
 </html>`
+
 
 // Helper functions for the optimized report generation
 
@@ -887,6 +950,11 @@ func generateDataFile(report PeerScoreReport, dataFile string) error {
 //
 // Returns an error if file operations or template processing fails.
 func GenerateHTMLReport(jsonFile, outputFile string) error {
+	return GenerateHTMLReportWithAI(jsonFile, outputFile, "", "")
+}
+
+// GenerateHTMLReportWithAI creates an optimized HTML report with optional AI analysis
+func GenerateHTMLReportWithAI(jsonFile, outputFile, apiKey, aiAnalysis string) error {
 	// Read the JSON report file from disk.
 	data, err := os.ReadFile(jsonFile)
 	if err != nil {
@@ -899,6 +967,24 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 		return fmt.Errorf("failed to unmarshal JSON: %w", uErr)
 	}
 
+	// Generate AI analysis if API key is provided and analysis is not pre-generated
+	var finalAIAnalysis string
+	if aiAnalysis != "" {
+		finalAIAnalysis = aiAnalysis
+	} else if apiKey != "" {
+		log.Printf("Generating AI analysis...")
+		summary := SummarizeReport(&report)
+		client := NewClaudeAPIClient(apiKey)
+		analysis, err := client.AnalyzeReport(summary)
+		if err != nil {
+			log.Printf("Warning: Failed to generate AI analysis: %v", err)
+			finalAIAnalysis = "⚠️ AI analysis failed to generate. Please check your API key and try again."
+		} else {
+			finalAIAnalysis = analysis
+			log.Printf("AI analysis generated successfully")
+		}
+	}
+
 	// Generate the data file alongside the HTML report
 	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
 	if err := generateDataFile(report, dataFile); err != nil {
@@ -907,9 +993,11 @@ func GenerateHTMLReport(jsonFile, outputFile string) error {
 
 	// Prepare template data with summary information only
 	templateData := OptimizedHTMLTemplateData{
-		GeneratedAt: time.Now(),
-		Summary:     extractSummaryData(report),
-		DataFile:    filepath.Base(dataFile),
+		GeneratedAt:   time.Now(),
+		Summary:       extractSummaryData(report),
+		DataFile:      filepath.Base(dataFile),
+		AIAnalysis:    finalAIAnalysis,
+		AIAnalysisHTML: template.HTML(finalAIAnalysis), // AI now returns HTML directly
 	}
 
 	// Create the optimized HTML template

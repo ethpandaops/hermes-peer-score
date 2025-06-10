@@ -48,6 +48,17 @@ func saveJSONReport(report PeerScoreReport) error {
 func generateHTMLReport() error {
 	htmlFile := strings.Replace(*outputFile, ".json", ".html", 1)
 
+	// Get API key for AI analysis (optional)
+	apiKey := *claudeAPIKey
+	if apiKey == "" {
+		apiKey = os.Getenv("OPENROUTER_API_KEY")
+	}
+
+	// Generate HTML report with optional AI analysis
+	if apiKey != "" {
+		return GenerateHTMLReportWithAI(*outputFile, htmlFile, apiKey, "")
+	}
+	
 	return GenerateHTMLReport(*outputFile, htmlFile)
 }
 
