@@ -1,0 +1,24 @@
+---
+description: Scripts - Report management and historical data processing utilities
+globs: 
+  - "*.py"
+  - "**/*.py"
+alwaysApply: false
+---
+
+# Scripts Component
+
+Python utilities for managing historical reports and generating web interfaces for the Hermes peer score tool.
+
+## Key Integration Patterns
+
+- **GitHub Pages Integration**: Download historical reports from `ethpandaops.github.io/hermes-peer-score/` using manifest-based approach
+- **Date-Based File Organization**: Reports organized in `reports/YYYY-MM-DD/` directory structure with timestamp-based filenames
+- **28-Day Retention Policy**: Automatically filter and manage reports with configurable cutoff periods
+
+## Important Constraints
+
+- Always use `curl -f -s` for robust HTTP downloads with proper error handling
+- Graceful error handling - scripts should not fail CI builds (exit 0 on errors)
+- Template replacement uses regex patterns for HTML generation, not full template engines
+- Environment variable integration for dynamic configuration (CUTOFF_DATE)

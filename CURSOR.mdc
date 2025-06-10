@@ -1,0 +1,25 @@
+---
+description: Hermes Peer Score Tool - Peer monitoring and analysis patterns
+globs: 
+  - "*.go"
+  - "**/*.html"
+alwaysApply: false
+---
+
+# Hermes Peer Score Tool
+
+Ethereum peer connection health analyzer using Hermes as gossipsub listener with optional AI-enhanced reporting.
+
+## Core Operational Patterns
+
+- **Concurrent Peer Monitoring**: Always protect shared peer data with mutex locks (`peersMu.RLock/Lock`)
+- **Event-Driven Processing**: Use callback patterns for real-time peer event handling
+- **Graceful Shutdown**: Implement context cancellation for clean termination of monitoring processes
+- **Dual Report Generation**: Support both JSON data export and AI-enhanced HTML reporting
+
+## Integration Constraints
+
+- Requires Prysm beacon node connectivity (gRPC/HTTP with TLS auto-detection)
+- Hermes dependency must be compatible with target Ethereum network
+- OpenRouter API integration is optional but enhances report analysis
+- CLI flag configuration with environment variable fallback for sensitive data

@@ -13,3 +13,6 @@ Claude MUST read the `.cursor/rules/development_workflow.mdc` file before making
 
 ## Component Documentation
 Individual components have their own CLAUDE.md files with component-specific rules. Always check for and read component-level documentation when working on specific parts of the codebase.
+
+## Architecture  
+Claude MUST read the `./CURSOR.mdc` file before making any changes to this component.
