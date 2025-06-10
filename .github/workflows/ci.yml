@@ -125,129 +125,78 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          # Download existing reports from GitHub Pages to preserve history (last 28 days only)
-          echo "Attempting to preserve existing reports from GitHub Pages (28-day retention)..."
+          # Download existing reports manifest from GitHub Pages to preserve history
+          echo "Attempting to preserve existing reports from GitHub Pages using manifest..."
           
-          # First, check if we already have reports for today in the reports directory
-          # (from previous runs in the same day that haven't been deployed yet)
-          TODAY=$(date -u +"%Y-%m-%d")
-          echo "Today is: $TODAY"
+          # Try to download the existing reports manifest
+          MANIFEST_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/reports-manifest.json"
+          echo "Downloading reports manifest from: $MANIFEST_URL"
           
-          if [ -d "reports/$TODAY" ]; then
-            EXISTING_COUNT=$(ls "reports/$TODAY/" 2>/dev/null | wc -l)
-            echo "Found $EXISTING_COUNT existing reports for today in local reports directory"
+          if curl -f -s "$MANIFEST_URL" -o reports-manifest.json 2>/dev/null; then
+            echo "Found existing reports manifest, downloading historical reports..."
+            
+            # Parse the manifest and download each report (limiting to last 28 days)
+            CUTOFF_DATE=$(date -u -d "28 days ago" +"%Y-%m-%d")
+            echo "Cutoff date for retention: $CUTOFF_DATE"
+            
+            cat > download_reports.py << 'EOF'
+import json
+import os
+import subprocess
+from datetime import datetime
+import sys
+
+try:
+    with open('reports-manifest.json', 'r') as f:
+        manifest = json.load(f)
+    
+    base_url = 'https://ethpandaops.github.io/hermes-peer-score/'
+    cutoff_date = datetime.strptime(os.environ['CUTOFF_DATE'], '%Y-%m-%d')
+    downloaded_count = 0
+    
+    for report in manifest.get('reports', []):
+        report_date = datetime.strptime(report['date'], '%Y-%m-%d')
+        
+        # Skip reports older than 28 days
+        if report_date < cutoff_date:
+            continue
+            
+        # Create directory
+        date_dir = f"reports/{report['date']}"
+        os.makedirs(date_dir, exist_ok=True)
+        
+        # Download each file for this report
+        files_downloaded = 0
+        for file_info in report.get('files', []):
+            file_url = base_url + file_info['path']
+            local_path = f"reports/{file_info['path']}"
+            
+            try:
+                result = subprocess.run(['curl', '-f', '-s', file_url, '-o', local_path], 
+                                      capture_output=True)
+                if result.returncode == 0:
+                    files_downloaded += 1
+                    print(f'  Downloaded: {file_info["filename"]}')
+                else:
+                    print(f'  Failed to download: {file_info["filename"]}')
+            except Exception as e:
+                print(f'  Error downloading {file_info["filename"]}: {e}')
+        
+        if files_downloaded > 0:
+            downloaded_count += 1
+            print(f'Successfully downloaded {files_downloaded} files for {report["date"]}')
+    
+    print(f'Total reports preserved: {downloaded_count}')
+    
+except Exception as e:
+    print(f'Error processing manifest: {e}')
+    sys.exit(0)  # Don't fail the build, just continue without historical data
+EOF
+            
+            CUTOFF_DATE="$CUTOFF_DATE" python3 download_reports.py
+          else
+            echo "No existing reports manifest found - this might be the first run"
           fi
-
-          # Create a temporary directory for existing reports
-          mkdir -p temp_existing
-
-          # Try to download and extract existing report structure (only last 28 days)
-          # Include today (i=0) to preserve same-day reports
-          for i in {0..27}; do
-            DATE=$(date -u -d "-$i days" +"%Y-%m-%d")
-            echo "Checking for reports from $DATE..."
-
-            # Try to download the directory listing to see what files exist
-            DIR_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/$DATE/"
-            echo "  Checking URL: $DIR_URL"
-            
-            # For today's date, be more aggressive in checking since GitHub Pages might have a delay
-            if [ "$DATE" = "$(date -u +"%Y-%m-%d")" ]; then
-              echo "  This is today - checking both GitHub Pages and trying multiple patterns..."
-            fi
-            
-            if curl -f -s -I "$DIR_URL" >/dev/null 2>&1; then
-              echo "Found directory for $DATE, attempting to preserve files..."
-              mkdir -p "reports/$DATE"
-
-              # Download the directory listing to parse available files
-              DIR_LISTING=$(curl -f -s "$DIR_URL" 2>/dev/null || echo "")
-
-              if [ ! -z "$DIR_LISTING" ]; then
-                # Extract filenames from the HTML directory listing
-                # Look for peer-score-report files
-                echo "$DIR_LISTING" | grep -oE 'href="[^"]*peer-score-report-[^"]*"' | sed 's/href="//;s/"//' | while read FILE; do
-                  if [ ! -z "$FILE" ]; then
-                    FILE_URL="$DIR_URL$FILE"
-                    echo "  Downloading: $FILE"
-                    curl -f -s "$FILE_URL" -o "reports/$DATE/$FILE" 2>/dev/null || {
-                      echo "    Failed to download $FILE"
-                      rm -f "reports/$DATE/$FILE" 2>/dev/null || true
-                    }
-                  fi
-                done
-
-                # If no files were found via directory listing, try common patterns
-                if [ $(ls "reports/$DATE/" 2>/dev/null | wc -l) -eq 0 ]; then
-                  echo "  No files found via directory listing, trying common patterns..."
-
-                  # For today's date, try a broader range since reports might be generated at any time
-                  if [ "$DATE" = "$(date -u +"%Y-%m-%d")" ]; then
-                    HOUR_RANGE="{00..23}"
-                    echo "  Today's date - searching all 24 hours"
-                  else
-                    HOUR_RANGE="{09..15}"
-                    echo "  Past date - searching typical working hours"
-                  fi
-
-                  # Try to download files with timestamp patterns
-                  for hour in $(eval echo $HOUR_RANGE); do
-                    for minute in {00..59..15}; do  # Every 15 minutes
-                      TIMESTAMP_PATTERN="$DATE\_$hour-$minute-"
-
-                      # Try different second values
-                      for second in {00..59..10}; do  # Every 10 seconds
-                        FULL_TIMESTAMP="$DATE\_$hour-$minute-$second"
-
-                        # Try to download JSON, HTML, and JS files
-                        for ext in json html js; do
-                          if [ "$ext" = "js" ]; then
-                            FILENAME="peer-score-report-$FULL_TIMESTAMP-data.$ext"
-                          else
-                            FILENAME="peer-score-report-$FULL_TIMESTAMP.$ext"
-                          fi
-
-                          FILE_URL="$DIR_URL$FILENAME"
-                          if curl -f -s -I "$FILE_URL" >/dev/null 2>&1; then
-                            echo "    Found and downloading: $FILENAME"
-                            curl -f -s "$FILE_URL" -o "reports/$DATE/$FILENAME" 2>/dev/null && {
-                              echo "    Successfully downloaded: $FILENAME"
-                              # If we found one file with this timestamp, download the others too
-                              for other_ext in json html js; do
-                                if [ "$other_ext" != "$ext" ]; then
-                                  if [ "$other_ext" = "js" ]; then
-                                    OTHER_FILENAME="peer-score-report-$FULL_TIMESTAMP-data.$other_ext"
-                                  else
-                                    OTHER_FILENAME="peer-score-report-$FULL_TIMESTAMP.$other_ext"
-                                  fi
-                                  OTHER_URL="$DIR_URL$OTHER_FILENAME"
-                                  curl -f -s "$OTHER_URL" -o "reports/$DATE/$OTHER_FILENAME" 2>/dev/null && {
-                                    echo "    Also downloaded: $OTHER_FILENAME"
-                                  }
-                                fi
-                              done
-                              break 3  # Break out of all loops for this hour
-                            }
-                          fi
-                        done
-                      done
-                    done
-                  done
-                fi
-
-                # Clean up empty directories
-                if [ $(ls "reports/$DATE/" 2>/dev/null | wc -l) -eq 0 ]; then
-                  echo "  No files found for $DATE, removing empty directory"
-                  rmdir "reports/$DATE" 2>/dev/null || true
-                else
-                  FILE_COUNT=$(ls "reports/$DATE/" 2>/dev/null | wc -l)
-                  echo "  Successfully preserved $FILE_COUNT files for $DATE"
-                fi
-              fi
-            else
-              echo "  No directory found for $DATE"
-            fi
-          done
 
           # Clean up any directories older than 28 days
           echo "Cleaning up reports older than 28 days..."
@@ -308,7 +257,7 @@ jobs:
               from datetime import timedelta
               cutoff_date = datetime.now() - timedelta(days=28)
 
-              # Find all JSON reports
+              # Find all JSON reports (within 28-day retention period)
               for json_file in reports_dir.glob('**/peer-score-report-*.json'):
                   date_dir = json_file.parent.name
                   filename = json_file.name
@@ -493,7 +442,58 @@ jobs:
               with open('reports/index.html', 'w') as f:
                   f.write(html)
 
+              # Generate reports manifest for future use
+              manifest_data = {
+                  "generated_at": datetime.utcnow().isoformat() + "Z",
+                  "total_reports": len(reports),
+                  "reports": []
+              }
+              
+              for report in reports:
+                  report_files = []
+                  
+                  # Add JSON file
+                  json_filename = f"peer-score-report-{report['timestamp']}.json"
+                  report_files.append({
+                      "filename": json_filename,
+                      "path": f"{report['date']}/{json_filename}",
+                      "type": "json"
+                  })
+                  
+                  # Add HTML file if it exists
+                  if report.get('html_path'):
+                      html_filename = f"peer-score-report-{report['timestamp']}.html"
+                      report_files.append({
+                          "filename": html_filename,
+                          "path": f"{report['date']}/{html_filename}",
+                          "type": "html"
+                      })
+                  
+                  # Add JS data file
+                  js_filename = f"peer-score-report-{report['timestamp']}-data.js"
+                  report_files.append({
+                      "filename": js_filename,
+                      "path": f"{report['date']}/{js_filename}",
+                      "type": "javascript"
+                  })
+                  
+                  manifest_data["reports"].append({
+                      "date": report['date'],
+                      "timestamp": report['timestamp'],
+                      "formatted_date": report['formatted_date'],
+                      "test_duration": report['test_duration'],
+                      "unique_peers": report['unique_peers'],
+                      "total_connections": report['total_connections'],
+                      "success_rate": report['success_rate'],
+                      "files": report_files
+                  })
+              
+              # Write manifest
+              with open('reports/reports-manifest.json', 'w') as f:
+                  json.dump(manifest_data, f, indent=2)
+
               print(f"Generated index.html with {len(reports)} reports")
+              print(f"Generated reports-manifest.json with {len(reports)} report entries")
 
           if __name__ == '__main__':
               generate_index()
