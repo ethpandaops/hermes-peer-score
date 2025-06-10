@@ -521,16 +521,46 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                         ` + "`" + `;
                     }).join('');
 
-                    const scoreSnapshotsHtml = session.peer_scores ? session.peer_scores.map((snapshot, idx) => ` + "`" + `
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-3 py-2 text-xs">${new Date(snapshot.timestamp).toLocaleTimeString()}</td>
-                            <td class="px-3 py-2 text-xs font-medium ${snapshot.score > 0 ? 'text-green-600' : snapshot.score < 0 ? 'text-red-600' : 'text-gray-600'}">${snapshot.score.toFixed(3)}</td>
-                            <td class="px-3 py-2 text-xs">${snapshot.app_specific_score.toFixed(3)}</td>
-                            <td class="px-3 py-2 text-xs">${snapshot.ip_colocation_factor.toFixed(3)}</td>
-                            <td class="px-3 py-2 text-xs">${snapshot.behaviour_penalty.toFixed(3)}</td>
-                            <td class="px-3 py-2 text-xs">${snapshot.topics ? snapshot.topics.length + ' topics' : 'None'}</td>
-                        </tr>
-                    ` + "`" + `).join('') : '<tr><td colspan="6" class="text-center py-4 text-gray-500">No score data</td></tr>';
+                    const scoreSnapshotsHtml = session.peer_scores ? session.peer_scores.map((snapshot, idx) => {
+                        const rowId = ` + "`" + `${sessionId}-score-${idx}` + "`" + `;
+                        const topicsHtml = snapshot.topics && snapshot.topics.length > 0 ? 
+                            snapshot.topics.map(topic => ` + "`" + `
+                                <div class="mb-2 p-2 bg-gray-50 rounded text-xs">
+                                    <div class="font-medium text-gray-700 mb-1">Topic: ${topic.topic}</div>
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <div>Time in Mesh: ${(topic.time_in_mesh / 1000000000).toFixed(1)}s</div>
+                                        <div>First Deliveries: ${topic.first_message_deliveries.toFixed(3)}</div>
+                                        <div>Mesh Deliveries: ${topic.mesh_message_deliveries.toFixed(3)}</div>
+                                        <div>Invalid Deliveries: ${topic.invalid_message_deliveries.toFixed(3)}</div>
+                                    </div>
+                                </div>
+                            ` + "`" + `).join('') : '<div class="text-gray-500 text-xs p-2">No topic data available</div>';
+                        
+                        return ` + "`" + `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-3 py-2 text-xs">${new Date(snapshot.timestamp).toLocaleTimeString()}</td>
+                                <td class="px-3 py-2 text-xs font-medium ${snapshot.score > 0 ? 'text-green-600' : snapshot.score < 0 ? 'text-red-600' : 'text-gray-600'}">${snapshot.score.toFixed(3)}</td>
+                                <td class="px-3 py-2 text-xs">${snapshot.app_specific_score.toFixed(3)}</td>
+                                <td class="px-3 py-2 text-xs">${snapshot.ip_colocation_factor.toFixed(3)}</td>
+                                <td class="px-3 py-2 text-xs">${snapshot.behaviour_penalty.toFixed(3)}</td>
+                                <td class="px-3 py-2 text-xs">
+                                    ${snapshot.topics && snapshot.topics.length > 0 ? 
+                                        ` + "`" + `<button class="text-blue-600 hover:text-blue-800 underline cursor-pointer" onclick="toggleSection('${rowId}')">${snapshot.topics.length} topics</button>` + "`" + ` : 
+                                        'None'
+                                    }
+                                </td>
+                            </tr>
+                            ${snapshot.topics && snapshot.topics.length > 0 ? ` + "`" + `
+                            <tr id="${rowId}" class="hidden">
+                                <td colspan="6" class="px-3 py-2 bg-blue-50">
+                                    <div class="max-h-48 overflow-y-auto">
+                                        ${topicsHtml}
+                                    </div>
+                                </td>
+                            </tr>
+                            ` + "`" + ` : ''}
+                        ` + "`" + `;
+                    }).join('') : '<tr><td colspan="6" class="text-center py-4 text-gray-500">No score data</td></tr>';
 
                     sessionsHtml += ` + "`" + `
                         <div class="border border-gray-200 rounded-lg mb-4">
