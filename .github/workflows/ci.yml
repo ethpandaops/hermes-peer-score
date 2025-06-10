@@ -62,6 +62,7 @@ jobs:
           DURATION: ${{ github.event.inputs.duration || '5m' }}
           CHAIN: ${{ github.event.inputs.chain || 'mainnet' }}
           REGION: ${{ github.event.inputs.region || 'SFO' }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           # Select Prysm host based on region
           if [ "$REGION" = "SYD" ]; then
@@ -113,6 +114,8 @@ jobs:
           fi
 
       - name: Generate Historical Index
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           # Download existing reports from GitHub Pages to preserve history (last 28 days only)
           echo "Attempting to preserve existing reports from GitHub Pages (28-day retention)..."
