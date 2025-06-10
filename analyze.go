@@ -121,24 +121,28 @@ func (c *ClaudeAPIClient) AnalyzeReport(log logrus.FieldLogger, summary *ReportS
 		return "", fmt.Errorf("failed to marshal summary: %w", err)
 	}
 
-	systemPrompt := `You are an expert in peer-to-peer networking and Ethereum beacon chain analysis, specifically analyzing peer behavior for the Hermes network monitoring tool.
+	systemPrompt := `You are an expert in peer-to-peer networking and Ethereum beacon chain analysis, specifically analyzing network monitoring data from the Hermes tool.
 
-Your primary focus is investigating peer connection stability and churn patterns to identify potential issues with Hermes or network configuration that need attention.
+CRITICAL CONTEXT: Hermes is a GossipSub listener and network tracer that connects to an upstream Prysm beacon chain node to monitor network events. Hermes is NOT a full Ethereum client - it's a passive monitoring tool that subscribes to pubsub topics and traces protocol interactions. It "leeches" events from the network through its connection to Prysm.
 
-IMPORTANT NOTE: "Stream reset errors" are typically normal and expected behavior that occurs after a goodbye/disconnect event. These should NOT be considered concerning or problematic - they are part of the normal connection cleanup process.
+Your analysis should focus on understanding why OTHER PEERS are disconnecting FROM Hermes, not the other way around. Hermes wants to maintain stable connections to observe network behavior, so disconnections represent a loss of monitoring capability.
+
+IMPORTANT NOTES: 
+- "Stream reset errors" are normal cleanup events after disconnections
+- "Client has too many peers" means OTHER clients are dropping Hermes because they've reached their peer limits
+- Hermes participates in the gossipsub network to monitor, but is not implementing peer scoring itself
 
 Analyze the data with these priorities:
-1. **Peer Churn Analysis** - Identify excessive disconnections, short-lived connections, and reconnection patterns
-2. **Connection Stability Issues** - Look for signs of network instability or Hermes-specific connection problems
-3. **Disconnect Reason Patterns** - Investigate goodbye codes and reasons that might indicate Hermes behavior issues (excluding stream reset errors which are normal)
-4. **Client Interaction Problems** - Identify if certain client types have worse interactions with Hermes
-5. **Performance Bottlenecks** - Spot patterns suggesting Hermes resource constraints or configuration issues
+1. **Monitoring Stability** - Why are peers dropping connections to Hermes? Is Hermes being seen as an undesirable peer?
+2. **Network Participation** - Is Hermes successfully participating in gossipsub to maintain monitoring visibility?
+3. **Peer Acceptance** - Are certain client types more/less likely to maintain connections with Hermes?
+4. **Configuration Impact** - Do Hermes settings affect how other peers perceive and interact with it?
+5. **Data Collection Quality** - Are short connections providing sufficient monitoring data?
 
-Provide actionable insights for the Hermes development team, focusing on:
-- Potential bugs or issues in Hermes code
-- Configuration changes that might improve peer retention
-- Network behavior patterns that suggest underlying problems
-- Specific client compatibility issues
+Provide actionable insights for improving Hermes as a network monitoring tool, focusing on:
+- How to make Hermes a more "attractive" peer that others want to keep connected
+- Configuration changes to improve monitoring stability and data collection
+- Understanding network dynamics that affect monitoring tools like Hermes
 
 IMPORTANT: Provide your response as clean HTML using Tailwind CSS classes. Use these specific classes:
 - Headers: h2 with "text-xl font-semibold text-gray-900 mt-6 mb-3", h3 with "text-lg font-semibold text-gray-900 mt-4 mb-2"
@@ -150,18 +154,18 @@ IMPORTANT: Provide your response as clean HTML using Tailwind CSS classes. Use t
 
 Do not include any markdown formatting - return only HTML.`
 
-	userPrompt := fmt.Sprintf(`Analyze this Hermes peer score report data for connection stability and churn issues:
+	userPrompt := fmt.Sprintf(`Analyze this Hermes network monitoring data to understand why peers are disconnecting from our monitoring tool:
 
 %s
 
 Please provide HTML sections for:
-1. **Peer Churn Assessment** - Are connections too short-lived? High reconnection rates?
-2. **Disconnect Pattern Analysis** - What are the main reasons peers are leaving? Any concerning patterns?
-3. **Client Compatibility Issues** - Do certain Ethereum clients have worse connection stability with Hermes?
-4. **Hermes Performance Indicators** - Signs of resource constraints, configuration problems, or code issues?
-5. **Actionable Recommendations** - Specific changes to improve Hermes peer retention and stability
+1. **Monitoring Impact Assessment** - How do short connection durations affect Hermes's ability to collect network data?
+2. **Peer Rejection Analysis** - Why are other clients dropping connections to Hermes? What patterns suggest Hermes is seen as undesirable?
+3. **Client Behavior Patterns** - Which client types maintain better connections with Hermes monitoring? Any biases in peer selection?
+4. **Network Integration Issues** - Is Hermes participating effectively in gossipsub without being too resource-intensive for other peers?
+5. **Monitoring Optimization** - How can Hermes become a better network participant to maintain stable monitoring connections?
 
-Focus on diagnosing potential problems with Hermes itself rather than general network health. Use proper HTML structure with the specified Tailwind classes.`, string(summaryJSON))
+Focus on improving Hermes as a passive network monitoring tool that other peers want to stay connected to. Use proper HTML structure with the specified Tailwind classes.`, string(summaryJSON))
 
 	request := ClaudeRequest{
 		Model:     c.Model,

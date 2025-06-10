@@ -1055,7 +1055,7 @@ func cleanAIHTML(content string) string {
 }
 
 // generateDataFile creates a JavaScript file containing the report data
-func generateDataFile(report PeerScoreReport, dataFile string) error {
+func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile string) error {
 	// Clean all peer data to ensure no invalid characters
 	cleanedPeers := make(map[string]*PeerStats)
 	for peerID, peer := range report.Peers {
@@ -1093,12 +1093,14 @@ func generateDataFile(report PeerScoreReport, dataFile string) error {
 		return fmt.Errorf("generated JavaScript content is suspiciously small: %d bytes", len(jsContent))
 	}
 
-	fmt.Printf("Writing data file: %s (size: %d bytes)\n", dataFile, len(jsContent))
+	log.Printf("Writing data file: %s (size: %d bytes)\n", dataFile, len(jsContent))
+
 	if err := os.WriteFile(dataFile, []byte(jsContent), 0644); err != nil {
 		return fmt.Errorf("failed to write data file: %w", err)
 	}
 
-	fmt.Printf("Data file written successfully\n")
+	log.Printf("Data file written successfully\n")
+
 	return nil
 }
 
@@ -1156,7 +1158,7 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 
 	// Generate the data file alongside the HTML report
 	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
-	if err := generateDataFile(report, dataFile); err != nil {
+	if err := generateDataFile(log, report, dataFile); err != nil {
 		return fmt.Errorf("failed to generate data file: %w", err)
 	}
 

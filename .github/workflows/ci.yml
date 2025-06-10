@@ -82,18 +82,27 @@ jobs:
       - name: Generate HTML Report
         run: |
           if [ -f peer-score-report.json ]; then
-            mkdir -p reports
-            # Copy JSON report
-            cp peer-score-report.json reports/
+            # Create timestamp-based directory structure
+            TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
+            DATE_DIR=$(date -u +"%Y-%m-%d")
+            
+            mkdir -p reports/$DATE_DIR
+            
+            # Copy JSON report with timestamp
+            cp peer-score-report.json reports/$DATE_DIR/peer-score-report-$TIMESTAMP.json
+            
             # Copy HTML report (should be generated automatically by tool)
             if [ -f peer-score-report.html ]; then
-              cp peer-score-report.html reports/index.html
+              # First fix the data file reference in the HTML to point to the timestamped version
+              sed "s/peer-score-report-data.js/peer-score-report-$TIMESTAMP-data.js/g" peer-score-report.html > reports/$DATE_DIR/peer-score-report-$TIMESTAMP.html
+              
               # Copy the JavaScript data file that's generated with the HTML report
               if [ -f peer-score-report-data.js ]; then
-                cp peer-score-report-data.js reports/
+                cp peer-score-report-data.js reports/$DATE_DIR/peer-score-report-$TIMESTAMP-data.js
               else
                 echo "Warning: JavaScript data file not found, HTML report may not function properly"
               fi
+              
             else
               echo "HTML report not found, tool may have failed to generate it"
               exit 1
@@ -102,6 +111,280 @@ jobs:
             echo "No JSON report found"
             exit 1
           fi
+
+      - name: Generate Historical Index
+        run: |
+          # Download existing reports from GitHub Pages to preserve history (last 28 days only)
+          echo "Attempting to preserve existing reports from GitHub Pages (28-day retention)..."
+          
+          # Create a temporary directory for existing reports
+          mkdir -p temp_existing
+          
+          # Try to download and extract existing report structure (only last 28 days)
+          for i in {0..27}; do
+            DATE=$(date -u -d "-$i days" +"%Y-%m-%d")
+            echo "Checking for reports from $DATE..."
+            
+            # Try to download JSON files for this date
+            JSON_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/$DATE/"
+            if curl -f -s -I "$JSON_URL" >/dev/null 2>&1; then
+              echo "Found reports for $DATE, downloading..."
+              mkdir -p "reports/$DATE"
+              
+              # Download any existing files for this date
+              # This is a best-effort approach
+              curl -f -s "https://${{ github.repository_owner }}.github.io/hermes-peer-score/$DATE/" > temp_page.html 2>/dev/null || true
+            fi
+          done
+          
+          # Clean up any directories older than 28 days
+          echo "Cleaning up reports older than 28 days..."
+          find reports -maxdepth 1 -type d -name "20*" | while read dir; do
+            DIR_DATE=$(basename "$dir")
+            if [ "$DIR_DATE" != "reports" ]; then
+              # Calculate if this directory is older than 28 days
+              DIR_EPOCH=$(date -d "$DIR_DATE" +%s 2>/dev/null || echo "0")
+              CUTOFF_EPOCH=$(date -d "28 days ago" +%s)
+              
+              if [ "$DIR_EPOCH" -lt "$CUTOFF_EPOCH" ] && [ "$DIR_EPOCH" -gt "0" ]; then
+                echo "Removing old reports from $DIR_DATE"
+                rm -rf "$dir"
+              fi
+            fi
+          done
+          
+          echo "Preservation and cleanup complete, generating new index..."
+          
+          # Generate the historical index page
+          cat > generate_index.py << 'EOF'
+          #!/usr/bin/env python3
+          import os
+          import json
+          import glob
+          from datetime import datetime
+          from pathlib import Path
+          
+          def parse_report_metadata(json_file):
+              """Extract metadata from a JSON report file"""
+              try:
+                  with open(json_file, 'r') as f:
+                      data = json.load(f)
+                  
+                  # Calculate success rate
+                  total_connections = data.get('total_connections', 0)
+                  successful_handshakes = data.get('successful_handshakes', 0)
+                  success_rate = (successful_handshakes / total_connections * 100) if total_connections > 0 else 0
+                  
+                  return {
+                      'unique_peers': len(data.get('peers', {})),
+                      'total_connections': total_connections,
+                      'successful_handshakes': successful_handshakes,
+                      'success_rate': round(success_rate, 1),
+                      'test_duration': round(data.get('duration', 0) / 1000000000, 1) if data.get('duration') else 0,
+                      'has_ai_analysis': bool(data.get('ai_analysis'))
+                  }
+              except Exception as e:
+                  print(f"Error parsing {json_file}: {e}")
+                  return None
+          
+          def generate_index():
+              """Generate the index.html file with all historical reports (28-day retention)"""
+              reports_dir = Path('reports')
+              reports = []
+              
+              # Calculate cutoff date (28 days ago)
+              from datetime import timedelta
+              cutoff_date = datetime.now() - timedelta(days=28)
+              
+              # Find all JSON reports
+              for json_file in reports_dir.glob('**/peer-score-report-*.json'):
+                  date_dir = json_file.parent.name
+                  filename = json_file.name
+                  
+                  # Extract timestamp from filename
+                  timestamp_part = filename.replace('peer-score-report-', '').replace('.json', '')
+                  
+                  try:
+                      # Parse the timestamp
+                      report_date = datetime.strptime(timestamp_part, '%Y-%m-%d_%H-%M-%S')
+                      
+                      # Skip reports older than 28 days
+                      if report_date < cutoff_date:
+                          print(f"Skipping old report: {timestamp_part}")
+                          continue
+                      
+                      # Get metadata
+                      metadata = parse_report_metadata(json_file)
+                      if metadata is None:
+                          continue
+                      
+                      # Determine file paths
+                      html_file = json_file.with_suffix('.html')
+                      data_file = str(json_file).replace('.json', '-data.js')
+                      
+                      html_path = f"{date_dir}/{html_file.name}" if html_file.exists() else None
+                      json_path = f"{date_dir}/{json_file.name}"
+                      
+                      reports.append({
+                          'date': report_date.strftime('%Y-%m-%d'),
+                          'timestamp': timestamp_part,
+                          'formatted_date': report_date.strftime('%B %d, %Y'),
+                          'html_path': html_path,
+                          'json_path': json_path,
+                          **metadata
+                      })
+                  except ValueError as e:
+                      print(f"Could not parse timestamp from {filename}: {e}")
+                      continue
+              
+              # Sort by date (newest first)
+              reports.sort(key=lambda x: x['date'], reverse=True)
+              
+              # Prepare template data
+              template_data = {
+                  'total_reports': len(reports),
+                  'latest_report': reports[0] if reports else None,
+                  'reports': reports,
+                  'last_updated': datetime.utcnow().strftime('%B %d, %Y at %H:%M UTC')
+              }
+              
+              # Read template
+              with open('index-template.html', 'r') as f:
+                  template = f.read()
+              
+              # Simple template replacement (since we don't have a full template engine)
+              # Replace {{.TotalReports}}
+              html = template.replace('{{.TotalReports}}', str(template_data['total_reports']))
+              html = html.replace('{{.LastUpdated}}', template_data['last_updated'])
+              
+              # Handle latest report section
+              import re
+              if template_data['latest_report']:
+                  latest = template_data['latest_report']
+                  # Replace the conditional block content
+                  latest_block = f'''<div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow p-6 mb-6">
+                      <div class="flex items-center justify-between">
+                          <div>
+                              <div class="flex items-center space-x-2 mb-2">
+                                  <h2 class="text-xl font-semibold text-blue-900">Latest Report</h2>
+                                  <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full status-badge">Live</span>
+                              </div>
+                              <p class="text-blue-700 mb-3">{latest['date']} - {latest['formatted_date']}</p>
+                              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                  <div>
+                                      <span class="text-blue-600 font-medium">Duration:</span>
+                                      <span class="text-blue-800">{latest['test_duration']}s</span>
+                                  </div>
+                                  <div>
+                                      <span class="text-blue-600 font-medium">Peers:</span>
+                                      <span class="text-blue-800">{latest['unique_peers']}</span>
+                                  </div>
+                                  <div>
+                                      <span class="text-blue-600 font-medium">Connections:</span>
+                                      <span class="text-blue-800">{latest['total_connections']}</span>
+                                  </div>
+                                  <div>
+                                      <span class="text-blue-600 font-medium">Success Rate:</span>
+                                      <span class="text-blue-800">{latest['success_rate']}%</span>
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="flex space-x-3">
+                              <a href="{latest['html_path'] or '#'}" 
+                                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                                  📊 View Report
+                              </a>
+                              <a href="{latest['json_path']}" 
+                                 class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700 transition-colors">
+                                  📄 Raw Data
+                              </a>
+                          </div>
+                      </div>
+                  </div>'''
+                  
+                  html = re.sub(r'\{\{if \.LatestReport\}\}.*?\{\{end\}\}', latest_block, html, flags=re.DOTALL)
+              else:
+                  # Remove the latest report section entirely
+                  html = re.sub(r'\{\{if \.LatestReport\}\}.*?\{\{end\}\}', '', html, flags=re.DOTALL)
+              
+              # Generate reports grid
+              reports_html = ''
+              for report in reports:
+                  ai_badge = '''<div class="mb-4">
+                      <span class="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                          🤖 AI Analysis Available
+                      </span>
+                  </div>''' if report['has_ai_analysis'] else ''
+                  
+                  success_color = 'text-green-600' if report['success_rate'] >= 80 else 'text-yellow-600' if report['success_rate'] >= 60 else 'text-red-600'
+                  
+                  html_link = f'href="{report["html_path"]}"' if report['html_path'] else 'href="#" onclick="alert(\'HTML report not available for this date\')"'
+                  
+                  reports_html += f'''
+                  <div class="report-card bg-white rounded-lg shadow-md p-6 data-report" 
+                       data-date="{report['date']}" 
+                       data-peers="{report['unique_peers']}" 
+                       data-connections="{report['total_connections']}" 
+                       data-success="{report['success_rate']}">
+                      <div class="flex items-center justify-between mb-4">
+                          <div>
+                              <h3 class="text-lg font-semibold text-gray-900">{report['formatted_date']}</h3>
+                              <p class="text-sm text-gray-600">{report['date']}</p>
+                          </div>
+                          <div class="text-right">
+                              <div class="text-xs text-gray-500">Duration</div>
+                              <div class="text-sm font-medium text-blue-600">{report['test_duration']}s</div>
+                          </div>
+                      </div>
+                      
+                      <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
+                          <div>
+                              <div class="text-gray-500">Unique Peers</div>
+                              <div class="font-semibold text-gray-900">{report['unique_peers']}</div>
+                          </div>
+                          <div>
+                              <div class="text-gray-500">Connections</div>
+                              <div class="font-semibold text-gray-900">{report['total_connections']}</div>
+                          </div>
+                          <div>
+                              <div class="text-gray-500">Success Rate</div>
+                              <div class="font-semibold {success_color}">{report['success_rate']}%</div>
+                          </div>
+                          <div>
+                              <div class="text-gray-500">Handshakes</div>
+                              <div class="font-semibold text-gray-900">{report['successful_handshakes']}/{report['total_connections']}</div>
+                          </div>
+                      </div>
+          
+                      {ai_badge}
+          
+                      <div class="flex space-x-2">
+                          <a {html_link}
+                             class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors">
+                              📊 View Report
+                          </a>
+                          <a href="{report['json_path']}" 
+                             class="inline-flex items-center justify-center px-3 py-2 bg-gray-600 text-white rounded text-sm font-medium hover:bg-gray-700 transition-colors">
+                              📄 JSON
+                          </a>
+                      </div>
+                  </div>
+                  '''
+              
+              # Replace the reports section
+              html = re.sub(r'\{\{range \.Reports\}\}.*?\{\{end\}\}', reports_html, html, flags=re.DOTALL)
+              
+              # Write the final index
+              with open('reports/index.html', 'w') as f:
+                  f.write(html)
+              
+              print(f"Generated index.html with {len(reports)} reports")
+          
+          if __name__ == '__main__':
+              generate_index()
+          EOF
+          
+          python3 generate_index.py
 
       - name: Upload Report Artifacts
         uses: actions/upload-artifact@v4
