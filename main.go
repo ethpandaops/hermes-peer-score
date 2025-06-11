@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -91,8 +92,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Create a discarded logger for the PeerScoreTool to blackhole its events
+	discardedLogger := logrus.New()
+	discardedLogger.SetOutput(io.Discard)
+
 	// Initialize peer score tool configuration.
-	tool := NewPeerScoreTool(ctx, log, PeerScoreConfig{
+	tool := NewPeerScoreTool(ctx, discardedLogger, PeerScoreConfig{
 		ToolConfig:     cfg,
 		ValidationMode: validationModeValue,
 		TestDuration:   *duration,
