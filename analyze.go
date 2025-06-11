@@ -112,9 +112,9 @@ func NewClaudeAPIClient(apiKey string) *ClaudeAPIClient {
 	model := os.Getenv("OPENROUTER_MODEL")
 	if model == "" {
 		// Try different DeepSeek model variants that might be available
-		model = "deepseek/deepseek-r1" // Default fallback
+		model = "deepseek/deepseek-r1-0528" // Default fallback
 	}
-	
+
 	return &ClaudeAPIClient{
 		APIKey:  apiKey,
 		BaseURL: "https://openrouter.ai/api/v1/chat/completions",
@@ -129,37 +129,55 @@ func (c *ClaudeAPIClient) AnalyzeReport(log logrus.FieldLogger, summary *ReportS
 		return "", fmt.Errorf("failed to marshal summary: %w", err)
 	}
 
-	systemPrompt := `You are an expert analyzing Ethereum beacon chain peer-to-peer network data from the Hermes monitoring tool.
+	systemPrompt := `You are an expert in peer-to-peer networking and Ethereum beacon chain analysis, specifically analyzing network monitoring data from the Hermes tool.
 
-CONTEXT: Hermes is a passive monitoring tool that connects to Prysm to observe network events. Other peers disconnect from Hermes, affecting monitoring capability.
+CRITICAL CONTEXT: Hermes is a GossipSub listener and network tracer that connects to an upstream Prysm beacon chain node to monitor network events. Hermes is NOT a full Ethereum client - it's a passive monitoring tool that subscribes to pubsub topics and traces protocol interactions. It "leeches" events from the network through its connection to Prysm.
 
-FOCUS:
-1. Why peers disconnect from Hermes
-2. Network participation effectiveness  
-3. Client behavior patterns
-4. Monitoring optimization strategies
+Your analysis should focus on understanding why OTHER PEERS are disconnecting FROM Hermes, not the other way around. Hermes wants to maintain stable connections to observe network behavior, so disconnections represent a loss of monitoring capability.
 
-RESPONSE FORMAT: Clean HTML only using Tailwind CSS classes:
-- Headers: h2 "text-xl font-semibold text-gray-900 mt-6 mb-3", h3 "text-lg font-semibold text-gray-900 mt-4 mb-2"
-- Paragraphs: p "text-gray-700 mb-3"
-- Lists: ul "list-disc ml-6 space-y-1 mb-3", li "text-gray-700"
-- Bold: strong "font-semibold"
-- Code: span "bg-gray-100 px-1 py-0.5 rounded text-sm font-mono"
+IMPORTANT NOTES:
 
-No markdown - HTML only.`
+- "Stream reset errors" are normal cleanup events after disconnections
+- "Client has too many peers" means OTHER clients are dropping Hermes because they've reached their peer limits
+- Hermes participates in the gossipsub network to monitor, but is not implementing peer scoring itself
 
-	userPrompt := fmt.Sprintf(`Analyze this Hermes monitoring data:
+Analyze the data with these priorities:
+
+1. **Monitoring Stability** - Why are peers dropping connections to Hermes? Is Hermes being seen as an undesirable peer?
+2. **Network Participation** - Is Hermes successfully participating in gossipsub to maintain monitoring visibility?
+3. **Peer Acceptance** - Are certain client types more/less likely to maintain connections with Hermes?
+4. **Configuration Impact** - Do Hermes settings affect how other peers perceive and interact with it?
+5. **Data Collection Quality** - Are short connections providing sufficient monitoring data?
+
+Provide actionable insights for improving Hermes as a network monitoring tool, focusing on:
+- How to make Hermes a more "attractive" peer that others want to keep connected
+- Configuration changes to improve monitoring stability and data collection
+- Understanding network dynamics that affect monitoring tools like Hermes
+
+IMPORTANT: Provide your response as clean HTML using Tailwind CSS classes. Use these specific classes:
+
+- Headers: h2 with "text-xl font-semibold text-gray-900 mt-6 mb-3", h3 with "text-lg font-semibold text-gray-900 mt-4 mb-2"
+- Paragraphs: p with "text-gray-700 mb-3"
+- Lists: ul with "list-disc ml-6 space-y-1 mb-3", li with "text-gray-700"
+- Bold text: strong with "font-semibold"
+- Code/metrics: span with "bg-gray-100 px-1 py-0.5 rounded text-sm font-mono"
+- This HTML will be embedded via Javascript, so to avoid any issues, ensure basic, clean HTML is used only
+
+Do not include any markdown formatting - return only HTML.`
+
+	userPrompt := fmt.Sprintf(`Analyze this Hermes network monitoring data to understand why peers are disconnecting from our monitoring tool:
 
 %s
 
-Provide HTML sections for:
-1. Monitoring Impact Assessment
-2. Peer Rejection Analysis  
-3. Client Behavior Patterns
-4. Network Integration Issues
-5. Monitoring Optimization
+Please provide HTML sections for:
 
-Use specified Tailwind classes.`, string(summaryJSON))
+1. **Monitoring Impact Assessment** - How do short connection durations affect Hermes's ability to collect network data?
+2. **Peer Rejection Analysis** - Why are other clients dropping connections to Hermes? What patterns suggest Hermes is seen as undesirable?
+3. **Client Behavior Patterns** - Which client types maintain better connections with Hermes monitoring? Any biases in peer selection?
+4. **Network Integration Issues** - Is Hermes participating effectively in gossipsub without being too resource-intensive for other peers?
+5. **Monitoring Optimization** - How can Hermes become a better network participant to maintain stable monitoring connections?
+
+Focus on improving Hermes as a passive network monitoring tool that other peers want to stay connected to. Use proper HTML structure with the specified Tailwind classes.`, string(summaryJSON))
 
 	request := ClaudeRequest{
 		Model:     c.Model,
