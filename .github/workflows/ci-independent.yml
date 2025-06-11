@@ -14,6 +14,14 @@ on:
         description: 'Chain'
         default: 'mainnet'
         required: false
+      region:
+        description: 'Prysm region'
+        type: choice
+        options:
+          - SFO
+          - SYD
+        default: 'SFO'
+        required: false
 
 jobs:
   independent-validation-test:
@@ -62,12 +70,23 @@ jobs:
         env:
           DURATION: ${{ github.event.inputs.duration || '30m' }}
           CHAIN: ${{ github.event.inputs.chain || 'mainnet' }}
+          REGION: ${{ github.event.inputs.region || 'SFO' }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "⚡ Running independent validation test (no Prysm dependency)"
+          # Select Prysm host based on region
+          if [ "$REGION" = "SYD" ]; then
+            PRYSM_HOST="${{ secrets.PRYSM_HOST_SYD }}"
+          else
+            PRYSM_HOST="${{ secrets.PRYSM_HOST_SFO }}"
+          fi
+
+          echo "⚡ Running independent validation test using Prysm host in $REGION region (uses Prysm for beacon data, validates internally)"
 
           ./peer-score-tool \
             --validation-mode=independent \
+            --prysm-host="$PRYSM_HOST" \
+            --prysm-http-port=443 \
+            --prysm-grpc-port=443 \
             --duration="$DURATION"
 
       - name: Generate HTML Report
