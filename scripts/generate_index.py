@@ -285,14 +285,22 @@ def generate_index():
         date_dir = json_file.parent.name
         filename = json_file.name
 
-        # Extract timestamp from filename (handle validation mode suffixes)
+        # Extract timestamp from filename - handle both old and new formats
         timestamp_part = filename.replace('peer-score-report-', '').replace('.json', '')
 
-        # Remove validation mode suffixes if present
-        for suffix in ['-delegated', '-independent']:
-            if timestamp_part.endswith(suffix):
-                timestamp_part = timestamp_part[:-len(suffix)]
-                break
+        # Handle new format: delegated-YYYY-MM-DD_HH-MM-SS or independent-YYYY-MM-DD_HH-MM-SS
+        if timestamp_part.startswith('delegated-') or timestamp_part.startswith('independent-'):
+            # New format: remove validation mode prefix
+            if timestamp_part.startswith('delegated-'):
+                timestamp_part = timestamp_part[len('delegated-'):]
+            elif timestamp_part.startswith('independent-'):
+                timestamp_part = timestamp_part[len('independent-'):]
+        else:
+            # Old format: remove validation mode suffixes if present
+            for suffix in ['-delegated', '-independent']:
+                if timestamp_part.endswith(suffix):
+                    timestamp_part = timestamp_part[:-len(suffix)]
+                    break
 
         try:
             # Parse the timestamp
