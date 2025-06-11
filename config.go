@@ -166,7 +166,7 @@ func buildToolConfig() *ToolConfig {
 	return cfg
 }
 
-// GetValidationConfigs returns configuration mappings for each validation mode
+// GetValidationConfigs returns configuration mappings for each validation mode.
 func GetValidationConfigs() map[ValidationMode]ValidationConfig {
 	return map[ValidationMode]ValidationConfig{
 		ValidationModeDelegated: {
@@ -189,39 +189,19 @@ func GetValidationConfigs() map[ValidationMode]ValidationConfig {
 	}
 }
 
-// ValidateValidationMode checks if the provided validation mode is valid
+// ValidateValidationMode checks if the provided validation mode is valid.
 func ValidateValidationMode(mode string) (ValidationMode, error) {
-	validationMode := ValidationMode(mode)
-	switch validationMode {
+	valMode := ValidationMode(mode)
+
+	switch valMode {
 	case ValidationModeDelegated, ValidationModeIndependent:
-		return validationMode, nil
+		return valMode, nil
 	default:
 		return "", errors.New("invalid validation mode: must be 'delegated' or 'independent'")
 	}
 }
 
-// GenerateValidationAwareFilename creates a filename that includes the validation mode for easy identification
-func GenerateValidationAwareFilename(validationMode ValidationMode, baseFilename string) string {
-	// Extract extension and name parts
-	parts := strings.Split(baseFilename, ".")
-	if len(parts) < 2 {
-		// No extension, just append mode
-		return fmt.Sprintf("%s-%s", baseFilename, string(validationMode))
-	}
-
-	// Insert validation mode before the extension
-	nameWithoutExt := strings.Join(parts[:len(parts)-1], ".")
-	ext := parts[len(parts)-1]
-
-	// Check if the filename already includes the validation mode
-	if strings.Contains(nameWithoutExt, fmt.Sprintf("-%s", string(validationMode))) {
-		return baseFilename // Already has validation mode
-	}
-
-	return fmt.Sprintf("%s-%s.%s", nameWithoutExt, string(validationMode), ext)
-}
-
-// GenerateTimestampedFilename creates a filename with timestamp and validation mode
+// GenerateTimestampedFilename creates a filename with timestamp and validation mode.
 func GenerateTimestampedFilename(validationMode ValidationMode, baseFilename string, timestamp time.Time) string {
 	// Extract extension and name parts
 	parts := strings.Split(baseFilename, ".")
@@ -235,19 +215,4 @@ func GenerateTimestampedFilename(validationMode ValidationMode, baseFilename str
 	ext := parts[len(parts)-1]
 
 	return fmt.Sprintf("%s-%s-%s.%s", nameWithoutExt, string(validationMode), timestamp.Format("2006-01-02_15-04-05"), ext)
-}
-
-// ParseValidationModeFromFilename extracts validation mode from a filename
-func ParseValidationModeFromFilename(filename string) (ValidationMode, error) {
-	// Check for delegated validation mode
-	if strings.Contains(filename, "-delegated-") || strings.Contains(filename, "-delegated.") {
-		return ValidationModeDelegated, nil
-	}
-
-	// Check for independent validation mode
-	if strings.Contains(filename, "-independent-") || strings.Contains(filename, "-independent.") {
-		return ValidationModeIndependent, nil
-	}
-
-	return "", fmt.Errorf("no validation mode found in filename: %s", filename)
 }

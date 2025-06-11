@@ -144,7 +144,7 @@ func (pst *PeerScoreTool) StartHermes(ctx context.Context) error {
 	return nil
 }
 
-// applyValidationConfig applies validation-specific configuration overrides to the Hermes config
+// applyValidationConfig applies validation-specific configuration overrides to the Hermes config.
 func (pst *PeerScoreTool) applyValidationConfig(cfg *eth.NodeConfig, validationConfig ValidationConfig) {
 	// Log the validation mode being applied
 	pst.log.WithFields(logrus.Fields{
@@ -173,6 +173,7 @@ func (pst *PeerScoreTool) applyModeSpecificValidationConfig(cfg *eth.NodeConfig,
 		}
 	default:
 		pst.log.Warnf("Unknown validation mode: %s", validationConfig.Mode)
+
 		return
 	}
 

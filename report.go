@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/sirupsen/logrus"
 )
@@ -45,6 +44,7 @@ func saveJSONReport(report PeerScoreReport) error {
 	}
 
 	fmt.Printf("JSON report saved: %s\n", filename)
+
 	return nil
 }
 
@@ -80,7 +80,7 @@ func printReportSummary(_ context.Context, log logrus.FieldLogger, report PeerSc
 	log.Infof("Total Connections: %d", report.TotalConnections)
 	log.Infof("Successful Handshakes: %d", report.SuccessfulHandshakes)
 	log.Infof("Failed Handshakes: %d", report.FailedHandshakes)
-	
+
 	// Always use timestamped filenames with fixed base name
 	filename := GenerateTimestampedFilename(report.ValidationMode, "peer-score-report.json", report.Timestamp)
 	log.Infof("Report saved to: %s", filename)

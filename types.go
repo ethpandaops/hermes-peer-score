@@ -4,15 +4,15 @@ import (
 	"time"
 )
 
-// ValidationMode represents the type of validation approach used by Hermes
+// ValidationMode represents the type of validation approach used by Hermes.
 type ValidationMode string
 
 const (
-	ValidationModeDelegated   ValidationMode = "delegated"   // Delegates validation processing to Prysm
-	ValidationModeIndependent ValidationMode = "independent" // Uses Prysm for beacon state but validates internally
+	ValidationModeDelegated   ValidationMode = "delegated"   // Delegates validation processing to Prysm.
+	ValidationModeIndependent ValidationMode = "independent" // Uses Prysm for beacon state but validates internally.
 )
 
-// ValidationConfig holds configuration specific to a validation mode
+// ValidationConfig holds configuration specific to a validation mode.
 type ValidationConfig struct {
 	Mode            ValidationMode         `json:"mode"`
 	HermesVersion   string                 `json:"hermes_version"`

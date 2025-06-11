@@ -1267,6 +1267,7 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 					return float64(va) * vb
 				}
 			}
+
 			return 0
 		},
 		"div": func(a, b interface{}) float64 {
@@ -1283,6 +1284,7 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 					return float64(va) / vb
 				}
 			}
+
 			return 0
 		},
 	})

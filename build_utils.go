@@ -8,12 +8,13 @@ import (
 	"strings"
 )
 
-// UpdateGoModForValidationMode updates go.mod to use the appropriate Hermes version for the given validation mode
+// UpdateGoModForValidationMode updates go.mod to use the appropriate Hermes version for the given validation mode.
 func UpdateGoModForValidationMode(validationMode ValidationMode) error {
 	validationConfig := GetValidationConfigs()[validationMode]
 
 	// Define the replacement line based on validation mode
 	var newReplaceLine string
+
 	switch validationMode {
 	case ValidationModeDelegated:
 		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250513093811-320c1c3ee6e2"
@@ -31,12 +32,15 @@ func UpdateGoModForValidationMode(validationMode ValidationMode) error {
 	defer file.Close()
 
 	var lines []string
+
 	scanner := bufio.NewScanner(file)
 	replaceLine := regexp.MustCompile(`^replace\s+github\.com/probe-lab/hermes\s+=>\s+github\.com/ethpandaops/hermes\s+v.+$`)
 
 	found := false
+
 	for scanner.Scan() {
 		line := scanner.Text()
+
 		if replaceLine.MatchString(line) {
 			lines = append(lines, newReplaceLine)
 			found = true
@@ -61,11 +65,14 @@ func UpdateGoModForValidationMode(validationMode ValidationMode) error {
 				newLines = append(newLines, newReplaceLine)
 			}
 		}
+
 		lines = newLines
 	}
 
 	// Write the updated go.mod file
 	output := strings.Join(lines, "\n")
+
+	//nolint:gosec // controlled.
 	if err := os.WriteFile("go.mod", []byte(output), 0644); err != nil {
 		return fmt.Errorf("failed to write go.mod: %w", err)
 	}
@@ -76,7 +83,7 @@ func UpdateGoModForValidationMode(validationMode ValidationMode) error {
 	return nil
 }
 
-// GetCurrentHermesVersion extracts the current Hermes version from go.mod
+// GetCurrentHermesVersion extracts the current Hermes version from go.mod.
 func GetCurrentHermesVersion() (string, error) {
 	file, err := os.Open("go.mod")
 	if err != nil {
@@ -87,6 +94,7 @@ func GetCurrentHermesVersion() (string, error) {
 	replaceLine := regexp.MustCompile(`^replace\s+github\.com/probe-lab/hermes\s+=>\s+github\.com/ethpandaops/hermes\s+(v.+)$`)
 
 	scanner := bufio.NewScanner(file)
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if matches := replaceLine.FindStringSubmatch(line); len(matches) > 1 {
@@ -101,7 +109,7 @@ func GetCurrentHermesVersion() (string, error) {
 	return "", fmt.Errorf("hermes replace directive not found in go.mod")
 }
 
-// ValidateGoModForValidationMode checks if go.mod is correctly configured for the validation mode
+// ValidateGoModForValidationMode checks if go.mod is correctly configured for the validation mode.
 func ValidateGoModForValidationMode(validationMode ValidationMode) error {
 	currentVersion, err := GetCurrentHermesVersion()
 	if err != nil {

@@ -52,19 +52,25 @@ func main() {
 	// Handle go.mod management flags
 	if *updateGoMod {
 		log.Infof("Updating go.mod for validation mode: %s", validationModeValue)
+
 		if err := UpdateGoModForValidationMode(validationModeValue); err != nil {
 			log.Fatalf("Failed to update go.mod: %v", err)
 		}
+
 		log.Info("Go.mod updated successfully")
+
 		return
 	}
 
 	if *validateGoMod {
 		log.Infof("Validating go.mod for validation mode: %s", validationModeValue)
+
 		if err := ValidateGoModForValidationMode(validationModeValue); err != nil {
 			log.Fatalf("Go.mod validation failed: %v", err)
 		}
+
 		log.Info("Go.mod validation passed")
+
 		return
 	}
 
@@ -237,11 +243,12 @@ func logCurrentStatus(_ context.Context, log logrus.FieldLogger, tool *PeerScore
 	}).Infof("Status report")
 }
 
-// validateOrUpdateGoMod checks if go.mod is configured correctly for the validation mode
+// validateOrUpdateGoMod checks if go.mod is configured correctly for the validation mode.
 func validateOrUpdateGoMod(log logrus.FieldLogger, validationMode ValidationMode) error {
 	// First, check if go.mod is already correctly configured
 	if err := ValidateGoModForValidationMode(validationMode); err == nil {
 		log.Infof("Go module is correctly configured for %s validation mode", validationMode)
+
 		return nil
 	}
 
@@ -255,15 +262,16 @@ func validateOrUpdateGoMod(log logrus.FieldLogger, validationMode ValidationMode
 		"expected_version": expectedConfig.HermesVersion,
 	}).Info("Go module needs update for validation mode")
 
-	// In CI or automated environments, we might want to auto-update
-	// For now, just provide guidance
+	// Provide guidance.
 	log.Warnf("To use %s validation mode, update go.mod with:", validationMode)
+
 	switch validationMode {
 	case ValidationModeDelegated:
 		log.Warn("replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250513093811-320c1c3ee6e2")
 	case ValidationModeIndependent:
 		log.Warn("replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250611021139-b3e6fc7d4d79")
 	}
+
 	log.Warn("Then run: go mod tidy")
 
 	return nil
