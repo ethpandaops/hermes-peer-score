@@ -1144,6 +1144,7 @@ func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile s
 
 	// Create the data structure that will be embedded in the JS file
 	summaryData := extractSummaryData(report)
+
 	log.Printf("Summary extraction completed")
 
 	data := map[string]interface{}{
@@ -1154,10 +1155,12 @@ func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile s
 	}
 
 	log.Printf("Starting JSON marshaling...")
+
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
+
 	log.Printf("JSON marshaling completed, data size: %d bytes", len(jsonData))
 
 	// Validate that the JSON is valid by unmarshaling it
@@ -1214,8 +1217,10 @@ func GenerateHTMLReportFromReport(log logrus.FieldLogger, report PeerScoreReport
 
 	// Generate AI analysis if API key is provided and analysis is not pre-generated
 	var finalAIAnalysis string
+
 	if aiAnalysis != "" {
 		log.Printf("Using pre-generated AI analysis")
+
 		finalAIAnalysis = aiAnalysis
 	} else if apiKey != "" {
 		log.Printf("Generating AI analysis...")
@@ -1254,14 +1259,17 @@ func GenerateHTMLReportFromReport(log logrus.FieldLogger, report PeerScoreReport
 		case result := <-resultChan:
 			if result.err != nil {
 				log.Printf("Warning: Failed to generate AI analysis: %v", result.err)
+
 				finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
 			} else {
 				// Clean the AI-generated content to prevent JavaScript errors
 				finalAIAnalysis = cleanAIHTML(result.analysis)
+
 				log.Printf("AI analysis generated successfully")
 			}
 		case <-aiCtx.Done():
 			log.Printf("Warning: AI analysis timed out after 120 seconds")
+
 			finalAIAnalysis = "⚠️ AI analysis timed out. This may be due to network issues or large dataset size in CI environment."
 		}
 	} else {
@@ -1270,10 +1278,13 @@ func GenerateHTMLReportFromReport(log logrus.FieldLogger, report PeerScoreReport
 
 	// Generate the data file alongside the HTML report
 	log.Printf("Generating data file...")
+
 	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
+
 	if gerr := generateDataFile(log, report, dataFile); gerr != nil {
 		return fmt.Errorf("failed to generate data file: %w", gerr)
 	}
+
 	log.Printf("Data file generation completed")
 
 	// Prepare template data with summary information only
@@ -1402,6 +1413,7 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 
 	// Generate the data file alongside the HTML report
 	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
+
 	if gerr := generateDataFile(log, report, dataFile); gerr != nil {
 		return fmt.Errorf("failed to generate data file: %w", gerr)
 	}
