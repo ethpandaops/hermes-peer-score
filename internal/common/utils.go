@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -21,6 +22,25 @@ func GetPeerID(event *host.TraceEvent) string {
 	peerID := extractPeerIDFromStruct(event.Payload)
 	if peerID == "" {
 		return unknown
+	}
+
+	// Debug: log both the raw peerID and whether it looks like binary data
+	if len(peerID) > 20 && strings.Contains(peerID, "\u0000") {
+		// This looks like binary data, try to extract it properly using the old method
+		if payload, ok := event.Payload.(map[string]any); ok {
+			if remotePeerID, found := payload["PeerID"]; found {
+				converted := fmt.Sprintf("%v", remotePeerID)
+				if converted != peerID && len(converted) > 20 {
+					return converted
+				}
+			}
+			if remotePeerID, found := payload["RemotePeer"]; found {
+				converted := fmt.Sprintf("%v", remotePeerID)
+				if converted != peerID && len(converted) > 20 {
+					return converted
+				}
+			}
+		}
 	}
 
 	return peerID

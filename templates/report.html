@@ -303,7 +303,8 @@
 
             if (typeof reportData !== 'undefined') {
                 console.log('Report data loaded successfully:', Object.keys(reportData));
-                allPeers = reportData.peers || [];
+                // Convert peers object to array for the UI
+                allPeers = reportData.peers ? Object.values(reportData.peers) : [];
                 filteredPeers = [...allPeers];
                 sortPeers();
                 renderPeerList();
@@ -517,8 +518,8 @@
 
             // Simulate async loading of detailed data
             setTimeout(() => {
-                if (typeof reportData !== 'undefined' && reportData.detailedPeers && reportData.detailedPeers[peerId]) {
-                    renderPeerDetails(reportData.detailedPeers[peerId]);
+                if (typeof reportData !== 'undefined' && reportData.peers && reportData.peers[peerId]) {
+                    renderPeerDetails(reportData.peers[peerId]);
                 } else {
                     document.getElementById('modalContent').innerHTML =
                         '<div class="text-center py-8 text-red-500">Detailed peer data not found</div>';

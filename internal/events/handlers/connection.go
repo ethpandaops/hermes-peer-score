@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/ethpandaops/xatu/pkg/proto/libp2p"
 	"github.com/probe-lab/hermes/host"
 	"github.com/sirupsen/logrus"
 
@@ -33,13 +32,7 @@ func (h *ConnectionHandler) EventType() string {
 
 // HandleEvent processes a connection event
 func (h *ConnectionHandler) HandleEvent(ctx context.Context, event *host.TraceEvent) error {
-	data, err := libp2p.TraceEventToConnected(event)
-	if err != nil {
-		h.logger.WithError(err).Error("failed to convert event to connected event")
-		return err
-	}
-
-	peerID := data.RemotePeer.GetValue()
+	peerID := common.GetPeerID(event)
 	now := time.Now()
 
 	h.logger.WithFields(logrus.Fields{

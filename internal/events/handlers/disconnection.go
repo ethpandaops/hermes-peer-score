@@ -4,12 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/ethpandaops/xatu/pkg/proto/libp2p"
 	"github.com/probe-lab/hermes/host"
 	"github.com/sirupsen/logrus"
 
 	"github.com/ethpandaops/hermes-peer-score/internal/common"
-	peerpkg "github.com/ethpandaops/hermes-peer-score/internal/peer"
+	"github.com/ethpandaops/hermes-peer-score/internal/peer"
 )
 
 // DisconnectionHandler handles peer disconnection events
@@ -33,19 +32,13 @@ func (h *DisconnectionHandler) EventType() string {
 
 // HandleEvent processes a disconnection event
 func (h *DisconnectionHandler) HandleEvent(ctx context.Context, event *host.TraceEvent) error {
-	data, err := libp2p.TraceEventToDisconnected(event)
-	if err != nil {
-		h.logger.WithError(err).Error("failed to convert event to disconnected event")
-		return err
-	}
-
-	peerID := data.RemotePeer.GetValue()
+	peerID := common.GetPeerID(event)
 	now := time.Now()
 
 	h.logger.WithField("peer_id", common.FormatShortPeerID(peerID)).Debug("Processing disconnection event")
 
 	// Check if peer exists
-	peer, exists := h.tool.GetPeer(peerID)
+	_, exists := h.tool.GetPeer(peerID)
 	if !exists {
 		h.logger.WithField("peer_id", common.FormatShortPeerID(peerID)).Warn("Received disconnection event for peer we've never seen")
 		return nil
@@ -53,7 +46,7 @@ func (h *DisconnectionHandler) HandleEvent(ctx context.Context, event *host.Trac
 
 	// Update peer to mark current session as disconnected
 	h.tool.UpdatePeer(peerID, func(p interface{}) {
-		if stats, ok := p.(*peerpkg.Stats); ok {
+		if stats, ok := p.(*peer.Stats); ok {
 			h.markSessionDisconnected(stats, now)
 		}
 	})
@@ -62,13 +55,11 @@ func (h *DisconnectionHandler) HandleEvent(ctx context.Context, event *host.Trac
 	h.tool.IncrementEventCount(peerID, "DISCONNECTED")
 
 	h.logger.WithField("peer_id", common.FormatShortPeerID(peerID)).Info("Peer disconnected")
-	
-	_ = peer // Use peer to avoid unused variable warning
 	return nil
 }
 
 // markSessionDisconnected marks the current active session as disconnected
-func (h *DisconnectionHandler) markSessionDisconnected(peerStats *peerpkg.Stats, disconnectedAt time.Time) {
+func (h *DisconnectionHandler) markSessionDisconnected(peerStats *peer.Stats, disconnectedAt time.Time) {
 	// Find the most recent active session and mark it as disconnected
 	for i := len(peerStats.ConnectionSessions) - 1; i >= 0; i-- {
 		session := &peerStats.ConnectionSessions[i]
