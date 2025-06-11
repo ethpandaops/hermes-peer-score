@@ -68,7 +68,7 @@ func (n *ToolConfig) SetDefaults() {
 	}
 
 	if n.MaxPeers == 0 {
-		n.MaxPeers = 30
+		n.MaxPeers = 80
 	}
 
 	if n.DialConcurrency == 0 {
