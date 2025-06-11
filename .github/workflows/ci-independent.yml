@@ -73,13 +73,13 @@ jobs:
       - name: Generate HTML Report
         run: |
           # Find the timestamped independent JSON file
-          INDEPENDENT_JSON=$(ls peer-score-report-*-independent-*.json 2>/dev/null | head -1)
+          INDEPENDENT_JSON=$(ls peer-score-report-independent-*.json 2>/dev/null | head -1)
           if [ -n "$INDEPENDENT_JSON" ] && [ -f "$INDEPENDENT_JSON" ]; then
             echo "📊 Generating HTML report for independent validation"
             echo "Found JSON report: $INDEPENDENT_JSON"
             
             # Extract the generated timestamp from the filename
-            GENERATED_TIMESTAMP=$(echo "$INDEPENDENT_JSON" | sed 's/.*-independent-\(.*\)\.json/\1/')
+            GENERATED_TIMESTAMP=$(echo "$INDEPENDENT_JSON" | sed 's/peer-score-report-independent-\(.*\)\.json/\1/')
             echo "Extracted timestamp: $GENERATED_TIMESTAMP"
             
             # Create timestamp-based directory structure
@@ -92,13 +92,13 @@ jobs:
             cp "$INDEPENDENT_JSON" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-independent.json"
 
             # Find and copy HTML report (should be generated automatically by tool)
-            INDEPENDENT_HTML=$(ls peer-score-report-*-independent-*.html 2>/dev/null | head -1)
+            INDEPENDENT_HTML=$(ls peer-score-report-independent-*.html 2>/dev/null | head -1)
             if [ -n "$INDEPENDENT_HTML" ] && [ -f "$INDEPENDENT_HTML" ]; then
               echo "Found HTML report: $INDEPENDENT_HTML"
               cp "$INDEPENDENT_HTML" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-independent.html"
 
               # Copy the JavaScript data file that's generated with the HTML report
-              INDEPENDENT_JS=$(ls peer-score-report-*-independent-*-data.js 2>/dev/null | head -1)
+              INDEPENDENT_JS=$(ls peer-score-report-independent-*-data.js 2>/dev/null | head -1)
               if [ -n "$INDEPENDENT_JS" ] && [ -f "$INDEPENDENT_JS" ]; then
                 echo "Found JS data file: $INDEPENDENT_JS"
                 cp "$INDEPENDENT_JS" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-independent-data.js"
@@ -180,7 +180,7 @@ jobs:
         id: results
         run: |
           # Find the timestamped independent JSON file
-          INDEPENDENT_JSON=$(ls peer-score-report-*-independent-*.json 2>/dev/null | head -1)
+          INDEPENDENT_JSON=$(ls peer-score-report-independent-*.json 2>/dev/null | head -1)
           if [ -n "$INDEPENDENT_JSON" ] && [ -f "$INDEPENDENT_JSON" ]; then
             echo "Parsing results from: $INDEPENDENT_JSON"
             # Extract data from the new JSON format

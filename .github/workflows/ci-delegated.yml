@@ -102,7 +102,7 @@ jobs:
           ls -la *delegated*.json 2>/dev/null || echo "No delegated .json files found"
           
           # Find the timestamped delegated JSON file
-          DELEGATED_JSON=$(ls peer-score-report-*-delegated-*.json 2>/dev/null | head -1)
+          DELEGATED_JSON=$(ls peer-score-report-delegated-*.json 2>/dev/null | head -1)
           if [ -n "$DELEGATED_JSON" ] && [ -f "$DELEGATED_JSON" ]; then
             echo "📊 Generating HTML report for delegated validation"
             
@@ -123,20 +123,20 @@ jobs:
             echo "Found JSON report: $DELEGATED_JSON"
             
             # Extract the generated timestamp from the filename
-            GENERATED_TIMESTAMP=$(echo "$DELEGATED_JSON" | sed 's/.*-delegated-\(.*\)\.json/\1/')
+            GENERATED_TIMESTAMP=$(echo "$DELEGATED_JSON" | sed 's/peer-score-report-delegated-\(.*\)\.json/\1/')
             echo "Extracted timestamp: $GENERATED_TIMESTAMP"
             
             # Copy JSON report with the same timestamp format
             cp "$DELEGATED_JSON" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated.json"
 
             # Find and copy HTML report (should be generated automatically by tool)
-            DELEGATED_HTML=$(ls peer-score-report-*-delegated-*.html 2>/dev/null | head -1)
+            DELEGATED_HTML=$(ls peer-score-report-delegated-*.html 2>/dev/null | head -1)
             if [ -n "$DELEGATED_HTML" ] && [ -f "$DELEGATED_HTML" ]; then
               echo "Found HTML report: $DELEGATED_HTML"
               cp "$DELEGATED_HTML" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated.html"
 
               # Copy the JavaScript data file that's generated with the HTML report
-              DELEGATED_JS=$(ls peer-score-report-*-delegated-*-data.js 2>/dev/null | head -1)
+              DELEGATED_JS=$(ls peer-score-report-delegated-*-data.js 2>/dev/null | head -1)
               if [ -n "$DELEGATED_JS" ] && [ -f "$DELEGATED_JS" ]; then
                 echo "Found JS data file: $DELEGATED_JS"
                 cp "$DELEGATED_JS" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated-data.js"
@@ -221,7 +221,7 @@ jobs:
         id: results
         run: |
           # Find the timestamped delegated JSON file
-          DELEGATED_JSON=$(ls peer-score-report-*-delegated-*.json 2>/dev/null | head -1)
+          DELEGATED_JSON=$(ls peer-score-report-delegated-*.json 2>/dev/null | head -1)
           if [ -n "$DELEGATED_JSON" ] && [ -f "$DELEGATED_JSON" ]; then
             echo "Parsing results from: $DELEGATED_JSON"
             # Extract data from the new JSON format
