@@ -21,7 +21,7 @@ func generateReports(ctx context.Context, log logrus.FieldLogger, tool *PeerScor
 	}
 
 	// Generate HTML report from JSON.
-	if err := generateHTMLReport(log); err != nil {
+	if err := generateHTMLReport(log, report); err != nil {
 		log.Printf("Failed to generate HTML report: %v", err)
 	}
 
@@ -36,17 +36,34 @@ func saveJSONReport(report PeerScoreReport) error {
 		return fmt.Errorf("failed to marshal report: %w", err)
 	}
 
+	// Generate filename based on timestamp flag
+	var filename string
+	if *timestampFiles {
+		filename = GenerateTimestampedFilename(report.ValidationMode, *outputFile, report.Timestamp)
+	} else {
+		filename = GenerateValidationAwareFilename(report.ValidationMode, *outputFile)
+	}
+
 	//nolint:gosec // Controlled input.
-	if err := os.WriteFile(*outputFile, reportJSON, 0644); err != nil {
+	if err := os.WriteFile(filename, reportJSON, 0644); err != nil {
 		return fmt.Errorf("failed to write report file: %w", err)
 	}
 
+	fmt.Printf("JSON report saved: %s\n", filename)
 	return nil
 }
 
 // generateHTMLReport creates an HTML version of the JSON report.
-func generateHTMLReport(log logrus.FieldLogger) error {
-	htmlFile := strings.Replace(*outputFile, ".json", ".html", 1)
+func generateHTMLReport(log logrus.FieldLogger, report PeerScoreReport) error {
+	// Generate filenames based on timestamp flag
+	var jsonFile, htmlFile string
+	if *timestampFiles {
+		jsonFile = GenerateTimestampedFilename(report.ValidationMode, *outputFile, report.Timestamp)
+		htmlFile = GenerateTimestampedFilename(report.ValidationMode, strings.Replace(*outputFile, ".json", ".html", 1), report.Timestamp)
+	} else {
+		jsonFile = GenerateValidationAwareFilename(report.ValidationMode, *outputFile)
+		htmlFile = GenerateValidationAwareFilename(report.ValidationMode, strings.Replace(*outputFile, ".json", ".html", 1))
+	}
 
 	// Get API key for AI analysis (optional)
 	apiKey := *claudeAPIKey
@@ -58,20 +75,29 @@ func generateHTMLReport(log logrus.FieldLogger) error {
 	if apiKey != "" && !*skipAI {
 		fmt.Printf("API key found - generating HTML with AI analysis\n")
 
-		return GenerateHTMLReportWithAI(log, *outputFile, htmlFile, apiKey, "")
+		return GenerateHTMLReportWithAI(log, jsonFile, htmlFile, apiKey, "")
 	} else {
 		fmt.Printf("No API key or AI disabled - generating HTML without AI analysis\n")
 	}
 
-	return GenerateHTMLReport(log, *outputFile, htmlFile)
+	return GenerateHTMLReport(log, jsonFile, htmlFile)
 }
 
 // printReportSummary displays a comprehensive summary of the test results.
 func printReportSummary(_ context.Context, log logrus.FieldLogger, report PeerScoreReport) {
 	log.Infof("Peer score test results:")
-	log.Infof("Test Duration: %v\n", report.Duration)
-	log.Infof("Total Connections: %d\n", report.TotalConnections)
-	log.Infof("Successful Handshakes: %d\n", report.SuccessfulHandshakes)
-	log.Infof("Failed Handshakes: %d\n", report.FailedHandshakes)
-	log.Infof("Report saved to: %s\n", *outputFile)
+	log.Infof("Validation Mode: %s", report.ValidationMode)
+	log.Infof("Test Duration: %v", report.Duration)
+	log.Infof("Total Connections: %d", report.TotalConnections)
+	log.Infof("Successful Handshakes: %d", report.SuccessfulHandshakes)
+	log.Infof("Failed Handshakes: %d", report.FailedHandshakes)
+	
+	// Show filename based on timestamp flag
+	var filename string
+	if *timestampFiles {
+		filename = GenerateTimestampedFilename(report.ValidationMode, *outputFile, report.Timestamp)
+	} else {
+		filename = GenerateValidationAwareFilename(report.ValidationMode, *outputFile)
+	}
+	log.Infof("Report saved to: %s", filename)
 }

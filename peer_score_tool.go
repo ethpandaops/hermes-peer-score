@@ -104,6 +104,10 @@ func (pst *PeerScoreTool) StartHermes(ctx context.Context) error {
 	cfg.Tracer = otel.GetTracerProvider().Tracer("hermes")
 	cfg.Meter = otel.GetMeterProvider().Meter("hermes")
 
+	// Apply validation-specific configuration overrides
+	validationConfig := GetValidationConfigs()[pst.config.ValidationMode]
+	pst.applyValidationConfig(cfg, validationConfig)
+
 	if err = cfg.Validate(); err != nil {
 		return fmt.Errorf("invalid Hermes node config: %w", err)
 	}
@@ -138,6 +142,51 @@ func (pst *PeerScoreTool) StartHermes(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+// applyValidationConfig applies validation-specific configuration overrides to the Hermes config
+func (pst *PeerScoreTool) applyValidationConfig(cfg *eth.NodeConfig, validationConfig ValidationConfig) {
+	// Log the validation mode being applied
+	pst.log.WithFields(logrus.Fields{
+		"validation_mode":  validationConfig.Mode,
+		"hermes_version":   validationConfig.HermesVersion,
+		"config_overrides": validationConfig.ConfigOverrides,
+	}).Info("Applying validation-specific configuration")
+
+	// Apply mode-specific configuration
+	pst.applyModeSpecificValidationConfig(cfg, validationConfig)
+}
+
+// applyModeSpecificValidationConfig applies configuration specific to the validation mode.
+func (pst *PeerScoreTool) applyModeSpecificValidationConfig(cfg *eth.NodeConfig, validationConfig ValidationConfig) {
+	switch validationConfig.Mode {
+	case ValidationModeIndependent:
+		pst.log.Info("Configuring independent validation mode - Hermes will use Prysm for beacon state but perform validation internally")
+		pst.log.Info("Independent validation configuration applied - will fetch beacon state via HTTP and validate internally")
+	case ValidationModeDelegated:
+		pst.log.Info("Configuring delegated validation mode - Hermes will send validation requests to Prysm for processing")
+		pst.log.Info("Delegated validation configuration applied - will delegate validation processing to Prysm")
+
+		// GRPC port only used in delegated mode.
+		if cfg.PrysmPortGRPC == 0 {
+			pst.log.Warn("Prysm gRPC port not configured")
+		}
+	default:
+		pst.log.Warnf("Unknown validation mode: %s", validationConfig.Mode)
+		return
+	}
+
+	// Validate Prysm connection is properly configured (both modes need it).
+	if cfg.PrysmHost == "" {
+		pst.log.Warn("Prysm host not configured - needed for validation mode")
+	} else {
+		pst.log.WithField("prysm_host", cfg.PrysmHost).Info("Prysm connection configured")
+	}
+
+	// Validate connection parameters.
+	if cfg.PrysmPortHTTP == 0 {
+		pst.log.Warn("Prysm HTTP port not configured")
+	}
 }
 
 // Stop terminates the tool gracefully.
@@ -289,8 +338,13 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 		}
 	}
 
+	// Get validation configuration for this mode
+	validationConfig := GetValidationConfigs()[pst.config.ValidationMode]
+
 	report := PeerScoreReport{
 		Config:               pst.config,
+		ValidationMode:       pst.config.ValidationMode,
+		ValidationConfig:     validationConfig,
 		Timestamp:            now,
 		StartTime:            pst.startTime,
 		EndTime:              endTime,
@@ -303,6 +357,7 @@ func (pst *PeerScoreTool) GenerateReport() PeerScoreReport {
 	}
 
 	pst.log.WithFields(map[string]interface{}{
+		"validation_mode":       pst.config.ValidationMode,
 		"total_connections":     totalConnections,
 		"successful_handshakes": successfulHandshakes,
 		"failed_handshakes":     failedHandshakes,

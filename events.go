@@ -16,22 +16,29 @@ import (
 const unknown = "unknown"
 
 func (pst *PeerScoreTool) handleHermesEvent(ctx context.Context, event *host.TraceEvent) error {
+	// Add validation mode context to all event logging
+	eventLogger := pst.log.WithFields(logrus.Fields{
+		"validation_mode": pst.config.ValidationMode,
+		"event_type":      event.Type,
+	})
+
 	switch event.Type {
 	case "CONNECTED":
-		pst.handleConnectionEvent(ctx, event)
+		pst.handleConnectionEvent(ctx, event, eventLogger)
 	case "DISCONNECTED":
-		pst.handleDisconnectionEvent(ctx, event)
+		pst.handleDisconnectionEvent(ctx, event, eventLogger)
 	case "REQUEST_STATUS":
-		pst.handleStatusEvent(ctx, event)
+		pst.handleStatusEvent(ctx, event, eventLogger)
 	case "PEERSCORE":
-		pst.handlePeerScoreEvent(ctx, event)
+		pst.handlePeerScoreEvent(ctx, event, eventLogger)
 	case "HANDLE_GOODBYE":
-		pst.handleGoodbyeEvent(ctx, event)
+		pst.handleGoodbyeEvent(ctx, event, eventLogger)
 	case "GRAFT":
-		pst.handleGraftEvent(ctx, event)
+		pst.handleGraftEvent(ctx, event, eventLogger)
 	case "PRUNE":
-		pst.handlePruneEvent(ctx, event)
+		pst.handlePruneEvent(ctx, event, eventLogger)
 	default:
+		eventLogger.WithField("event_type", event.Type).Debug("Unhandled event type")
 	}
 
 	pst.peerEventCountsMu.Lock()
@@ -59,10 +66,10 @@ func (pst *PeerScoreTool) handleHermesEvent(ctx context.Context, event *host.Tra
 	return nil
 }
 
-func (pst *PeerScoreTool) handleConnectionEvent(_ context.Context, event *host.TraceEvent) {
+func (pst *PeerScoreTool) handleConnectionEvent(_ context.Context, event *host.TraceEvent, logger logrus.FieldLogger) {
 	data, err := libp2p.TraceEventToConnected(event)
 	if err != nil {
-		pst.log.WithError(err).Error("failed to convert event to connected event")
+		logger.WithError(err).Error("failed to convert event to connected event")
 
 		return
 	}
@@ -92,7 +99,7 @@ func (pst *PeerScoreTool) handleConnectionEvent(_ context.Context, event *host.T
 			LastSeenAt:         &now,
 		}
 
-		pst.log.WithField("peer_id", peerID).Info("New peer connection")
+		logger.WithField("peer_id", peerID).Info("New peer connection")
 
 		return
 	}
@@ -111,22 +118,22 @@ func (pst *PeerScoreTool) handleConnectionEvent(_ context.Context, event *host.T
 		peer.TotalConnections++
 		peer.LastSeenAt = &now
 
-		pst.log.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"peer_id":    peerID,
 			"conn_count": len(peer.ConnectionSessions),
 		}).Info("New peer connection")
 	} else {
 		// Duplicate connection event for active session. This is normal with libp2p.
-		pst.log.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"peer_id": peerID,
 		}).Debug("Duplicate peer connection event")
 	}
 }
 
-func (pst *PeerScoreTool) handleDisconnectionEvent(_ context.Context, event *host.TraceEvent) {
+func (pst *PeerScoreTool) handleDisconnectionEvent(_ context.Context, event *host.TraceEvent, logger logrus.FieldLogger) {
 	data, err := libp2p.TraceEventToDisconnected(event)
 	if err != nil {
-		pst.log.WithError(err).Error("failed to convert event to disconnected event")
+		logger.WithError(err).Error("failed to convert event to disconnected event")
 
 		return
 	}
@@ -178,7 +185,7 @@ func (pst *PeerScoreTool) handleDisconnectionEvent(_ context.Context, event *hos
 	}).Info("Peer disconnected")
 }
 
-func (pst *PeerScoreTool) handleStatusEvent(_ context.Context, event *host.TraceEvent) {
+func (pst *PeerScoreTool) handleStatusEvent(_ context.Context, event *host.TraceEvent, logger logrus.FieldLogger) {
 	payload, ok := event.Payload.(map[string]any)
 	if !ok {
 		pst.log.Errorf("handleStatusEvent: failed to convert request status payload to map[string]any")
@@ -271,7 +278,7 @@ func (pst *PeerScoreTool) handleStatusEvent(_ context.Context, event *host.Trace
 	}
 }
 
-func (pst *PeerScoreTool) handlePeerScoreEvent(_ context.Context, event *host.TraceEvent) {
+func (pst *PeerScoreTool) handlePeerScoreEvent(_ context.Context, event *host.TraceEvent, logger logrus.FieldLogger) {
 	// Extract peer ID from the event
 	peerID := getPeerID(event)
 	if peerID == "" {
@@ -354,7 +361,7 @@ func (pst *PeerScoreTool) handlePeerScoreEvent(_ context.Context, event *host.Tr
 	}
 }
 
-func (pst *PeerScoreTool) handleGoodbyeEvent(_ context.Context, event *host.TraceEvent) {
+func (pst *PeerScoreTool) handleGoodbyeEvent(_ context.Context, event *host.TraceEvent, logger logrus.FieldLogger) {
 	peerID := getPeerID(event)
 	if peerID == "" {
 		pst.log.Warn("handleGoodbyeEvent: could not extract peer ID from event")
@@ -762,7 +769,7 @@ func (pst *PeerScoreTool) parseGoodbyeFromMap(payloadMap map[string]any) (*Goodb
 	return goodbyeEvent, nil
 }
 
-func (pst *PeerScoreTool) handleGraftEvent(_ context.Context, event *host.TraceEvent) {
+func (pst *PeerScoreTool) handleGraftEvent(_ context.Context, event *host.TraceEvent, logger logrus.FieldLogger) {
 	peerID := getPeerID(event)
 	if peerID == "" {
 		pst.log.Warn("handleGraftEvent: could not extract peer ID from event")
@@ -851,7 +858,7 @@ func (pst *PeerScoreTool) handleGraftEvent(_ context.Context, event *host.TraceE
 	}
 }
 
-func (pst *PeerScoreTool) handlePruneEvent(_ context.Context, event *host.TraceEvent) {
+func (pst *PeerScoreTool) handlePruneEvent(_ context.Context, event *host.TraceEvent, logger logrus.FieldLogger) {
 	peerID := getPeerID(event)
 	if peerID == "" {
 		pst.log.Warn("handlePruneEvent: could not extract peer ID from event")

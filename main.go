@@ -14,15 +14,19 @@ import (
 
 // Configuration and command-line flags.
 var (
-	duration      = flag.Duration("duration", 2*time.Minute, "Test duration for peer scoring")
-	outputFile    = flag.String("output", "peer-score-report.json", "Output file for results")
-	prysmHost     = flag.String("prysm-host", "", "Prysm host connection string (required)")
-	prysmHTTPPort = flag.Int("prysm-http-port", 443, "Prysm HTTP port")
-	prysmGRPCPort = flag.Int("prysm-grpc-port", 443, "Prysm gRPC port")
-	htmlOnly      = flag.Bool("html-only", false, "Generate HTML report from existing JSON file without running peer score test")
-	inputJSON     = flag.String("input-json", "peer-score-report.json", "Input JSON file for HTML-only mode")
-	claudeAPIKey  = flag.String("openrouter-api-key", "", "OpenRouter API key for AI analysis (can also be set via OPENROUTER_API_KEY env var)")
-	skipAI        = flag.Bool("skip-ai", false, "Skip AI analysis even if API key is available")
+	duration       = flag.Duration("duration", 2*time.Minute, "Test duration for peer scoring")
+	outputFile     = flag.String("output", "peer-score-report.json", "Output file for results")
+	prysmHost      = flag.String("prysm-host", "", "Prysm host connection string (required for both validation modes)")
+	prysmHTTPPort  = flag.Int("prysm-http-port", 443, "Prysm HTTP port")
+	prysmGRPCPort  = flag.Int("prysm-grpc-port", 443, "Prysm gRPC port")
+	validationMode = flag.String("validation-mode", "delegated", "Validation mode: 'delegated' (delegates validation to Prysm) or 'independent' (uses Prysm for beacon data, validates internally)")
+	timestampFiles = flag.Bool("timestamp-files", false, "Include timestamp in output filenames (useful for CI)")
+	htmlOnly       = flag.Bool("html-only", false, "Generate HTML report from existing JSON file without running peer score test")
+	inputJSON      = flag.String("input-json", "peer-score-report.json", "Input JSON file for HTML-only mode")
+	claudeAPIKey   = flag.String("openrouter-api-key", "", "OpenRouter API key for AI analysis (can also be set via OPENROUTER_API_KEY env var)")
+	skipAI         = flag.Bool("skip-ai", false, "Skip AI analysis even if API key is available")
+	updateGoMod    = flag.Bool("update-go-mod", false, "Update go.mod for the specified validation mode and exit")
+	validateGoMod  = flag.Bool("validate-go-mod", false, "Validate go.mod configuration for the specified validation mode and exit")
 )
 
 func main() {
@@ -41,19 +45,52 @@ func main() {
 		return
 	}
 
+	// Validate and parse validation mode
+	validationModeValue, err := ValidateValidationMode(*validationMode)
+	if err != nil {
+		log.Fatalf("Invalid validation mode: %v", err)
+	}
+
+	// Handle go.mod management flags
+	if *updateGoMod {
+		log.Infof("Updating go.mod for validation mode: %s", validationModeValue)
+		if err := UpdateGoModForValidationMode(validationModeValue); err != nil {
+			log.Fatalf("Failed to update go.mod: %v", err)
+		}
+		log.Info("Go.mod updated successfully")
+		return
+	}
+
+	if *validateGoMod {
+		log.Infof("Validating go.mod for validation mode: %s", validationModeValue)
+		if err := ValidateGoModForValidationMode(validationModeValue); err != nil {
+			log.Fatalf("Go.mod validation failed: %v", err)
+		}
+		log.Info("Go.mod validation passed")
+		return
+	}
+
+	log.Infof("Using validation mode: %s", validationModeValue)
+
+	// Validate and optionally update go.mod for the validation mode
+	if err := validateOrUpdateGoMod(log, validationModeValue); err != nil {
+		log.Warnf("Go module validation issue: %v", err)
+	}
+
 	// Set up graceful shutdown handling.
 	ctx, cancel := setupGracefulShutdown(log)
 	defer cancel()
 
 	// Intialise tool config.
 	cfg := buildToolConfig()
-	if err := cfg.Validate(); err != nil {
+	if err := cfg.Validate(validationModeValue); err != nil {
 		log.Fatal(err)
 	}
 
 	// Initialize peer score tool configuration.
 	tool := NewPeerScoreTool(ctx, log, PeerScoreConfig{
 		ToolConfig:     cfg,
+		ValidationMode: validationModeValue,
 		TestDuration:   *duration,
 		ReportInterval: 2 * time.Minute,
 	})
@@ -209,4 +246,36 @@ func logCurrentStatus(_ context.Context, log logrus.FieldLogger, tool *PeerScore
 		"peer_count":             peerCount,
 		"identified_peers_count": identified,
 	}).Infof("Status report")
+}
+
+// validateOrUpdateGoMod checks if go.mod is configured correctly for the validation mode
+func validateOrUpdateGoMod(log logrus.FieldLogger, validationMode ValidationMode) error {
+	// First, check if go.mod is already correctly configured
+	if err := ValidateGoModForValidationMode(validationMode); err == nil {
+		log.Infof("Go module is correctly configured for %s validation mode", validationMode)
+		return nil
+	}
+
+	// If validation failed, log the current version
+	currentVersion, _ := GetCurrentHermesVersion()
+	expectedConfig := GetValidationConfigs()[validationMode]
+
+	log.WithFields(logrus.Fields{
+		"validation_mode":  validationMode,
+		"current_version":  currentVersion,
+		"expected_version": expectedConfig.HermesVersion,
+	}).Info("Go module needs update for validation mode")
+
+	// In CI or automated environments, we might want to auto-update
+	// For now, just provide guidance
+	log.Warnf("To use %s validation mode, update go.mod with:", validationMode)
+	switch validationMode {
+	case ValidationModeDelegated:
+		log.Warn("replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250513093811-320c1c3ee6e2")
+	case ValidationModeIndependent:
+		log.Warn("replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250611021139-b3e6fc7d4d79")
+	}
+	log.Warn("Then run: go mod tidy")
+
+	return nil
 }

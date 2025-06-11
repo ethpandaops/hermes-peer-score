@@ -17,6 +17,28 @@
         .status-badge {
             animation: pulse 2s infinite;
         }
+        
+        /* Validation mode specific styling */
+        .validation-mode-delegated {
+            --validation-primary: #2563eb;
+            --validation-secondary: #dbeafe;
+            --validation-accent: #1d4ed8;
+            --validation-border: #3b82f6;
+        }
+        
+        .validation-mode-independent {
+            --validation-primary: #059669;
+            --validation-secondary: #d1fae5;
+            --validation-accent: #047857;
+            --validation-border: #10b981;
+        }
+        
+        .validation-mode-filter.active {
+            background: #374151;
+            color: white;
+            border-color: #374151;
+        }
+        
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -58,8 +80,8 @@
                             <span class="text-blue-800">{{.LatestReport.TotalConnections}}</span>
                         </div>
                         <div>
-                            <span class="text-blue-600 font-medium">Success Rate:</span>
-                            <span class="text-blue-800">{{.LatestReport.SuccessRate}}%</span>
+                            <span class="text-blue-600 font-medium">Handshakes:</span>
+                            <span class="text-blue-800">{{.LatestReport.SuccessfulHandshakes}}</span>
                         </div>
                     </div>
                 </div>
@@ -79,7 +101,7 @@
 
         <!-- Filter and Search -->
         <div class="bg-white rounded-lg shadow p-4 mb-6">
-            <div class="flex flex-wrap items-center gap-4">
+            <div class="flex flex-wrap items-center gap-4 mb-4">
                 <div class="flex items-center space-x-2">
                     <label for="search" class="text-sm font-medium text-gray-700">Search:</label>
                     <input type="text" id="search" placeholder="Filter by date..."
@@ -92,14 +114,33 @@
                         <option value="date-asc">Oldest First</option>
                         <option value="peers-desc">Most Peers</option>
                         <option value="connections-desc">Most Connections</option>
-                        <option value="success-desc">Highest Success Rate</option>
                     </select>
                 </div>
                 <div class="text-sm text-gray-500">
                     <span id="resultsInfo">{{.TotalReports}} reports found</span>
                 </div>
             </div>
+            
+            <!-- Validation Mode Filter -->
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm font-medium text-gray-700">Validation Mode:</span>
+                    <button id="filterAll" class="validation-mode-filter px-3 py-1 rounded-full text-sm border transition-colors active"
+                            onclick="filterByValidationMode('all')">
+                        All Reports
+                    </button>
+                    <button id="filterDelegated" class="validation-mode-filter px-3 py-1 rounded-full text-sm border border-blue-200 bg-blue-50 text-blue-600 transition-colors"
+                            onclick="filterByValidationMode('delegated')">
+                        🔗 Delegated
+                    </button>
+                    <button id="filterIndependent" class="validation-mode-filter px-3 py-1 rounded-full text-sm border border-green-200 bg-green-50 text-green-600 transition-colors"
+                            onclick="filterByValidationMode('independent')">
+                        ⚡ Independent
+                    </button>
+                </div>
+            </div>
         </div>
+
 
         <!-- Reports Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="reportsGrid">
@@ -154,6 +195,7 @@
     <script>
         let allReports = Array.from(document.querySelectorAll('.data-report'));
         let filteredReports = [...allReports];
+        let currentValidationFilter = 'all';
 
         function setupEventListeners() {
             document.getElementById('search').addEventListener('input', debounce(handleSearch, 300));
@@ -177,7 +219,15 @@
             filteredReports = allReports.filter(report => {
                 const date = report.dataset.date.toLowerCase();
                 const formattedDate = report.querySelector('h3').textContent.toLowerCase();
-                return date.includes(query) || formattedDate.includes(query);
+                const validationMode = report.dataset.validationMode || 'delegated';
+                const hermesVersion = report.dataset.hermesVersion || '';
+                
+                const matchesSearch = date.includes(query) || formattedDate.includes(query) || 
+                                    validationMode.includes(query) || hermesVersion.includes(query);
+                const matchesValidationFilter = currentValidationFilter === 'all' || 
+                                              validationMode === currentValidationFilter;
+                
+                return matchesSearch && matchesValidationFilter;
             });
             updateDisplay();
         }
@@ -194,8 +244,6 @@
                         return parseInt(b.dataset.peers) - parseInt(a.dataset.peers);
                     case 'connections-desc':
                         return parseInt(b.dataset.connections) - parseInt(a.dataset.connections);
-                    case 'success-desc':
-                        return parseFloat(b.dataset.success) - parseFloat(a.dataset.success);
                     default:
                         return 0;
                 }
@@ -228,9 +276,25 @@
             resultsInfo.textContent = `${filteredReports.length} of ${allReports.length} reports`;
         }
 
+        function filterByValidationMode(mode) {
+            currentValidationFilter = mode;
+            
+            // Update filter button states
+            document.querySelectorAll('.validation-mode-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`filter${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('active');
+            
+            // Re-apply current search with new validation filter
+            handleSearch({ target: { value: document.getElementById('search').value } });
+        }
+        
+
         function clearFilters() {
             document.getElementById('search').value = '';
             document.getElementById('sortBy').value = 'date-desc';
+            currentValidationFilter = 'all';
+            filterByValidationMode('all');
             filteredReports = [...allReports];
             handleSort({ target: { value: 'date-desc' } });
         }

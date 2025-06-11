@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -83,9 +84,10 @@ func (n *ToolConfig) SetDefaults() {
 	}
 }
 
-func (n *ToolConfig) Validate() error {
+func (n *ToolConfig) Validate(validationMode ValidationMode) error {
+	// Both validation modes require Prysm connection
 	if n.PrysmHost == "" {
-		return errors.New("--prysm-host is required")
+		return fmt.Errorf("--prysm-host is required for %s validation mode", validationMode)
 	}
 
 	return nil
@@ -162,4 +164,90 @@ func buildToolConfig() *ToolConfig {
 	cfg.SetDefaults()
 
 	return cfg
+}
+
+// GetValidationConfigs returns configuration mappings for each validation mode
+func GetValidationConfigs() map[ValidationMode]ValidationConfig {
+	return map[ValidationMode]ValidationConfig{
+		ValidationModeDelegated: {
+			Mode:          ValidationModeDelegated,
+			HermesVersion: "v0.0.4-0.20250513093811-320c1c3ee6e2",
+			ConfigOverrides: map[string]interface{}{
+				"validation-mode": "delegated",
+			},
+		},
+		ValidationModeIndependent: {
+			Mode:          ValidationModeIndependent,
+			HermesVersion: "v0.0.4-0.20250611021139-b3e6fc7d4d79",
+			ConfigOverrides: map[string]interface{}{
+				"validation-mode":                  "independent",
+				"validation-attestation-threshold": 10,
+				"validation-cache-size":            10000,
+				"validation-state-sync-interval":   "30s",
+			},
+		},
+	}
+}
+
+// ValidateValidationMode checks if the provided validation mode is valid
+func ValidateValidationMode(mode string) (ValidationMode, error) {
+	validationMode := ValidationMode(mode)
+	switch validationMode {
+	case ValidationModeDelegated, ValidationModeIndependent:
+		return validationMode, nil
+	default:
+		return "", errors.New("invalid validation mode: must be 'delegated' or 'independent'")
+	}
+}
+
+// GenerateValidationAwareFilename creates a filename that includes the validation mode for easy identification
+func GenerateValidationAwareFilename(validationMode ValidationMode, baseFilename string) string {
+	// Extract extension and name parts
+	parts := strings.Split(baseFilename, ".")
+	if len(parts) < 2 {
+		// No extension, just append mode
+		return fmt.Sprintf("%s-%s", baseFilename, string(validationMode))
+	}
+
+	// Insert validation mode before the extension
+	nameWithoutExt := strings.Join(parts[:len(parts)-1], ".")
+	ext := parts[len(parts)-1]
+
+	// Check if the filename already includes the validation mode
+	if strings.Contains(nameWithoutExt, fmt.Sprintf("-%s", string(validationMode))) {
+		return baseFilename // Already has validation mode
+	}
+
+	return fmt.Sprintf("%s-%s.%s", nameWithoutExt, string(validationMode), ext)
+}
+
+// GenerateTimestampedFilename creates a filename with timestamp and validation mode
+func GenerateTimestampedFilename(validationMode ValidationMode, baseFilename string, timestamp time.Time) string {
+	// Extract extension and name parts
+	parts := strings.Split(baseFilename, ".")
+	if len(parts) < 2 {
+		// No extension
+		return fmt.Sprintf("%s-%s-%s", baseFilename, string(validationMode), timestamp.Format("2006-01-02_15-04-05"))
+	}
+
+	// Insert validation mode and timestamp before the extension
+	nameWithoutExt := strings.Join(parts[:len(parts)-1], ".")
+	ext := parts[len(parts)-1]
+
+	return fmt.Sprintf("%s-%s-%s.%s", nameWithoutExt, string(validationMode), timestamp.Format("2006-01-02_15-04-05"), ext)
+}
+
+// ParseValidationModeFromFilename extracts validation mode from a filename
+func ParseValidationModeFromFilename(filename string) (ValidationMode, error) {
+	// Check for delegated validation mode
+	if strings.Contains(filename, "-delegated-") || strings.Contains(filename, "-delegated.") {
+		return ValidationModeDelegated, nil
+	}
+
+	// Check for independent validation mode
+	if strings.Contains(filename, "-independent-") || strings.Contains(filename, "-independent.") {
+		return ValidationModeIndependent, nil
+	}
+
+	return "", fmt.Errorf("no validation mode found in filename: %s", filename)
 }

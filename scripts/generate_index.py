@@ -20,13 +20,44 @@ def parse_report_metadata(json_file):
         successful_handshakes = data.get('successful_handshakes', 0)
         success_rate = (successful_handshakes / total_connections * 100) if total_connections > 0 else 0
 
+        # Extract validation mode and related metadata
+        validation_mode = data.get('validation_mode', 'delegated')
+        validation_config = data.get('validation_config', {})
+
+        # Extract basic metadata (removed hardcoded validation metrics)
+        hermes_version = validation_config.get('hermes_version', 'unknown')
+
+        # Since we removed hardcoded metrics, we'll use basic connection success as a proxy
+        validation_success_rate = success_rate  # Use connection success rate
+
+        # For display purposes, calculate simple metrics from actual data
+        peers_data = data.get('peers', {})
+        total_messages = sum(peer.get('total_message_count', 0) for peer in peers_data.values())
+        avg_latency_ms = 0  # No longer tracked in hardcoded metrics
+        messages_per_sec = round(total_messages / (data.get('duration', 1) / 1000000000), 1) if data.get('duration') else 0
+        error_rate = round(100 - success_rate, 2) if success_rate < 100 else 0  # Inverse of success rate
+
+        # Resource metrics are no longer hardcoded
+        cpu_usage = 0
+        memory_usage = 0
+        cache_hit_rate = 0
+
         return {
             'unique_peers': len(data.get('peers', {})),
             'total_connections': total_connections,
             'successful_handshakes': successful_handshakes,
             'success_rate': round(success_rate, 1),
             'test_duration': round(data.get('duration', 0) / 1000000000, 1) if data.get('duration') else 0,
-            'has_ai_analysis': bool(data.get('ai_analysis'))
+            'has_ai_analysis': bool(data.get('ai_analysis')),
+            'validation_mode': validation_mode,
+            'hermes_version': hermes_version,
+            'validation_success_rate': round(validation_success_rate * 100, 1),
+            'avg_latency_ms': avg_latency_ms,
+            'messages_per_sec': messages_per_sec,
+            'error_rate': error_rate,
+            'cpu_usage': cpu_usage,
+            'memory_usage': memory_usage,
+            'cache_hit_rate': cache_hit_rate
         }
     except Exception as e:
         print(f"Error parsing {json_file}: {e}")
@@ -34,32 +65,60 @@ def parse_report_metadata(json_file):
 
 
 def generate_reports_grid_html(reports):
-    """Generate the HTML for the reports grid (simplified version)."""
+    """Generate the HTML for the reports grid with validation mode support."""
     reports_grid_html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="reportsGrid">'
 
     for report in reports:
         html_path = report.get('html_path', '#')
         html_link = f'href="{html_path}"' if html_path and html_path != '#' else 'href="#" onclick="alert(\'HTML report not available for this date\')"'
 
+        # Validation mode styling
+        validation_mode = report.get('validation_mode', 'delegated')
+        mode_class = f'validation-mode-{validation_mode}'
+
+        # Mode-specific styling and icons
+        if validation_mode == 'independent':
+            mode_color = 'text-green-600'
+            mode_bg = 'bg-green-50'
+            mode_border = 'border-green-200'
+            mode_icon = '⚡'
+            mode_label = 'Independent'
+        else:
+            mode_color = 'text-blue-600'
+            mode_bg = 'bg-blue-50'
+            mode_border = 'border-blue-200'
+            mode_icon = '🔗'
+            mode_label = 'Delegated'
+
+        # Extract basic info
+        hermes_version = report.get('hermes_version', 'unknown')
+
         reports_grid_html += f'''
-            <div class="report-card bg-white rounded-lg shadow-md p-6 data-report"
+            <div class="report-card bg-white rounded-lg shadow-md p-6 data-report {mode_class}"
                  data-date="{report['date']}"
                  data-peers="{report['unique_peers']}"
                  data-connections="{report['total_connections']}"
-                 data-success="{report['success_rate']}">
+                 data-success="{report['success_rate']}"
+                 data-validation-mode="{validation_mode}"
+                 data-hermes-version="{hermes_version}">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">{report['formatted_date']}</h3>
+                        <div class="text-xs text-gray-500 mt-1">{hermes_version}</div>
+                        <div class="mt-1">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {mode_bg} {mode_color} {mode_border} border">
+                                {mode_icon} {mode_label}
+                            </span>
+                        </div>
                     </div>
                     <div class="text-right">
-                        <div class="text-xs text-gray-500">Duration</div>
-                        <div class="text-sm font-medium text-blue-600">{report['test_duration']}s</div>
+                        <div class="text-sm font-medium {mode_color}">{report['test_duration']}s</div>
                     </div>
                 </div>
 
                 <div class="flex space-x-2">
                     <a {html_link}
-                       class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors">
+                       class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all">
                         📊 View Report
                     </a>
                     <a href="{report['json_path']}"
@@ -74,36 +133,59 @@ def generate_reports_grid_html(reports):
 
 
 def generate_latest_report_html(latest_report):
-    """Generate HTML for the latest report section."""
-    return f'''<div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow p-6 mb-6">
+    """Generate HTML for the latest report section with validation mode support."""
+    validation_mode = latest_report.get('validation_mode', 'delegated')
+    hermes_version = latest_report.get('hermes_version', 'unknown')
+
+    # Mode-specific styling and content
+    if validation_mode == 'independent':
+        bg_gradient = 'from-green-50 to-emerald-50'
+        border_color = 'border-green-200'
+        title_color = 'text-green-900'
+        text_color = 'text-green-700'
+        accent_color = 'text-green-600'
+        value_color = 'text-green-800'
+        button_color = 'bg-green-600 hover:bg-green-700'
+        mode_icon = '⚡'
+        mode_title = 'Independent Validation'
+    else:
+        bg_gradient = 'from-blue-50 to-indigo-50'
+        border_color = 'border-blue-200'
+        title_color = 'text-blue-900'
+        text_color = 'text-blue-700'
+        accent_color = 'text-blue-600'
+        value_color = 'text-blue-800'
+        button_color = 'bg-blue-600 hover:bg-blue-700'
+        mode_icon = '🔗'
+        mode_title = 'Delegated Validation'
+
+    # Get basic info
+    hermes_version = latest_report.get('hermes_version', 'unknown')
+
+    return f'''<div class="bg-gradient-to-r {bg_gradient} border {border_color} rounded-lg shadow p-6 mb-6">
         <div class="flex items-center justify-between">
             <div>
                 <div class="flex items-center space-x-2 mb-2">
-                    <h2 class="text-xl font-semibold text-blue-900">Latest Report</h2>
+                    <h2 class="text-xl font-semibold {title_color}">Latest Report</h2>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white {accent_color} border {border_color}">
+                        {mode_icon} {mode_title}
+                    </span>
                 </div>
-                <p class="text-blue-700 mb-3">{latest_report['formatted_date']}</p>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <p class="{text_color} mb-3">{latest_report['formatted_date']}</p>
+                <div class="grid grid-cols-2 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                        <span class="text-blue-600 font-medium">Duration:</span>
-                        <span class="text-blue-800">{latest_report['test_duration']}s</span>
+                        <span class="{accent_color} font-medium">Duration:</span>
+                        <span class="{value_color}">{latest_report['test_duration']}s</span>
                     </div>
                     <div>
-                        <span class="text-blue-600 font-medium">Peers:</span>
-                        <span class="text-blue-800">{latest_report['unique_peers']}</span>
-                    </div>
-                    <div>
-                        <span class="text-blue-600 font-medium">Connections:</span>
-                        <span class="text-blue-800">{latest_report['total_connections']}</span>
-                    </div>
-                    <div>
-                        <span class="text-blue-600 font-medium">Success Rate:</span>
-                        <span class="text-blue-800">{latest_report['success_rate']}%</span>
+                        <span class="{accent_color} font-medium">Version:</span>
+                        <span class="{value_color}">{hermes_version}</span>
                     </div>
                 </div>
             </div>
             <div class="flex space-x-3">
                 <a href="{latest_report['html_path'] or '#'}"
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                   class="inline-flex items-center px-4 py-2 {button_color} text-white rounded-md text-sm font-medium transition-colors">
                     📊 View Report
                 </a>
                 <a href="{latest_report['json_path']}"
@@ -181,6 +263,9 @@ def generate_reports_manifest(reports):
             "unique_peers": report['unique_peers'],
             "total_connections": report['total_connections'],
             "success_rate": report['success_rate'],
+            "validation_mode": report.get('validation_mode', 'delegated'),
+            "hermes_version": report.get('hermes_version', 'unknown'),
+            "messages_per_sec": report.get('messages_per_sec', 0),
             "files": report_files
         })
 
@@ -200,8 +285,14 @@ def generate_index():
         date_dir = json_file.parent.name
         filename = json_file.name
 
-        # Extract timestamp from filename
+        # Extract timestamp from filename (handle validation mode suffixes)
         timestamp_part = filename.replace('peer-score-report-', '').replace('.json', '')
+
+        # Remove validation mode suffixes if present
+        for suffix in ['-delegated', '-independent']:
+            if timestamp_part.endswith(suffix):
+                timestamp_part = timestamp_part[:-len(suffix)]
+                break
 
         try:
             # Parse the timestamp
@@ -223,9 +314,12 @@ def generate_index():
             html_path = f"{date_dir}/{html_file.name}" if html_file.exists() else None
             json_path = f"{date_dir}/{json_file.name}"
 
+            # For display purposes, use the original timestamp + validation mode
+            display_timestamp = filename.replace('peer-score-report-', '').replace('.json', '')
+
             reports.append({
                 'date': report_date.strftime('%Y-%m-%d'),
-                'timestamp': timestamp_part,
+                'timestamp': display_timestamp,  # Use full timestamp with validation mode
                 'formatted_date': report_date.strftime('%B %d, %Y at %H:%M'),
                 'html_path': html_path,
                 'json_path': json_path,

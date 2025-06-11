@@ -4,6 +4,21 @@ import (
 	"time"
 )
 
+// ValidationMode represents the type of validation approach used by Hermes
+type ValidationMode string
+
+const (
+	ValidationModeDelegated   ValidationMode = "delegated"   // Delegates validation processing to Prysm
+	ValidationModeIndependent ValidationMode = "independent" // Uses Prysm for beacon state but validates internally
+)
+
+// ValidationConfig holds configuration specific to a validation mode
+type ValidationConfig struct {
+	Mode            ValidationMode         `json:"mode"`
+	HermesVersion   string                 `json:"hermes_version"`
+	ConfigOverrides map[string]interface{} `json:"config_overrides"`
+}
+
 // TopicScore represents the peer score for a specific topic.
 type TopicScore struct {
 	Topic                    string        `json:"topic"`
@@ -42,7 +57,8 @@ type PeerScoreSnapshot struct {
 // PeerScoreConfig holds configuration parameters for the peer score tool.
 // It defines test duration, Hermes binary path, and command-line arguments.
 type PeerScoreConfig struct {
-	ToolConfig *ToolConfig `json:"tool_config"`
+	ToolConfig     *ToolConfig    `json:"tool_config"`
+	ValidationMode ValidationMode `json:"validation_mode"`
 
 	TestDuration   time.Duration `yaml:"test_duration"`   // How long to run the peer connectivity test.
 	ReportInterval time.Duration `yaml:"report_interval"` // Frequency of status reports during testing.
@@ -76,9 +92,11 @@ type PeerStats struct {
 }
 
 // PeerScoreReport contains the comprehensive analysis results from a peer scoring test.
-// This is the main output structure containing all metrics, scores, and diagnostic information.
+// This is the main output structure containing all scores and diagnostic information.
 type PeerScoreReport struct {
 	Config               PeerScoreConfig           `json:"config"`                // Configuration used for this test run.
+	ValidationMode       ValidationMode            `json:"validation_mode"`       // Validation approach used for this test.
+	ValidationConfig     ValidationConfig          `json:"validation_config"`     // Validation-specific configuration.
 	Timestamp            time.Time                 `json:"timestamp"`             // When this report was generated.
 	StartTime            time.Time                 `json:"start_time"`            // When the test execution began.
 	EndTime              time.Time                 `json:"end_time"`              // When the test execution completed.

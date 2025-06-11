@@ -19,12 +19,22 @@ def download_reports_from_manifest(manifest_file, cutoff_days=28):
         cutoff_date = datetime.strptime(os.environ.get('CUTOFF_DATE'), '%Y-%m-%d')
         downloaded_count = 0
         
+        # Track validation mode statistics
+        validation_mode_stats = {'delegated': 0, 'independent': 0, 'unknown': 0}
+        
         for report in manifest.get('reports', []):
             report_date = datetime.strptime(report['date'], '%Y-%m-%d')
             
             # Skip reports older than cutoff
             if report_date < cutoff_date:
                 continue
+            
+            # Track validation mode
+            validation_mode = report.get('validation_mode', 'unknown')
+            if validation_mode in validation_mode_stats:
+                validation_mode_stats[validation_mode] += 1
+            else:
+                validation_mode_stats['unknown'] += 1
                 
             # Create directory
             date_dir = f"reports/{report['date']}"
@@ -41,7 +51,7 @@ def download_reports_from_manifest(manifest_file, cutoff_days=28):
                                           capture_output=True)
                     if result.returncode == 0:
                         files_downloaded += 1
-                        print(f'  Downloaded: {file_info["filename"]}')
+                        print(f'  Downloaded: {file_info["filename"]} (validation: {validation_mode})')
                     else:
                         print(f'  Failed to download: {file_info["filename"]}')
                 except Exception as e:
@@ -49,9 +59,16 @@ def download_reports_from_manifest(manifest_file, cutoff_days=28):
             
             if files_downloaded > 0:
                 downloaded_count += 1
-                print(f'Successfully downloaded {files_downloaded} files for {report["date"]}')
+                hermes_version = report.get('hermes_version', 'unknown')
+                print(f'Successfully downloaded {files_downloaded} files for {report["date"]} ({validation_mode} validation, Hermes {hermes_version})')
         
         print(f'Total reports preserved: {downloaded_count}')
+        print(f'Validation mode distribution:')
+        for mode, count in validation_mode_stats.items():
+            if count > 0:
+                percentage = (count / sum(validation_mode_stats.values())) * 100
+                mode_icon = '🔗' if mode == 'delegated' else '⚡' if mode == 'independent' else '❓'
+                print(f'  {mode_icon} {mode.capitalize()}: {count} reports ({percentage:.1f}%)')
         return True
         
     except Exception as e:

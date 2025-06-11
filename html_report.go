@@ -15,11 +15,13 @@ import (
 
 // OptimizedHTMLTemplateData represents the minimal data structure for the optimized HTML report.
 type OptimizedHTMLTemplateData struct {
-	GeneratedAt    time.Time     `json:"generated_at"`
-	Summary        SummaryData   `json:"summary"`
-	DataFile       string        `json:"data_file"`
-	AIAnalysis     string        `json:"ai_analysis"`
-	AIAnalysisHTML template.HTML `json:"-"`
+	GeneratedAt      time.Time        `json:"generated_at"`
+	Summary          SummaryData      `json:"summary"`
+	DataFile         string           `json:"data_file"`
+	AIAnalysis       string           `json:"ai_analysis"`
+	AIAnalysisHTML   template.HTML    `json:"-"`
+	ValidationMode   ValidationMode   `json:"validation_mode"`
+	ValidationConfig ValidationConfig `json:"validation_config"`
 }
 
 // SummaryData contains high-level summary information for the report.
@@ -80,23 +82,81 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
         .ai-analysis-content {
             line-height: 1.6;
         }
+        /* Validation mode specific styles */
+        .validation-mode-delegated {
+            --validation-primary: #2563eb;
+            --validation-secondary: #dbeafe;
+            --validation-accent: #1d4ed8;
+        }
+        .validation-mode-independent {
+            --validation-primary: #059669;
+            --validation-secondary: #d1fae5;
+            --validation-accent: #047857;
+        }
+        .validation-badge {
+            background: var(--validation-secondary);
+            color: var(--validation-primary);
+            border: 1px solid var(--validation-primary);
+        }
+        .validation-header {
+            background: linear-gradient(135deg, var(--validation-primary), var(--validation-accent));
+        }
+        .validation-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            margin-right: 8px;
+        }
+        .metrics-card {
+            border-left: 4px solid var(--validation-primary);
+            transition: all 0.2s ease;
+        }
+        .metrics-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+        }
+        .comparison-highlight {
+            background: linear-gradient(90deg, var(--validation-secondary), transparent);
+            border-left: 3px solid var(--validation-primary);
+            padding-left: 12px;
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen validation-mode-{{.ValidationMode}}">
     <div class="container mx-auto px-4 py-8 max-w-7xl">
-        <!-- Header -->
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <!-- Header with Validation Mode Branding -->
+        <div class="validation-header text-white rounded-lg shadow-lg p-6 mb-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-900">Hermes Peer Score Report</h1>
-                    <p class="text-gray-600 mt-2">Generated on {{.GeneratedAt.Format "January 2, 2006 at 3:04 PM"}}</p>
+                    <div class="flex items-center">
+                        <div class="validation-icon">
+                            {{if eq .ValidationMode "delegated"}}🔗{{else}}⚡{{end}}
+                        </div>
+                        <h1 class="text-3xl font-bold">Hermes Peer Score Report</h1>
+                    </div>
+                    <div class="flex items-center mt-2 space-x-4">
+                        <span class="validation-badge px-3 py-1 rounded-full text-sm font-medium">
+                            {{if eq .ValidationMode "delegated"}}Delegated Validation{{else}}Independent Validation{{end}}
+                        </span>
+                        <span class="text-sm opacity-90">
+                            {{.ValidationConfig.HermesVersion}}
+                        </span>
+                        <span class="text-sm opacity-90">
+                            Generated: {{.GeneratedAt.Format "January 2, 2006 at 3:04 PM"}}
+                        </span>
+                    </div>
                 </div>
                 <div class="text-right">
-                    <div class="text-sm text-gray-500">Test Duration</div>
-                    <div class="text-2xl font-semibold text-blue-600">{{printf "%.1f" .Summary.TestDuration}}s</div>
+                    <div class="text-sm opacity-90">Test Duration</div>
+                    <div class="text-2xl font-semibold">{{printf "%.1f" .Summary.TestDuration}}s</div>
                 </div>
             </div>
         </div>
+
 
 
         <!-- Summary Statistics -->
@@ -1182,15 +1242,50 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 
 	// Prepare template data with summary information only
 	templateData := OptimizedHTMLTemplateData{
-		GeneratedAt:    time.Now(),
-		Summary:        extractSummaryData(report),
-		DataFile:       filepath.Base(dataFile),
-		AIAnalysis:     finalAIAnalysis,
-		AIAnalysisHTML: template.HTML(finalAIAnalysis), //nolint:gosec // data sanitized further down.
+		GeneratedAt:      time.Now(),
+		Summary:          extractSummaryData(report),
+		DataFile:         filepath.Base(dataFile),
+		AIAnalysis:       finalAIAnalysis,
+		AIAnalysisHTML:   template.HTML(finalAIAnalysis), //nolint:gosec // data sanitized further down.
+		ValidationMode:   report.ValidationMode,
+		ValidationConfig: report.ValidationConfig,
 	}
 
-	// Create the optimized HTML template
-	tmpl := template.New("report")
+	// Create the optimized HTML template with custom functions
+	tmpl := template.New("report").Funcs(template.FuncMap{
+		"mul": func(a, b interface{}) float64 {
+			switch va := a.(type) {
+			case float64:
+				if vb, ok := b.(float64); ok {
+					return va * vb
+				}
+			case int:
+				if vb, ok := b.(int); ok {
+					return float64(va * vb)
+				}
+				if vb, ok := b.(float64); ok {
+					return float64(va) * vb
+				}
+			}
+			return 0
+		},
+		"div": func(a, b interface{}) float64 {
+			switch va := a.(type) {
+			case float64:
+				if vb, ok := b.(float64); ok && vb != 0 {
+					return va / vb
+				}
+			case int:
+				if vb, ok := b.(int); ok && vb != 0 {
+					return float64(va) / float64(vb)
+				}
+				if vb, ok := b.(float64); ok && vb != 0 {
+					return float64(va) / vb
+				}
+			}
+			return 0
+		},
+	})
 
 	// Parse the optimized HTML template string
 	tmpl, err = tmpl.Parse(optimizedHTMLTemplate)
