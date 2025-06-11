@@ -110,7 +110,7 @@ func NewClaudeAPIClient(apiKey string) *ClaudeAPIClient {
 	return &ClaudeAPIClient{
 		APIKey:  apiKey,
 		BaseURL: "https://openrouter.ai/api/v1/chat/completions",
-		Model:   "anthropic/claude-sonnet-4", // OpenRouter model identifier
+		Model:   "deepseek/deepseek-r1-0528:free", // OpenRouter model identifier
 	}
 }
 
