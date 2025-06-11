@@ -101,7 +101,7 @@ func (n *ToolConfig) AsHermesConfig() *eth.NodeConfig {
 		Devp2pPort:                  n.Devp2pPort,
 		Libp2pHost:                  n.Libp2pHost,
 		Libp2pPort:                  n.Libp2pPort,
-		Libp2pPeerscoreSnapshotFreq: 30 * time.Second,
+		Libp2pPeerscoreSnapshotFreq: 15 * time.Minute,
 		PrysmHost:                   n.PrysmHost,
 		PrysmPortHTTP:               n.PrysmPortHTTP,
 		PrysmPortGRPC:               n.PrysmPortGRPC,

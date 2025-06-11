@@ -98,7 +98,7 @@ func (pst *PeerScoreTool) StartHermes(ctx context.Context) error {
 	cfg.ForkVersion = currentForkVersion
 	cfg.PubSubSubscriptionRequestLimit = 200
 	cfg.PubSubQueueSize = 200
-	cfg.Libp2pPeerscoreSnapshotFreq = 5 * time.Second
+	cfg.Libp2pPeerscoreSnapshotFreq = 15 * time.Minute
 	cfg.GossipSubMessageEncoder = encoder.SszNetworkEncoder{}
 	cfg.RPCEncoder = encoder.SszNetworkEncoder{}
 	cfg.Tracer = otel.GetTracerProvider().Tracer("hermes")
