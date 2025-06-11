@@ -88,20 +88,20 @@ jobs:
             # Ensure the reports directory exists
             mkdir -p "reports/$DATE_DIR"
 
-            # Copy JSON report with the same timestamp format
-            cp "$INDEPENDENT_JSON" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-independent.json"
+            # Copy JSON report keeping the original filename format
+            cp "$INDEPENDENT_JSON" "reports/$DATE_DIR/$INDEPENDENT_JSON"
 
             # Find and copy HTML report (should be generated automatically by tool)
             INDEPENDENT_HTML=$(ls peer-score-report-independent-*.html 2>/dev/null | head -1)
             if [ -n "$INDEPENDENT_HTML" ] && [ -f "$INDEPENDENT_HTML" ]; then
               echo "Found HTML report: $INDEPENDENT_HTML"
-              cp "$INDEPENDENT_HTML" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-independent.html"
+              cp "$INDEPENDENT_HTML" "reports/$DATE_DIR/$INDEPENDENT_HTML"
 
               # Copy the JavaScript data file that's generated with the HTML report
               INDEPENDENT_JS=$(ls peer-score-report-independent-*-data.js 2>/dev/null | head -1)
               if [ -n "$INDEPENDENT_JS" ] && [ -f "$INDEPENDENT_JS" ]; then
                 echo "Found JS data file: $INDEPENDENT_JS"
-                cp "$INDEPENDENT_JS" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-independent-data.js"
+                cp "$INDEPENDENT_JS" "reports/$DATE_DIR/$INDEPENDENT_JS"
               else
                 echo "Warning: JavaScript data file not found, HTML report may not function properly"
               fi

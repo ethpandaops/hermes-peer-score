@@ -126,20 +126,20 @@ jobs:
             GENERATED_TIMESTAMP=$(echo "$DELEGATED_JSON" | sed 's/peer-score-report-delegated-\(.*\)\.json/\1/')
             echo "Extracted timestamp: $GENERATED_TIMESTAMP"
 
-            # Copy JSON report with the same timestamp format
-            cp "$DELEGATED_JSON" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated.json"
+            # Copy JSON report keeping the original filename format
+            cp "$DELEGATED_JSON" "reports/$DATE_DIR/$DELEGATED_JSON"
 
             # Find and copy HTML report (should be generated automatically by tool)
             DELEGATED_HTML=$(ls peer-score-report-delegated-*.html 2>/dev/null | head -1)
             if [ -n "$DELEGATED_HTML" ] && [ -f "$DELEGATED_HTML" ]; then
               echo "Found HTML report: $DELEGATED_HTML"
-              cp "$DELEGATED_HTML" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated.html"
+              cp "$DELEGATED_HTML" "reports/$DATE_DIR/$DELEGATED_HTML"
 
               # Copy the JavaScript data file that's generated with the HTML report
               DELEGATED_JS=$(ls peer-score-report-delegated-*-data.js 2>/dev/null | head -1)
               if [ -n "$DELEGATED_JS" ] && [ -f "$DELEGATED_JS" ]; then
                 echo "Found JS data file: $DELEGATED_JS"
-                cp "$DELEGATED_JS" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated-data.js"
+                cp "$DELEGATED_JS" "reports/$DATE_DIR/$DELEGATED_JS"
               else
                 echo "Warning: JavaScript data file not found, HTML report may not function properly"
               fi
