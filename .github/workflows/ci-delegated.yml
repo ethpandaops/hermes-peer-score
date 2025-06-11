@@ -35,7 +35,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.24'
 
       - name: Install Dependencies
         run: |
@@ -45,13 +45,13 @@ jobs:
       - name: Configure Go Module for Delegated Validation
         run: |
           echo "🔗 Configuring Go module for delegated validation mode"
-          
+
           # Update go.mod for delegated validation using the built-in function
           go run . --validation-mode=delegated --update-go-mod
-          
+
           # Ensure dependencies are properly resolved
           go mod tidy
-          
+
           # Show the go.mod changes
           echo "Go module configuration:"
           cat go.mod | grep -A5 -B5 "hermes\|replace" || echo "No replace directives found"
@@ -94,18 +94,18 @@ jobs:
           # Debug: List all files in the working directory
           echo "📁 Current working directory contents:"
           ls -la
-          
+
           echo "🔍 Looking for JSON files with any pattern:"
           ls -la *.json 2>/dev/null || echo "No .json files found"
-          
+
           echo "🔍 Looking for delegated JSON files specifically:"
           ls -la *delegated*.json 2>/dev/null || echo "No delegated .json files found"
-          
+
           # Find the timestamped delegated JSON file
           DELEGATED_JSON=$(ls peer-score-report-delegated-*.json 2>/dev/null | head -1)
           if [ -n "$DELEGATED_JSON" ] && [ -f "$DELEGATED_JSON" ]; then
             echo "📊 Generating HTML report for delegated validation"
-            
+
             # Create timestamp-based directory structure
             TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
             DATE_DIR=$(date -u +"%Y-%m-%d")
@@ -121,11 +121,11 @@ jobs:
             fi
 
             echo "Found JSON report: $DELEGATED_JSON"
-            
+
             # Extract the generated timestamp from the filename
             GENERATED_TIMESTAMP=$(echo "$DELEGATED_JSON" | sed 's/peer-score-report-delegated-\(.*\)\.json/\1/')
             echo "Extracted timestamp: $GENERATED_TIMESTAMP"
-            
+
             # Copy JSON report with the same timestamp format
             cp "$DELEGATED_JSON" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated.json"
 
@@ -233,7 +233,7 @@ jobs:
             unique_peers=$(jq -r '.peers | length' "$DELEGATED_JSON")
             duration_seconds=$(jq -r '.duration / 1000000000' "$DELEGATED_JSON")
             test_duration=$(jq -r '.config.TestDuration / 1000000000' "$DELEGATED_JSON")
-            
+
             # Extract validation metrics (these fields were removed, so default to 0)
             validation_success_rate=0
             avg_latency_ms=0

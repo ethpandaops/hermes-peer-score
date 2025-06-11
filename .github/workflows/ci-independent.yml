@@ -27,7 +27,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.24'
 
       - name: Install Dependencies
         run: |
@@ -37,13 +37,13 @@ jobs:
       - name: Configure Go Module for Independent Validation
         run: |
           echo "⚡ Configuring Go module for independent validation mode"
-          
+
           # Update go.mod for independent validation using the built-in function
           go run . --validation-mode=independent --update-go-mod
-          
+
           # Ensure dependencies are properly resolved
           go mod tidy
-          
+
           # Show the go.mod changes
           echo "Go module configuration:"
           cat go.mod | grep -A5 -B5 "hermes\|replace" || echo "No replace directives found"
@@ -77,11 +77,11 @@ jobs:
           if [ -n "$INDEPENDENT_JSON" ] && [ -f "$INDEPENDENT_JSON" ]; then
             echo "📊 Generating HTML report for independent validation"
             echo "Found JSON report: $INDEPENDENT_JSON"
-            
+
             # Extract the generated timestamp from the filename
             GENERATED_TIMESTAMP=$(echo "$INDEPENDENT_JSON" | sed 's/peer-score-report-independent-\(.*\)\.json/\1/')
             echo "Extracted timestamp: $GENERATED_TIMESTAMP"
-            
+
             # Create timestamp-based directory structure
             DATE_DIR=$(date -u +"%Y-%m-%d")
 
@@ -192,7 +192,7 @@ jobs:
             unique_peers=$(jq -r '.peers | length' "$INDEPENDENT_JSON")
             duration_seconds=$(jq -r '.duration / 1000000000' "$INDEPENDENT_JSON")
             test_duration=$(jq -r '.config.TestDuration / 1000000000' "$INDEPENDENT_JSON")
-            
+
             # Extract validation metrics (these fields were removed, so default to 0)
             validation_success_rate=0
             avg_latency_ms=0
