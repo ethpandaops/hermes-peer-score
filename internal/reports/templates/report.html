@@ -522,20 +522,25 @@
 
             // Simulate async loading of detailed data
             setTimeout(() => {
-                const data = window.reportData || (typeof reportData !== 'undefined' ? reportData : null);
-                if (data && data.detailedPeers && data.detailedPeers[peerId]) {
-                    renderPeerDetails(data.detailedPeers[peerId]);
+                if (typeof reportData !== 'undefined' && reportData.peers) {
+                    // Find the peer in the array by peer_id
+                    const peerData = reportData.peers.find(peer => peer.peer_id === peerId);
+                    if (peerData) {
+                        renderPeerDetails(peerData);
+                    } else {
+                        document.getElementById('modalContent').innerHTML =
+                            '<div class="text-center py-8 text-red-500">Detailed peer data not found</div>';
+                    }
                 } else {
                     document.getElementById('modalContent').innerHTML =
-                        '<div class="text-center py-8 text-red-500">Detailed peer data not found</div>';
+                        '<div class="text-center py-8 text-red-500">Report data not available</div>';
                 }
             }, 500);
         }
 
         // Generate HTML for event counts table
         function generateEventCountsHtml(peerId) {
-            const data = window.reportData || (typeof reportData !== 'undefined' ? reportData : null);
-            const eventCounts = data && data.peerEventCounts && data.peerEventCounts[peerId];
+            const eventCounts = reportData.peerEventCounts && reportData.peerEventCounts[peerId];
 
             if (!eventCounts || Object.keys(eventCounts).length === 0) {
                 return '<div class="p-4 text-center text-gray-500">No event data available</div>';

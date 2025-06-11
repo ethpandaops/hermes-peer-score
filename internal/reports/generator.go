@@ -122,9 +122,32 @@ func (g *DefaultGenerator) generateHTMLReport(report *Report, aiAnalysis string)
 // generateDataFile creates a JavaScript data file for the HTML report
 func (g *DefaultGenerator) generateDataFile(report *Report, filename string) error {
 	// Process the full report data for JavaScript consumption
-	jsData, err := g.dataProcessor.ProcessPeerData(report.Peers)
+	processedData, err := g.dataProcessor.ProcessPeerData(report.Peers)
 	if err != nil {
 		return fmt.Errorf("failed to process peer data: %w", err)
+	}
+	
+	// Extract the peers array from the processed data
+	var peersArray interface{}
+	if processedMap, ok := processedData.(map[string]interface{}); ok {
+		if peers, exists := processedMap["peers"]; exists {
+			peersArray = peers
+		} else {
+			peersArray = []interface{}{} // Empty array fallback
+		}
+	} else {
+		peersArray = processedData // Use as-is if not a map
+	}
+	
+	// Create the complete data structure including event counts
+	jsData := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"format_version": "1.0",
+			"processed_at":   report.Timestamp.Format(time.RFC3339),
+			"total_peers":    len(report.Peers),
+		},
+		"peers":            peersArray,
+		"peerEventCounts":  report.PeerEventCounts,
 	}
 	
 	dataJSON, err := json.MarshalIndent(jsData, "", "  ")

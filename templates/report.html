@@ -518,20 +518,40 @@
 
             // Simulate async loading of detailed data
             setTimeout(() => {
-                if (typeof reportData !== 'undefined' && reportData.peers && reportData.peers[peerId]) {
-                    renderPeerDetails(reportData.peers[peerId]);
+                if (typeof reportData !== 'undefined' && reportData.peers) {
+                    // Find the peer in the array by peer_id
+                    const peerData = reportData.peers.find(peer => peer.peer_id === peerId);
+                    if (peerData) {
+                        renderPeerDetails(peerData);
+                    } else {
+                        document.getElementById('modalContent').innerHTML =
+                            '<div class="text-center py-8 text-red-500">Detailed peer data not found</div>';
+                    }
                 } else {
                     document.getElementById('modalContent').innerHTML =
-                        '<div class="text-center py-8 text-red-500">Detailed peer data not found</div>';
+                        '<div class="text-center py-8 text-red-500">Report data not available</div>';
                 }
             }, 500);
         }
 
         // Generate HTML for event counts table
         function generateEventCountsHtml(peerId) {
-            const eventCounts = reportData.peerEventCounts && reportData.peerEventCounts[peerId];
+            // Find the peer data to get event counts
+            const peerData = reportData.peers ? reportData.peers.find(peer => peer.peer_id === peerId) : null;
+            
+            if (!peerData) {
+                return '<div class="p-4 text-center text-gray-500">No event data available</div>';
+            }
 
-            if (!eventCounts || Object.keys(eventCounts).length === 0) {
+            // Create basic event counts from peer data
+            const eventCounts = {};
+            if (peerData.event_count > 0) eventCounts['Total Events'] = peerData.event_count;
+            if (peerData.goodbye_count > 0) eventCounts['Goodbye Events'] = peerData.goodbye_count;
+            if (peerData.mesh_count > 0) eventCounts['Mesh Events'] = peerData.mesh_count;
+            if (peerData.session_count > 0) eventCounts['Connection Sessions'] = peerData.session_count;
+            if (peerData.total_connections > 0) eventCounts['Total Connections'] = peerData.total_connections;
+
+            if (Object.keys(eventCounts).length === 0) {
                 return '<div class="p-4 text-center text-gray-500">No event data available</div>';
             }
 

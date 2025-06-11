@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/probe-lab/hermes/host"
@@ -26,13 +27,18 @@ type DefaultTool struct {
 	eventMgr      *events.DefaultManager
 	reportGen     *reports.DefaultGenerator
 	hermesCtrl    HermesController
+	
+	// Event counting
+	peerEventCounts   map[string]map[string]int
+	peerEventCountsMu sync.RWMutex
 }
 
 // NewTool creates a new peer score tool instance
 func NewTool(ctx context.Context, cfg config.Config, logger logrus.FieldLogger) (*DefaultTool, error) {
 	tool := &DefaultTool{
-		config: cfg,
-		logger: logger.WithField("component", "core_tool"),
+		config:          cfg,
+		logger:          logger.WithField("component", "core_tool"),
+		peerEventCounts: make(map[string]map[string]int),
 	}
 	
 	_ = ctx // Context will be passed to individual methods as needed

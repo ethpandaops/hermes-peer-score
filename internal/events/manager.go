@@ -56,6 +56,12 @@ func (m *DefaultManager) HandleEvent(ctx context.Context, event *host.TraceEvent
 		"event_type": event.Type,
 	})
 
+	// Count the event by peer ID and event type
+	peerID := common.GetPeerID(event)
+	if peerID != "" && peerID != "unknown" {
+		m.tool.IncrementEventCount(peerID, event.Type)
+	}
+
 	// Find and execute the appropriate handler
 	handler, exists := m.handlers[event.Type]
 	if !exists {
@@ -66,18 +72,6 @@ func (m *DefaultManager) HandleEvent(ctx context.Context, event *host.TraceEvent
 	// Execute the handler
 	if err := handler.HandleEvent(ctx, event); err != nil {
 		return fmt.Errorf("handler for event type %s failed: %w", event.Type, err)
-	}
-
-	// Update event counts and message counts
-	peerID := GetPeerID(event)
-	m.tool.IncrementEventCount(peerID, event.Type)
-
-	// Update message count for existing peers
-	if peer, exists := m.tool.GetPeer(peerID); exists {
-		m.tool.UpdatePeer(peerID, func(p interface{}) {
-			// This will be implemented when we migrate the peer management
-			_ = peer
-		})
 	}
 
 	return nil
