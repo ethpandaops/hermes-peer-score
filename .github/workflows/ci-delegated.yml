@@ -91,6 +91,16 @@ jobs:
 
       - name: Generate HTML Report
         run: |
+          # Debug: List all files in the working directory
+          echo "📁 Current working directory contents:"
+          ls -la
+          
+          echo "🔍 Looking for JSON files with any pattern:"
+          ls -la *.json 2>/dev/null || echo "No .json files found"
+          
+          echo "🔍 Looking for delegated JSON files specifically:"
+          ls -la *delegated*.json 2>/dev/null || echo "No delegated .json files found"
+          
           # Find the timestamped delegated JSON file
           DELEGATED_JSON=$(ls peer-score-report-*-delegated-*.json 2>/dev/null | head -1)
           if [ -n "$DELEGATED_JSON" ] && [ -f "$DELEGATED_JSON" ]; then
