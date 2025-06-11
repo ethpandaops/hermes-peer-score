@@ -1188,6 +1188,133 @@ func GenerateHTMLReport(log logrus.FieldLogger, jsonFile, outputFile string) err
 	return GenerateHTMLReportWithAI(log, jsonFile, outputFile, "", "")
 }
 
+// GenerateHTMLReportFromReport creates an optimized HTML report from a report object.
+// This is more efficient than GenerateHTMLReport as it avoids file I/O and JSON unmarshaling.
+//
+// Parameters:
+//   - report: The report object to generate HTML from
+//   - outputFile: Path where the HTML report should be written
+//   - apiKey: Optional API key for AI analysis
+//   - aiAnalysis: Optional pre-generated AI analysis
+//
+// Returns an error if file operations or template processing fails.
+func GenerateHTMLReportFromReport(log logrus.FieldLogger, report PeerScoreReport, outputFile, apiKey, aiAnalysis string) error {
+	// Generate AI analysis if API key is provided and analysis is not pre-generated
+	var finalAIAnalysis string
+	if aiAnalysis != "" {
+		finalAIAnalysis = aiAnalysis
+	} else if apiKey != "" {
+		log.Printf("Generating AI analysis...")
+
+		summary := SummarizeReport(&report)
+
+		// Check summary size and log it
+		summaryJSON, _ := json.Marshal(summary)
+		summarySize := len(summaryJSON)
+
+		log.Printf("Summary data size: %d bytes (%d KB)", summarySize, summarySize/1024)
+
+		log.Printf("Creating AI client and sending analysis request...")
+
+		client := NewClaudeAPIClient(apiKey)
+
+		analysis, aerr := client.AnalyzeReport(log, summary)
+		if aerr != nil {
+			log.Printf("Warning: Failed to generate AI analysis: %v", aerr)
+
+			finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
+		} else {
+			// Clean the AI-generated content to prevent JavaScript errors
+			finalAIAnalysis = cleanAIHTML(analysis)
+
+			log.Printf("AI analysis generated successfully")
+		}
+	}
+
+	// Generate the data file alongside the HTML report
+	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
+	if gerr := generateDataFile(log, report, dataFile); gerr != nil {
+		return fmt.Errorf("failed to generate data file: %w", gerr)
+	}
+
+	// Prepare template data with summary information only
+	templateData := OptimizedHTMLTemplateData{
+		GeneratedAt:      time.Now(),
+		Summary:          extractSummaryData(report),
+		DataFile:         filepath.Base(dataFile),
+		AIAnalysis:       finalAIAnalysis,
+		AIAnalysisHTML:   template.HTML(finalAIAnalysis), //nolint:gosec // data sanitized further down.
+		ValidationMode:   report.ValidationMode,
+		ValidationConfig: report.ValidationConfig,
+	}
+
+	// Create the optimized HTML template with custom functions
+	tmpl := template.New("report").Funcs(template.FuncMap{
+		"mul": func(a, b interface{}) float64 {
+			switch va := a.(type) {
+			case float64:
+				if vb, ok := b.(float64); ok {
+					return va * vb
+				}
+			case int:
+				if vb, ok := b.(int); ok {
+					return float64(va * vb)
+				}
+				if vb, ok := b.(float64); ok {
+					return float64(va) * vb
+				}
+			}
+
+			return 0
+		},
+		"div": func(a, b interface{}) float64 {
+			switch va := a.(type) {
+			case float64:
+				if vb, ok := b.(float64); ok && vb != 0 {
+					return va / vb
+				}
+			case int:
+				if vb, ok := b.(int); ok && vb != 0 {
+					return float64(va) / float64(vb)
+				}
+				if vb, ok := b.(float64); ok && vb != 0 {
+					return float64(va) / vb
+				}
+			}
+
+			return 0
+		},
+	})
+
+	// Parse the optimized HTML template string
+	tmpl, err := tmpl.Parse(optimizedHTMLTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	// Ensure the output directory exists
+	if mkErr := os.MkdirAll(filepath.Dir(outputFile), 0755); mkErr != nil {
+		return fmt.Errorf("failed to create output directory: %w", mkErr)
+	}
+
+	// Create the output HTML file
+	file, err := os.Create(outputFile)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer file.Close()
+
+	// Execute the template with summary data
+	if err := tmpl.Execute(file, templateData); err != nil {
+		return fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	log.Printf("Optimized HTML report generated: %s", outputFile)
+	log.Printf("Data file generated: %s", dataFile)
+
+	return nil
+}
+
 // GenerateHTMLReportWithAI creates an optimized HTML report with optional AI analysis.
 func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiKey, aiAnalysis string) error {
 	// Read the JSON report file from disk.
