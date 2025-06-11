@@ -98,7 +98,9 @@ jobs:
 
       - name: Generate HTML Report
         run: |
-          if [ -f peer-score-report-delegated.json ]; then
+          # Find the timestamped delegated JSON file
+          DELEGATED_JSON=$(ls peer-score-report-*-delegated-*.json 2>/dev/null | head -1)
+          if [ -n "$DELEGATED_JSON" ] && [ -f "$DELEGATED_JSON" ]; then
             echo "📊 Generating HTML report for delegated validation"
             
             # Create timestamp-based directory structure
@@ -115,17 +117,26 @@ jobs:
               ls -la "reports/$DATE_DIR/$MODE_DIR/"
             fi
 
-            # Copy JSON report with timestamp and mode
-            cp peer-score-report-delegated.json reports/$DATE_DIR/$MODE_DIR/peer-score-report-delegated-$TIMESTAMP.json
+            echo "Found JSON report: $DELEGATED_JSON"
+            
+            # Extract the generated timestamp from the filename
+            GENERATED_TIMESTAMP=$(echo "$DELEGATED_JSON" | sed 's/.*-delegated-\(.*\)\.json/\1/')
+            echo "Extracted timestamp: $GENERATED_TIMESTAMP"
+            
+            # Copy JSON report with the same timestamp format
+            cp "$DELEGATED_JSON" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated.json"
 
-            # Copy HTML report (should be generated automatically by tool)
-            if [ -f peer-score-report-delegated.html ]; then
-              # First fix the data file reference in the HTML to point to the timestamped version
-              sed "s/peer-score-report-delegated-data.js/peer-score-report-delegated-$TIMESTAMP-data.js/g" peer-score-report-delegated.html > reports/$DATE_DIR/$MODE_DIR/peer-score-report-delegated-$TIMESTAMP.html
+            # Find and copy HTML report (should be generated automatically by tool)
+            DELEGATED_HTML=$(ls peer-score-report-*-delegated-*.html 2>/dev/null | head -1)
+            if [ -n "$DELEGATED_HTML" ] && [ -f "$DELEGATED_HTML" ]; then
+              echo "Found HTML report: $DELEGATED_HTML"
+              cp "$DELEGATED_HTML" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated.html"
 
               # Copy the JavaScript data file that's generated with the HTML report
-              if [ -f peer-score-report-delegated-data.js ]; then
-                cp peer-score-report-delegated-data.js reports/$DATE_DIR/$MODE_DIR/peer-score-report-delegated-$TIMESTAMP-data.js
+              DELEGATED_JS=$(ls peer-score-report-*-delegated-*-data.js 2>/dev/null | head -1)
+              if [ -n "$DELEGATED_JS" ] && [ -f "$DELEGATED_JS" ]; then
+                echo "Found JS data file: $DELEGATED_JS"
+                cp "$DELEGATED_JS" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-delegated-data.js"
               else
                 echo "Warning: JavaScript data file not found, HTML report may not function properly"
               fi
@@ -222,25 +233,28 @@ jobs:
       - name: Parse Report Results
         id: results
         run: |
-          if [ -f peer-score-report-delegated.json ]; then
+          # Find the timestamped delegated JSON file
+          DELEGATED_JSON=$(ls peer-score-report-*-delegated-*.json 2>/dev/null | head -1)
+          if [ -n "$DELEGATED_JSON" ] && [ -f "$DELEGATED_JSON" ]; then
+            echo "Parsing results from: $DELEGATED_JSON"
             # Extract data from the new JSON format
-            validation_mode=$(jq -r '.validation_mode // "delegated"' peer-score-report-delegated.json)
-            hermes_version=$(jq -r '.validation_config.hermes_version // "unknown"' peer-score-report-delegated.json)
-            total_connections=$(jq -r '.total_connections // 0' peer-score-report-delegated.json)
-            successful_handshakes=$(jq -r '.successful_handshakes // 0' peer-score-report-delegated.json)
-            failed_handshakes=$(jq -r '.failed_handshakes // 0' peer-score-report-delegated.json)
-            unique_peers=$(jq -r '.peers | length' peer-score-report-delegated.json)
-            duration_seconds=$(jq -r '.duration / 1000000000' peer-score-report-delegated.json)
-            test_duration=$(jq -r '.config.TestDuration / 1000000000' peer-score-report-delegated.json)
+            validation_mode=$(jq -r '.validation_mode // "delegated"' "$DELEGATED_JSON")
+            hermes_version=$(jq -r '.validation_config.hermes_version // "unknown"' "$DELEGATED_JSON")
+            total_connections=$(jq -r '.total_connections // 0' "$DELEGATED_JSON")
+            successful_handshakes=$(jq -r '.successful_handshakes // 0' "$DELEGATED_JSON")
+            failed_handshakes=$(jq -r '.failed_handshakes // 0' "$DELEGATED_JSON")
+            unique_peers=$(jq -r '.peers | length' "$DELEGATED_JSON")
+            duration_seconds=$(jq -r '.duration / 1000000000' "$DELEGATED_JSON")
+            test_duration=$(jq -r '.config.TestDuration / 1000000000' "$DELEGATED_JSON")
             
-            # Extract validation metrics
-            validation_success_rate=$(jq -r '.validation_metrics.validation_success_rate // 0' peer-score-report-delegated.json)
-            avg_latency_ms=$(jq -r '(.validation_metrics.validation_latency.average // 0) / 1000000' peer-score-report-delegated.json)
-            messages_per_sec=$(jq -r '.validation_metrics.message_processing_rate.messages_per_second // 0' peer-score-report-delegated.json)
-            error_rate=$(jq -r '.validation_metrics.error_rates.error_rate // 0' peer-score-report-delegated.json)
+            # Extract validation metrics (these fields were removed, so default to 0)
+            validation_success_rate=0
+            avg_latency_ms=0
+            messages_per_sec=0
+            error_rate=0
 
             # Count unique client types
-            unique_clients=$(jq -r '[.peers[].client_type] | unique | length' peer-score-report-delegated.json)
+            unique_clients=$(jq -r '[.peers[].client_type] | unique | length' "$DELEGATED_JSON")
 
             # Calculate success rate
             if [ "$total_connections" -gt 0 ]; then
@@ -250,7 +264,7 @@ jobs:
             fi
 
             # Count total events
-            total_events=$(jq -r '[.peer_event_counts[] | add] | add // 0' peer-score-report-delegated.json)
+            total_events=$(jq -r '[.peer_event_counts[] | add] | add // 0' "$DELEGATED_JSON")
 
             # Set outputs
             echo "validation_mode=$validation_mode" >> $GITHUB_OUTPUT

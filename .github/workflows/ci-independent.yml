@@ -79,34 +79,36 @@ jobs:
 
       - name: Generate HTML Report
         run: |
-          if [ -f peer-score-report-independent.json ]; then
+          # Find the timestamped independent JSON file
+          INDEPENDENT_JSON=$(ls peer-score-report-*-independent-*.json 2>/dev/null | head -1)
+          if [ -n "$INDEPENDENT_JSON" ] && [ -f "$INDEPENDENT_JSON" ]; then
             echo "📊 Generating HTML report for independent validation"
+            echo "Found JSON report: $INDEPENDENT_JSON"
+            
+            # Extract the generated timestamp from the filename
+            GENERATED_TIMESTAMP=$(echo "$INDEPENDENT_JSON" | sed 's/.*-independent-\(.*\)\.json/\1/')
+            echo "Extracted timestamp: $GENERATED_TIMESTAMP"
             
             # Create timestamp-based directory structure
-            TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
             DATE_DIR=$(date -u +"%Y-%m-%d")
-            MODE_DIR="independent"
 
-            # Ensure the reports directory structure exists
-            mkdir -p reports/$DATE_DIR/$MODE_DIR
+            # Ensure the reports directory exists
+            mkdir -p "reports/$DATE_DIR"
 
-            # Check if this is a same-day re-run and preserve existing reports
-            if [ -d "reports/$DATE_DIR/$MODE_DIR" ] && [ "$(ls -A reports/$DATE_DIR/$MODE_DIR 2>/dev/null)" ]; then
-              echo "Found existing independent reports for $DATE_DIR, they will be preserved"
-              ls -la "reports/$DATE_DIR/$MODE_DIR/"
-            fi
+            # Copy JSON report with the same timestamp format
+            cp "$INDEPENDENT_JSON" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-independent.json"
 
-            # Copy JSON report with timestamp and mode
-            cp peer-score-report-independent.json reports/$DATE_DIR/$MODE_DIR/peer-score-report-independent-$TIMESTAMP.json
-
-            # Copy HTML report (should be generated automatically by tool)
-            if [ -f peer-score-report-independent.html ]; then
-              # First fix the data file reference in the HTML to point to the timestamped version
-              sed "s/peer-score-report-independent-data.js/peer-score-report-independent-$TIMESTAMP-data.js/g" peer-score-report-independent.html > reports/$DATE_DIR/$MODE_DIR/peer-score-report-independent-$TIMESTAMP.html
+            # Find and copy HTML report (should be generated automatically by tool)
+            INDEPENDENT_HTML=$(ls peer-score-report-*-independent-*.html 2>/dev/null | head -1)
+            if [ -n "$INDEPENDENT_HTML" ] && [ -f "$INDEPENDENT_HTML" ]; then
+              echo "Found HTML report: $INDEPENDENT_HTML"
+              cp "$INDEPENDENT_HTML" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-independent.html"
 
               # Copy the JavaScript data file that's generated with the HTML report
-              if [ -f peer-score-report-independent-data.js ]; then
-                cp peer-score-report-independent-data.js reports/$DATE_DIR/$MODE_DIR/peer-score-report-independent-$TIMESTAMP-data.js
+              INDEPENDENT_JS=$(ls peer-score-report-*-independent-*-data.js 2>/dev/null | head -1)
+              if [ -n "$INDEPENDENT_JS" ] && [ -f "$INDEPENDENT_JS" ]; then
+                echo "Found JS data file: $INDEPENDENT_JS"
+                cp "$INDEPENDENT_JS" "reports/$DATE_DIR/peer-score-report-$GENERATED_TIMESTAMP-independent-data.js"
               else
                 echo "Warning: JavaScript data file not found, HTML report may not function properly"
               fi
@@ -203,28 +205,31 @@ jobs:
       - name: Parse Report Results
         id: results
         run: |
-          if [ -f peer-score-report-independent.json ]; then
+          # Find the timestamped independent JSON file
+          INDEPENDENT_JSON=$(ls peer-score-report-*-independent-*.json 2>/dev/null | head -1)
+          if [ -n "$INDEPENDENT_JSON" ] && [ -f "$INDEPENDENT_JSON" ]; then
+            echo "Parsing results from: $INDEPENDENT_JSON"
             # Extract data from the new JSON format
-            validation_mode=$(jq -r '.validation_mode // "independent"' peer-score-report-independent.json)
-            hermes_version=$(jq -r '.validation_config.hermes_version // "unknown"' peer-score-report-independent.json)
-            total_connections=$(jq -r '.total_connections // 0' peer-score-report-independent.json)
-            successful_handshakes=$(jq -r '.successful_handshakes // 0' peer-score-report-independent.json)
-            failed_handshakes=$(jq -r '.failed_handshakes // 0' peer-score-report-independent.json)
-            unique_peers=$(jq -r '.peers | length' peer-score-report-independent.json)
-            duration_seconds=$(jq -r '.duration / 1000000000' peer-score-report-independent.json)
-            test_duration=$(jq -r '.config.TestDuration / 1000000000' peer-score-report-independent.json)
+            validation_mode=$(jq -r '.validation_mode // "independent"' "$INDEPENDENT_JSON")
+            hermes_version=$(jq -r '.validation_config.hermes_version // "unknown"' "$INDEPENDENT_JSON")
+            total_connections=$(jq -r '.total_connections // 0' "$INDEPENDENT_JSON")
+            successful_handshakes=$(jq -r '.successful_handshakes // 0' "$INDEPENDENT_JSON")
+            failed_handshakes=$(jq -r '.failed_handshakes // 0' "$INDEPENDENT_JSON")
+            unique_peers=$(jq -r '.peers | length' "$INDEPENDENT_JSON")
+            duration_seconds=$(jq -r '.duration / 1000000000' "$INDEPENDENT_JSON")
+            test_duration=$(jq -r '.config.TestDuration / 1000000000' "$INDEPENDENT_JSON")
             
-            # Extract validation metrics
-            validation_success_rate=$(jq -r '.validation_metrics.validation_success_rate // 0' peer-score-report-independent.json)
-            avg_latency_ms=$(jq -r '(.validation_metrics.validation_latency.average // 0) / 1000000' peer-score-report-independent.json)
-            messages_per_sec=$(jq -r '.validation_metrics.message_processing_rate.messages_per_second // 0' peer-score-report-independent.json)
-            error_rate=$(jq -r '.validation_metrics.error_rates.error_rate // 0' peer-score-report-independent.json)
-            cpu_usage=$(jq -r '.validation_metrics.resource_utilization.cpu_usage_percent // 0' peer-score-report-independent.json)
-            memory_usage=$(jq -r '.validation_metrics.resource_utilization.memory_usage_mb // 0' peer-score-report-independent.json)
-            cache_hit_rate=$(jq -r '.validation_metrics.resource_utilization.cache_hit_rate // 0' peer-score-report-independent.json)
+            # Extract validation metrics (these fields were removed, so default to 0)
+            validation_success_rate=0
+            avg_latency_ms=0
+            messages_per_sec=0
+            error_rate=0
+            cpu_usage=0
+            memory_usage=0
+            cache_hit_rate=0
 
             # Count unique client types
-            unique_clients=$(jq -r '[.peers[].client_type] | unique | length' peer-score-report-independent.json)
+            unique_clients=$(jq -r '[.peers[].client_type] | unique | length' "$INDEPENDENT_JSON")
 
             # Calculate success rate
             if [ "$total_connections" -gt 0 ]; then
@@ -234,7 +239,7 @@ jobs:
             fi
 
             # Count total events
-            total_events=$(jq -r '[.peer_event_counts[] | add] | add // 0' peer-score-report-independent.json)
+            total_events=$(jq -r '[.peer_event_counts[] | add] | add // 0' "$INDEPENDENT_JSON")
 
             # Set outputs
             echo "validation_mode=$validation_mode" >> $GITHUB_OUTPUT
