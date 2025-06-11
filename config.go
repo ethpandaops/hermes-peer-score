@@ -101,7 +101,7 @@ func (n *ToolConfig) AsHermesConfig() *eth.NodeConfig {
 		Devp2pPort:                  n.Devp2pPort,
 		Libp2pHost:                  n.Libp2pHost,
 		Libp2pPort:                  n.Libp2pPort,
-		Libp2pPeerscoreSnapshotFreq: 30 * time.Second,
+		Libp2pPeerscoreSnapshotFreq: 15 * time.Minute,
 		PrysmHost:                   n.PrysmHost,
 		PrysmPortHTTP:               n.PrysmPortHTTP,
 		PrysmPortGRPC:               n.PrysmPortGRPC,
@@ -178,7 +178,7 @@ func GetValidationConfigs() map[ValidationMode]ValidationConfig {
 		},
 		ValidationModeIndependent: {
 			Mode:          ValidationModeIndependent,
-			HermesVersion: "v0.0.4-0.20250611021139-b3e6fc7d4d79",
+			HermesVersion: "v0.0.4-0.20250611164742-0abea7d82cb4",
 			ConfigOverrides: map[string]interface{}{
 				"validation-mode":                  "independent",
 				"validation-attestation-threshold": 10,

@@ -207,8 +207,8 @@ github.com/ethereum/go-ethereum v1.15.11 h1:JK73WKeu0WC0O1eyX+mdQAVHUV+UR1a9VB/d
 github.com/ethereum/go-ethereum v1.15.11/go.mod h1:mf8YiHIb0GR4x4TipcvBUPxJLw1mFdmxzoDi11sDRoI=
 github.com/ethereum/go-verkle v0.2.2 h1:I2W0WjnrFUIzzVPwm8ykY+7pL2d4VhlsePn4j7cnFk8=
 github.com/ethereum/go-verkle v0.2.2/go.mod h1:M3b90YRnzqKyyzBEWJGqj8Qff4IDeXnzFw0P9bFw3uk=
-github.com/ethpandaops/hermes v0.0.4-0.20250611021139-b3e6fc7d4d79 h1:YWBWoWBfwNt+4c8IXDDbpgVVgUEfP65jWBGfPeMRG5Y=
-github.com/ethpandaops/hermes v0.0.4-0.20250611021139-b3e6fc7d4d79/go.mod h1:MxI2dAPCom+iXtw2U43BqT78es9DqncdPrdGDTpQrCU=
+github.com/ethpandaops/hermes v0.0.4-0.20250611164742-0abea7d82cb4 h1:Gg+A5u9TYEGmS3Si0G0PzAjHVJZGNiCiHBtJhG5V5cc=
+github.com/ethpandaops/hermes v0.0.4-0.20250611164742-0abea7d82cb4/go.mod h1:MxI2dAPCom+iXtw2U43BqT78es9DqncdPrdGDTpQrCU=
 github.com/ethpandaops/xatu v1.1.15 h1:Uv9DaKVVKlrC9JAu5FktfzGLQITXxCqWeUAMTciaF8A=
 github.com/ethpandaops/xatu v1.1.15/go.mod h1:TxMr/+CBSHuvNaypE4uOZcXT2LIoLfpUnZyr85sOC9I=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=

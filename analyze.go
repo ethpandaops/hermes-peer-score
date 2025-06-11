@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
 	"time"
 
@@ -107,10 +108,17 @@ type TestConfigSummary struct {
 
 // NewClaudeAPIClient creates a new Claude API client.
 func NewClaudeAPIClient(apiKey string) *ClaudeAPIClient {
+	// Allow model to be configured via environment variable
+	model := os.Getenv("OPENROUTER_MODEL")
+	if model == "" {
+		// Try different DeepSeek model variants that might be available
+		model = "deepseek/deepseek-r1-0528" // Default fallback
+	}
+
 	return &ClaudeAPIClient{
 		APIKey:  apiKey,
 		BaseURL: "https://openrouter.ai/api/v1/chat/completions",
-		Model:   "anthropic/claude-sonnet-4", // OpenRouter model identifier
+		Model:   model,
 	}
 }
 
@@ -128,11 +136,13 @@ CRITICAL CONTEXT: Hermes is a GossipSub listener and network tracer that connect
 Your analysis should focus on understanding why OTHER PEERS are disconnecting FROM Hermes, not the other way around. Hermes wants to maintain stable connections to observe network behavior, so disconnections represent a loss of monitoring capability.
 
 IMPORTANT NOTES:
+
 - "Stream reset errors" are normal cleanup events after disconnections
 - "Client has too many peers" means OTHER clients are dropping Hermes because they've reached their peer limits
 - Hermes participates in the gossipsub network to monitor, but is not implementing peer scoring itself
 
 Analyze the data with these priorities:
+
 1. **Monitoring Stability** - Why are peers dropping connections to Hermes? Is Hermes being seen as an undesirable peer?
 2. **Network Participation** - Is Hermes successfully participating in gossipsub to maintain monitoring visibility?
 3. **Peer Acceptance** - Are certain client types more/less likely to maintain connections with Hermes?
@@ -145,6 +155,7 @@ Provide actionable insights for improving Hermes as a network monitoring tool, f
 - Understanding network dynamics that affect monitoring tools like Hermes
 
 IMPORTANT: Provide your response as clean HTML using Tailwind CSS classes. Use these specific classes:
+
 - Headers: h2 with "text-xl font-semibold text-gray-900 mt-6 mb-3", h3 with "text-lg font-semibold text-gray-900 mt-4 mb-2"
 - Paragraphs: p with "text-gray-700 mb-3"
 - Lists: ul with "list-disc ml-6 space-y-1 mb-3", li with "text-gray-700"
@@ -159,6 +170,7 @@ Do not include any markdown formatting - return only HTML.`
 %s
 
 Please provide HTML sections for:
+
 1. **Monitoring Impact Assessment** - How do short connection durations affect Hermes's ability to collect network data?
 2. **Peer Rejection Analysis** - Why are other clients dropping connections to Hermes? What patterns suggest Hermes is seen as undesirable?
 3. **Client Behavior Patterns** - Which client types maintain better connections with Hermes monitoring? Any biases in peer selection?
@@ -169,7 +181,7 @@ Focus on improving Hermes as a passive network monitoring tool that other peers 
 
 	request := ClaudeRequest{
 		Model:     c.Model,
-		MaxTokens: 2000,
+		MaxTokens: 8000, // Increased for DeepSeek which has higher token limits
 		Messages: []ClaudeMessage{
 			{
 				Role:    "system",
@@ -195,9 +207,9 @@ Focus on improving Hermes as a passive network monitoring tool that other peers 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.APIKey)
 
-	client := &http.Client{Timeout: 120 * time.Second}
+	client := &http.Client{Timeout: 300 * time.Second} // Increased timeout for DeepSeek
 
-	log.Printf("Sending request to OpenRouter API... (timeout: 120s)\n")
+	log.Printf("Sending request to OpenRouter API... (timeout: 300s)\n")
 
 	resp, err := client.Do(req)
 	if err != nil {

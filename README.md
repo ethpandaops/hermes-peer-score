@@ -69,11 +69,11 @@ export OPENROUTER_API_KEY="your-api-key"  # For AI-powered analysis
 - Lower resource usage on the tool itself
 - Uses Hermes version: `v0.0.4-0.20250513093811-320c1c3ee6e2`
 
-### Independent Validation  
+### Independent Validation
 - Uses Prysm only for beacon state and validator data access
 - Performs validation logic internally within the tool
 - Higher resource usage but more control over validation process
-- Uses Hermes version: `v0.0.4-0.20250611021139-b3e6fc7d4d79`
+- Uses Hermes version: `v0.0.4-0.20250611164742-0abea7d82cb4`
 
 ## Go Module Management
 
@@ -83,7 +83,7 @@ The tool requires different Hermes versions for each validation mode. Use the bu
 # Update go.mod for delegated mode
 ./peer-score-tool --validation-mode=delegated --update-go-mod
 
-# Update go.mod for independent mode  
+# Update go.mod for independent mode
 ./peer-score-tool --validation-mode=independent --update-go-mod
 
 # Validate current configuration
@@ -115,7 +115,7 @@ Generate HTML reports from existing JSON data:
 The project includes automated CI workflows:
 
 - **ci-delegated.yml**: Daily delegated validation tests at 11 AM UTC
-- **ci-independent.yml**: Daily independent validation tests at 12 PM UTC  
+- **ci-independent.yml**: Daily independent validation tests at 12 PM UTC
 - **clear-reports.yml**: Manual workflow for clearing historical reports
 
 ### GitHub Pages Deployment

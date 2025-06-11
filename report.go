@@ -48,10 +48,9 @@ func saveJSONReport(report PeerScoreReport) error {
 	return nil
 }
 
-// generateHTMLReport creates an HTML version of the JSON report.
+// generateHTMLReport creates an HTML version of the report.
 func generateHTMLReport(log logrus.FieldLogger, report PeerScoreReport) error {
 	// Always use timestamped filenames with fixed base name
-	jsonFile := GenerateTimestampedFilename(report.ValidationMode, "peer-score-report.json", report.Timestamp)
 	htmlFile := GenerateTimestampedFilename(report.ValidationMode, "peer-score-report.html", report.Timestamp)
 
 	// Get API key for AI analysis (optional)
@@ -60,16 +59,16 @@ func generateHTMLReport(log logrus.FieldLogger, report PeerScoreReport) error {
 		apiKey = os.Getenv("OPENROUTER_API_KEY")
 	}
 
-	// Generate HTML report with optional AI analysis
+	// Generate HTML report with optional AI analysis, passing report directly
 	if apiKey != "" && !*skipAI {
 		fmt.Printf("API key found - generating HTML with AI analysis\n")
 
-		return GenerateHTMLReportWithAI(log, jsonFile, htmlFile, apiKey, "")
+		return GenerateHTMLReportFromReport(log, report, htmlFile, apiKey, "")
 	} else {
 		fmt.Printf("No API key or AI disabled - generating HTML without AI analysis\n")
 	}
 
-	return GenerateHTMLReport(log, jsonFile, htmlFile)
+	return GenerateHTMLReportFromReport(log, report, htmlFile, "", "")
 }
 
 // printReportSummary displays a comprehensive summary of the test results.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -1126,6 +1127,8 @@ func cleanAIHTML(content string) string {
 
 // generateDataFile creates a JavaScript file containing the report data.
 func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile string) error {
+	log.Printf("Starting data cleaning for %d peers...", len(report.Peers))
+
 	// Clean all peer data to ensure no invalid characters
 	cleanedPeers := make(map[string]*PeerStats)
 
@@ -1137,18 +1140,28 @@ func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile s
 		cleanedPeers[peerID] = &cleanedPeer
 	}
 
+	log.Printf("Data cleaning completed, extracting summary data...")
+
 	// Create the data structure that will be embedded in the JS file
+	summaryData := extractSummaryData(report)
+
+	log.Printf("Summary extraction completed")
+
 	data := map[string]interface{}{
-		"peers":           extractSummaryData(report).PeerSummaries,
+		"peers":           summaryData.PeerSummaries,
 		"detailedPeers":   cleanedPeers,           // Full detailed data for on-demand loading
 		"peerEventCounts": report.PeerEventCounts, // Event counts by peer ID
-		"summary":         extractSummaryData(report),
+		"summary":         summaryData,
 	}
+
+	log.Printf("Starting JSON marshaling...")
 
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
+
+	log.Printf("JSON marshaling completed, data size: %d bytes", len(jsonData))
 
 	// Validate that the JSON is valid by unmarshaling it
 	var testData interface{}
@@ -1186,6 +1199,170 @@ func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile s
 // Returns an error if file operations or template processing fails.
 func GenerateHTMLReport(log logrus.FieldLogger, jsonFile, outputFile string) error {
 	return GenerateHTMLReportWithAI(log, jsonFile, outputFile, "", "")
+}
+
+// GenerateHTMLReportFromReport creates an optimized HTML report from a report object.
+// This is more efficient than GenerateHTMLReport as it avoids file I/O and JSON unmarshaling.
+//
+// Parameters:
+//   - report: The report object to generate HTML from
+//   - outputFile: Path where the HTML report should be written
+//   - apiKey: Optional API key for AI analysis
+//   - aiAnalysis: Optional pre-generated AI analysis
+//
+// Returns an error if file operations or template processing fails.
+func GenerateHTMLReportFromReport(log logrus.FieldLogger, report PeerScoreReport, outputFile, apiKey, aiAnalysis string) error {
+	log.Printf("Starting HTML report generation...")
+	log.Printf("Report contains %d peers", len(report.Peers))
+
+	// Generate AI analysis if API key is provided and analysis is not pre-generated
+	var finalAIAnalysis string
+
+	if aiAnalysis != "" {
+		log.Printf("Using pre-generated AI analysis")
+
+		finalAIAnalysis = aiAnalysis
+	} else if apiKey != "" {
+		log.Printf("Generating AI analysis...")
+
+		// Create a timeout context for AI analysis to prevent CI lockups
+		aiCtx, aiCancel := context.WithTimeout(context.Background(), 300*time.Second)
+		defer aiCancel()
+
+		// Use a channel to handle the AI analysis with timeout
+		resultChan := make(chan struct {
+			analysis string
+			err      error
+		}, 1)
+
+		go func() {
+			summary := SummarizeReport(&report)
+
+			// Check summary size and log it
+			summaryJSON, _ := json.Marshal(summary)
+			summarySize := len(summaryJSON)
+
+			log.Printf("Summary data size: %d bytes (%d KB)", summarySize, summarySize/1024)
+
+			log.Printf("Creating AI client and sending analysis request...")
+
+			client := NewClaudeAPIClient(apiKey)
+			analysis, aerr := client.AnalyzeReport(log, summary)
+
+			resultChan <- struct {
+				analysis string
+				err      error
+			}{analysis, aerr}
+		}()
+
+		select {
+		case result := <-resultChan:
+			if result.err != nil {
+				log.Printf("Warning: Failed to generate AI analysis: %v", result.err)
+
+				finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
+			} else {
+				// Clean the AI-generated content to prevent JavaScript errors
+				finalAIAnalysis = cleanAIHTML(result.analysis)
+
+				log.Printf("AI analysis generated successfully")
+			}
+		case <-aiCtx.Done():
+			log.Printf("Warning: AI analysis timed out after 120 seconds")
+
+			finalAIAnalysis = "⚠️ AI analysis timed out. This may be due to network issues or large dataset size in CI environment."
+		}
+	} else {
+		log.Printf("No API key provided, skipping AI analysis")
+	}
+
+	// Generate the data file alongside the HTML report
+	log.Printf("Generating data file...")
+
+	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
+
+	if gerr := generateDataFile(log, report, dataFile); gerr != nil {
+		return fmt.Errorf("failed to generate data file: %w", gerr)
+	}
+
+	log.Printf("Data file generation completed")
+
+	// Prepare template data with summary information only
+	templateData := OptimizedHTMLTemplateData{
+		GeneratedAt:      time.Now(),
+		Summary:          extractSummaryData(report),
+		DataFile:         filepath.Base(dataFile),
+		AIAnalysis:       finalAIAnalysis,
+		AIAnalysisHTML:   template.HTML(finalAIAnalysis), //nolint:gosec // data sanitized further down.
+		ValidationMode:   report.ValidationMode,
+		ValidationConfig: report.ValidationConfig,
+	}
+
+	// Create the optimized HTML template with custom functions
+	tmpl := template.New("report").Funcs(template.FuncMap{
+		"mul": func(a, b interface{}) float64 {
+			switch va := a.(type) {
+			case float64:
+				if vb, ok := b.(float64); ok {
+					return va * vb
+				}
+			case int:
+				if vb, ok := b.(int); ok {
+					return float64(va * vb)
+				}
+				if vb, ok := b.(float64); ok {
+					return float64(va) * vb
+				}
+			}
+
+			return 0
+		},
+		"div": func(a, b interface{}) float64 {
+			switch va := a.(type) {
+			case float64:
+				if vb, ok := b.(float64); ok && vb != 0 {
+					return va / vb
+				}
+			case int:
+				if vb, ok := b.(int); ok && vb != 0 {
+					return float64(va) / float64(vb)
+				}
+				if vb, ok := b.(float64); ok && vb != 0 {
+					return float64(va) / vb
+				}
+			}
+
+			return 0
+		},
+	})
+
+	// Parse the optimized HTML template string
+	tmpl, err := tmpl.Parse(optimizedHTMLTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	// Ensure the output directory exists
+	if mkErr := os.MkdirAll(filepath.Dir(outputFile), 0755); mkErr != nil {
+		return fmt.Errorf("failed to create output directory: %w", mkErr)
+	}
+
+	// Create the output HTML file
+	file, err := os.Create(outputFile)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer file.Close()
+
+	// Execute the template with summary data
+	if err := tmpl.Execute(file, templateData); err != nil {
+		return fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	log.Printf("Optimized HTML report generated: %s", outputFile)
+	log.Printf("Data file generated: %s", dataFile)
+
+	return nil
 }
 
 // GenerateHTMLReportWithAI creates an optimized HTML report with optional AI analysis.
@@ -1236,6 +1413,7 @@ func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiK
 
 	// Generate the data file alongside the HTML report
 	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
+
 	if gerr := generateDataFile(log, report, dataFile); gerr != nil {
 		return fmt.Errorf("failed to generate data file: %w", gerr)
 	}
