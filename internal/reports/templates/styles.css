@@ -1,0 +1,114 @@
+/* Hermes Peer Score Report Styles */
+
+.loading { 
+    opacity: 0.5; 
+    pointer-events: none; 
+}
+
+.peer-card { 
+    cursor: pointer; 
+    transition: all 0.2s; 
+}
+
+.peer-card:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+}
+
+.pagination { 
+    user-select: none; 
+}
+
+.score-positive { 
+    color: #10b981; 
+}
+
+.score-negative { 
+    color: #ef4444; 
+}
+
+.score-neutral { 
+    color: #6b7280; 
+}
+
+.virtual-scroll-container { 
+    height: 600px; 
+    overflow-y: auto; 
+}
+
+.peer-item { 
+    min-height: 120px; 
+}
+
+.detail-panel { 
+    max-height: 80vh; 
+    overflow-y: auto; 
+}
+
+.client-logo { 
+    transition: all 0.2s ease; 
+}
+
+.client-logo:hover { 
+    transform: scale(1.05); 
+}
+
+.client-fallback {
+    background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.ai-analysis-content {
+    line-height: 1.6;
+}
+
+/* Validation mode specific styles */
+.validation-mode-delegated {
+    --validation-primary: #2563eb;
+    --validation-secondary: #dbeafe;
+    --validation-accent: #1d4ed8;
+}
+
+.validation-mode-independent {
+    --validation-primary: #059669;
+    --validation-secondary: #d1fae5;
+    --validation-accent: #047857;
+}
+
+.validation-badge {
+    background: var(--validation-secondary);
+    color: var(--validation-primary);
+    border: 1px solid var(--validation-primary);
+}
+
+.validation-header {
+    background: linear-gradient(135deg, var(--validation-primary), var(--validation-accent));
+}
+
+.validation-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    margin-right: 8px;
+}
+
+.metrics-card {
+    border-left: 4px solid var(--validation-primary);
+    transition: all 0.2s ease;
+}
+
+.metrics-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.comparison-highlight {
+    background: linear-gradient(90deg, var(--validation-secondary), transparent);
+    border-left: 3px solid var(--validation-primary);
+    padding-left: 12px;
+}
