@@ -72,6 +72,7 @@ jobs:
           CHAIN: ${{ github.event.inputs.chain || 'mainnet' }}
           REGION: ${{ github.event.inputs.region || 'SFO' }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'deepseek/deepseek-r1' }}
         run: |
           # Select Prysm host based on region
           if [ "$REGION" = "SYD" ]; then
@@ -156,6 +157,7 @@ jobs:
       - name: Generate Historical Index
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'deepseek/deepseek-r1' }}
           VALIDATION_MODE: 'delegated'
         run: |
           # Download existing reports manifest from GitHub Pages to preserve history

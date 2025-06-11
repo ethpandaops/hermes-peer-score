@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -1126,6 +1127,8 @@ func cleanAIHTML(content string) string {
 
 // generateDataFile creates a JavaScript file containing the report data.
 func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile string) error {
+	log.Printf("Starting data cleaning for %d peers...", len(report.Peers))
+
 	// Clean all peer data to ensure no invalid characters
 	cleanedPeers := make(map[string]*PeerStats)
 
@@ -1137,18 +1140,25 @@ func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile s
 		cleanedPeers[peerID] = &cleanedPeer
 	}
 
+	log.Printf("Data cleaning completed, extracting summary data...")
+
 	// Create the data structure that will be embedded in the JS file
+	summaryData := extractSummaryData(report)
+	log.Printf("Summary extraction completed")
+
 	data := map[string]interface{}{
-		"peers":           extractSummaryData(report).PeerSummaries,
+		"peers":           summaryData.PeerSummaries,
 		"detailedPeers":   cleanedPeers,           // Full detailed data for on-demand loading
 		"peerEventCounts": report.PeerEventCounts, // Event counts by peer ID
-		"summary":         extractSummaryData(report),
+		"summary":         summaryData,
 	}
 
+	log.Printf("Starting JSON marshaling...")
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
+	log.Printf("JSON marshaling completed, data size: %d bytes", len(jsonData))
 
 	// Validate that the JSON is valid by unmarshaling it
 	var testData interface{}
@@ -1199,43 +1209,72 @@ func GenerateHTMLReport(log logrus.FieldLogger, jsonFile, outputFile string) err
 //
 // Returns an error if file operations or template processing fails.
 func GenerateHTMLReportFromReport(log logrus.FieldLogger, report PeerScoreReport, outputFile, apiKey, aiAnalysis string) error {
+	log.Printf("Starting HTML report generation...")
+	log.Printf("Report contains %d peers", len(report.Peers))
+
 	// Generate AI analysis if API key is provided and analysis is not pre-generated
 	var finalAIAnalysis string
 	if aiAnalysis != "" {
+		log.Printf("Using pre-generated AI analysis")
 		finalAIAnalysis = aiAnalysis
 	} else if apiKey != "" {
 		log.Printf("Generating AI analysis...")
 
-		summary := SummarizeReport(&report)
+		// Create a timeout context for AI analysis to prevent CI lockups
+		aiCtx, aiCancel := context.WithTimeout(context.Background(), 300*time.Second)
+		defer aiCancel()
 
-		// Check summary size and log it
-		summaryJSON, _ := json.Marshal(summary)
-		summarySize := len(summaryJSON)
+		// Use a channel to handle the AI analysis with timeout
+		resultChan := make(chan struct {
+			analysis string
+			err      error
+		}, 1)
 
-		log.Printf("Summary data size: %d bytes (%d KB)", summarySize, summarySize/1024)
+		go func() {
+			summary := SummarizeReport(&report)
 
-		log.Printf("Creating AI client and sending analysis request...")
+			// Check summary size and log it
+			summaryJSON, _ := json.Marshal(summary)
+			summarySize := len(summaryJSON)
 
-		client := NewClaudeAPIClient(apiKey)
+			log.Printf("Summary data size: %d bytes (%d KB)", summarySize, summarySize/1024)
 
-		analysis, aerr := client.AnalyzeReport(log, summary)
-		if aerr != nil {
-			log.Printf("Warning: Failed to generate AI analysis: %v", aerr)
+			log.Printf("Creating AI client and sending analysis request...")
 
-			finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
-		} else {
-			// Clean the AI-generated content to prevent JavaScript errors
-			finalAIAnalysis = cleanAIHTML(analysis)
+			client := NewClaudeAPIClient(apiKey)
+			analysis, aerr := client.AnalyzeReport(log, summary)
 
-			log.Printf("AI analysis generated successfully")
+			resultChan <- struct {
+				analysis string
+				err      error
+			}{analysis, aerr}
+		}()
+
+		select {
+		case result := <-resultChan:
+			if result.err != nil {
+				log.Printf("Warning: Failed to generate AI analysis: %v", result.err)
+				finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
+			} else {
+				// Clean the AI-generated content to prevent JavaScript errors
+				finalAIAnalysis = cleanAIHTML(result.analysis)
+				log.Printf("AI analysis generated successfully")
+			}
+		case <-aiCtx.Done():
+			log.Printf("Warning: AI analysis timed out after 120 seconds")
+			finalAIAnalysis = "⚠️ AI analysis timed out. This may be due to network issues or large dataset size in CI environment."
 		}
+	} else {
+		log.Printf("No API key provided, skipping AI analysis")
 	}
 
 	// Generate the data file alongside the HTML report
+	log.Printf("Generating data file...")
 	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
 	if gerr := generateDataFile(log, report, dataFile); gerr != nil {
 		return fmt.Errorf("failed to generate data file: %w", gerr)
 	}
+	log.Printf("Data file generation completed")
 
 	// Prepare template data with summary information only
 	templateData := OptimizedHTMLTemplateData{
