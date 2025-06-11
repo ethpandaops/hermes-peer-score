@@ -22,11 +22,6 @@ on:
           - SYD
         default: 'SFO'
         required: false
-      clear_history:
-        description: 'Clear all historical reports and start fresh'
-        type: boolean
-        default: false
-        required: false
 
 jobs:
   delegated-validation-test:
@@ -92,9 +87,7 @@ jobs:
             --prysm-host="$PRYSM_HOST" \
             --prysm-http-port=443 \
             --prysm-grpc-port=443 \
-            --duration="$DURATION" \
-            --timestamp-files \
-            --output=peer-score-report-delegated.json
+            --duration="$DURATION"
 
       - name: Generate HTML Report
         run: |
@@ -153,67 +146,51 @@ jobs:
       - name: Generate Historical Index
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          CLEAR_HISTORY: ${{ github.event.inputs.clear_history || 'false' }}
           VALIDATION_MODE: 'delegated'
         run: |
-          if [ "$CLEAR_HISTORY" = "true" ]; then
-            echo "🧹 Clear history requested - starting fresh without downloading historical delegated reports"
-            echo "Skipping historical report preservation..."
+          # Download existing reports manifest from GitHub Pages to preserve history
+          echo "Attempting to preserve existing delegated reports from GitHub Pages using manifest..."
+
+          # Try to download the existing reports manifest
+          MANIFEST_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/reports-manifest.json"
+          echo "Downloading reports manifest from: $MANIFEST_URL"
+
+          if curl -f -s "$MANIFEST_URL" -o reports-manifest.json 2>/dev/null; then
+            echo "Found existing reports manifest, downloading historical delegated reports..."
+
+            # Set cutoff date for 28-day retention
+            CUTOFF_DATE=$(date -u -d "28 days ago" +"%Y-%m-%d")
+            echo "Cutoff date for retention: $CUTOFF_DATE"
+
+            # Download historical reports using the manifest
+            CUTOFF_DATE="$CUTOFF_DATE" VALIDATION_MODE="delegated" python3 scripts/download_reports.py
           else
-            # Download existing reports manifest from GitHub Pages to preserve history
-            echo "Attempting to preserve existing delegated reports from GitHub Pages using manifest..."
+            echo "No existing reports manifest found - this might be the first delegated run"
+          fi
 
-            # Try to download the existing reports manifest
-            MANIFEST_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/reports-manifest.json"
-            echo "Downloading reports manifest from: $MANIFEST_URL"
+          # Clean up any delegated reports older than 28 days
+          echo "Cleaning up delegated reports older than 28 days..."
+          find reports -type f -name "*delegated*.json" | while read file; do
+            # Extract date from filename or path
+            FILE_DATE=$(echo "$file" | grep -o '[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}' | head -1)
+            if [ -n "$FILE_DATE" ]; then
+              FILE_EPOCH=$(date -d "$FILE_DATE" +%s 2>/dev/null || echo "0")
+              CUTOFF_EPOCH=$(date -d "28 days ago" +%s)
 
-            if curl -f -s "$MANIFEST_URL" -o reports-manifest.json 2>/dev/null; then
-              echo "Found existing reports manifest, downloading historical delegated reports..."
-
-              # Set cutoff date for 28-day retention
-              CUTOFF_DATE=$(date -u -d "28 days ago" +"%Y-%m-%d")
-              echo "Cutoff date for retention: $CUTOFF_DATE"
-
-              # Download historical reports using the manifest
-              CUTOFF_DATE="$CUTOFF_DATE" VALIDATION_MODE="delegated" python3 scripts/download_reports.py
-            else
-              echo "No existing reports manifest found - this might be the first delegated run"
+              if [ "$FILE_EPOCH" -lt "$CUTOFF_EPOCH" ] && [ "$FILE_EPOCH" -gt "0" ]; then
+                echo "Removing old delegated report: $file"
+                rm -f "$file"
+                # Also remove corresponding HTML and JS files
+                rm -f "${file%.json}.html"
+                rm -f "${file%.json}-data.js"
+              fi
             fi
-          fi
-
-          if [ "$CLEAR_HISTORY" = "true" ]; then
-            echo "🧹 Clearing all historical delegated reports as requested..."
-            # Remove all delegated report directories except the current one
-            find reports -maxdepth 2 -type d -path "*/delegated" | while read dir; do
-              DIR_DATE=$(basename $(dirname "$dir"))
-              CURRENT_DATE=$(date -u +"%Y-%m-%d")
-              if [ "$DIR_DATE" != "$CURRENT_DATE" ]; then
-                echo "Removing historical delegated reports from $DIR_DATE"
-                rm -rf "$dir"
-              fi
-            done
-          else
-            # Clean up any delegated directories older than 28 days
-            echo "Cleaning up delegated reports older than 28 days..."
-            find reports -maxdepth 2 -type d -path "*/delegated" | while read dir; do
-              DIR_DATE=$(basename $(dirname "$dir"))
-              if [ "$DIR_DATE" != "reports" ]; then
-                # Calculate if this directory is older than 28 days
-                DIR_EPOCH=$(date -d "$DIR_DATE" +%s 2>/dev/null || echo "0")
-                CUTOFF_EPOCH=$(date -d "28 days ago" +%s)
-
-                if [ "$DIR_EPOCH" -lt "$CUTOFF_EPOCH" ] && [ "$DIR_EPOCH" -gt "0" ]; then
-                  echo "Removing old delegated reports from $DIR_DATE"
-                  rm -rf "$dir"
-                fi
-              fi
-            done
-          fi
+          done
 
           echo "Delegated cleanup complete, generating new index..."
 
           # Generate the historical index page and manifest
-          VALIDATION_MODE="delegated" python3 scripts/generate_index.py
+          python3 scripts/generate_index.py
 
       - name: Upload Report Artifacts
         uses: actions/upload-artifact@v4
@@ -305,16 +282,10 @@ jobs:
           avg_latency_ms=${{ steps.results.outputs.avg_latency_ms }}
           messages_per_sec=${{ steps.results.outputs.messages_per_sec }}
           error_rate=${{ steps.results.outputs.error_rate }}
-          clear_history=${{ github.event.inputs.clear_history || 'false' }}
 
           {
             echo "## 🔗 Delegated Validation Report"
             echo ""
-            if [ "$clear_history" = "true" ]; then
-              echo "### 🧹 History Cleared"
-              echo "- **Historical reports were cleared** - Starting fresh with this report"
-              echo ""
-            fi
             echo "### Validation Configuration"
             echo "- **Mode:** Delegated Validation (via Prysm)"
             echo "- **Hermes Version:** $hermes_version"

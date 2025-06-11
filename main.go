@@ -15,12 +15,10 @@ import (
 // Configuration and command-line flags.
 var (
 	duration       = flag.Duration("duration", 2*time.Minute, "Test duration for peer scoring")
-	outputFile     = flag.String("output", "peer-score-report.json", "Output file for results")
 	prysmHost      = flag.String("prysm-host", "", "Prysm host connection string (required for both validation modes)")
 	prysmHTTPPort  = flag.Int("prysm-http-port", 443, "Prysm HTTP port")
 	prysmGRPCPort  = flag.Int("prysm-grpc-port", 443, "Prysm gRPC port")
 	validationMode = flag.String("validation-mode", "delegated", "Validation mode: 'delegated' (delegates validation to Prysm) or 'independent' (uses Prysm for beacon data, validates internally)")
-	timestampFiles = flag.Bool("timestamp-files", false, "Include timestamp in output filenames (useful for CI)")
 	htmlOnly       = flag.Bool("html-only", false, "Generate HTML report from existing JSON file without running peer score test")
 	inputJSON      = flag.String("input-json", "peer-score-report.json", "Input JSON file for HTML-only mode")
 	claudeAPIKey   = flag.String("openrouter-api-key", "", "OpenRouter API key for AI analysis (can also be set via OPENROUTER_API_KEY env var)")
@@ -114,17 +112,8 @@ func generateHTMLOnlyMode(log logrus.FieldLogger) {
 		log.Fatalf("Input JSON file does not exist: %s", *inputJSON)
 	}
 
-	// Determine output HTML file name
-	htmlFile := *outputFile
-	if *outputFile == "peer-score-report.json" {
-		// Use the input JSON name but with .html extension
-		htmlFile = strings.Replace(*inputJSON, ".json", ".html", 1)
-	} else {
-		// Use the specified output file
-		if !strings.HasSuffix(htmlFile, ".html") {
-			htmlFile = strings.Replace(htmlFile, ".json", ".html", 1)
-		}
-	}
+	// Determine output HTML file name based on input JSON
+	htmlFile := strings.Replace(*inputJSON, ".json", ".html", 1)
 
 	log.Infof("Generating HTML report from: %s", *inputJSON)
 	log.Infof("Output HTML file: %s", htmlFile)

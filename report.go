@@ -36,13 +36,8 @@ func saveJSONReport(report PeerScoreReport) error {
 		return fmt.Errorf("failed to marshal report: %w", err)
 	}
 
-	// Generate filename based on timestamp flag
-	var filename string
-	if *timestampFiles {
-		filename = GenerateTimestampedFilename(report.ValidationMode, *outputFile, report.Timestamp)
-	} else {
-		filename = GenerateValidationAwareFilename(report.ValidationMode, *outputFile)
-	}
+	// Always use timestamped filenames with fixed base name
+	filename := GenerateTimestampedFilename(report.ValidationMode, "peer-score-report.json", report.Timestamp)
 
 	//nolint:gosec // Controlled input.
 	if err := os.WriteFile(filename, reportJSON, 0644); err != nil {
@@ -55,15 +50,9 @@ func saveJSONReport(report PeerScoreReport) error {
 
 // generateHTMLReport creates an HTML version of the JSON report.
 func generateHTMLReport(log logrus.FieldLogger, report PeerScoreReport) error {
-	// Generate filenames based on timestamp flag
-	var jsonFile, htmlFile string
-	if *timestampFiles {
-		jsonFile = GenerateTimestampedFilename(report.ValidationMode, *outputFile, report.Timestamp)
-		htmlFile = GenerateTimestampedFilename(report.ValidationMode, strings.Replace(*outputFile, ".json", ".html", 1), report.Timestamp)
-	} else {
-		jsonFile = GenerateValidationAwareFilename(report.ValidationMode, *outputFile)
-		htmlFile = GenerateValidationAwareFilename(report.ValidationMode, strings.Replace(*outputFile, ".json", ".html", 1))
-	}
+	// Always use timestamped filenames with fixed base name
+	jsonFile := GenerateTimestampedFilename(report.ValidationMode, "peer-score-report.json", report.Timestamp)
+	htmlFile := GenerateTimestampedFilename(report.ValidationMode, "peer-score-report.html", report.Timestamp)
 
 	// Get API key for AI analysis (optional)
 	apiKey := *claudeAPIKey
@@ -92,12 +81,7 @@ func printReportSummary(_ context.Context, log logrus.FieldLogger, report PeerSc
 	log.Infof("Successful Handshakes: %d", report.SuccessfulHandshakes)
 	log.Infof("Failed Handshakes: %d", report.FailedHandshakes)
 	
-	// Show filename based on timestamp flag
-	var filename string
-	if *timestampFiles {
-		filename = GenerateTimestampedFilename(report.ValidationMode, *outputFile, report.Timestamp)
-	} else {
-		filename = GenerateValidationAwareFilename(report.ValidationMode, *outputFile)
-	}
+	// Always use timestamped filenames with fixed base name
+	filename := GenerateTimestampedFilename(report.ValidationMode, "peer-score-report.json", report.Timestamp)
 	log.Infof("Report saved to: %s", filename)
 }

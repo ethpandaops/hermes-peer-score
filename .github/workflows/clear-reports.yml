@@ -1,0 +1,175 @@
+name: Clear Historical Reports
+
+on:
+  workflow_dispatch:
+    inputs:
+      validation_mode:
+        description: 'Which reports to clear'
+        type: choice
+        options:
+          - all
+          - delegated
+          - independent
+        default: 'all'
+        required: true
+      confirm:
+        description: 'Type "DELETE" to confirm you want to clear historical reports'
+        required: true
+
+jobs:
+  clear-reports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DELETE" ]; then
+            echo "❌ Confirmation failed. You must type 'DELETE' to proceed."
+            echo "You entered: '${{ github.event.inputs.confirm }}'"
+            exit 1
+          fi
+          echo "✅ Confirmation validated. Proceeding with report clearing..."
+
+      - name: Download Current Reports
+        run: |
+          VALIDATION_MODE="${{ github.event.inputs.validation_mode }}"
+          echo "🔄 Downloading current reports to clear $VALIDATION_MODE reports..."
+
+          # Create reports directory
+          mkdir -p reports
+
+          # Try to download the existing reports manifest from GitHub Pages
+          MANIFEST_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/reports-manifest.json"
+          echo "Downloading reports manifest from: $MANIFEST_URL"
+
+          if curl -f -s "$MANIFEST_URL" -o reports-manifest.json 2>/dev/null; then
+            echo "Found existing reports manifest"
+            
+            # Download all reports first so we can selectively clear
+            python3 scripts/download_reports.py
+            
+            echo "Current reports before clearing:"
+            find reports -type f -name "*.json" | head -10
+          else
+            echo "No existing reports manifest found - nothing to clear"
+            exit 0
+          fi
+
+      - name: Clear Reports
+        run: |
+          VALIDATION_MODE="${{ github.event.inputs.validation_mode }}"
+          echo "🧹 Clearing $VALIDATION_MODE historical reports..."
+
+          case "$VALIDATION_MODE" in
+            "all")
+              echo "Clearing ALL historical reports"
+              rm -rf reports/*
+              echo "All reports cleared"
+              ;;
+            "delegated")
+              echo "Clearing only delegated validation reports"
+              find reports -type f -name "*delegated*" -delete
+              find reports -type d -name "*delegated*" -delete 2>/dev/null || true
+              echo "Delegated reports cleared"
+              ;;
+            "independent")
+              echo "Clearing only independent validation reports"
+              find reports -type f -name "*independent*" -delete
+              find reports -type d -name "*independent*" -delete 2>/dev/null || true
+              echo "Independent reports cleared"
+              ;;
+            *)
+              echo "❌ Invalid validation mode: $VALIDATION_MODE"
+              exit 1
+              ;;
+          esac
+
+          echo "Reports after clearing:"
+          find reports -type f -name "*.json" 2>/dev/null | head -10 || echo "No reports remaining"
+
+      - name: Generate New Index
+        run: |
+          echo "📝 Generating new index page after clearing reports..."
+          
+          # Generate the new index page with remaining reports
+          python3 scripts/generate_index.py
+
+          echo "✅ New index generated"
+
+      - name: Upload Cleared Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleared-reports-${{ github.run_number }}
+          path: reports/
+          retention-days: 7
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: reports/
+
+      - name: Generate Summary
+        run: |
+          VALIDATION_MODE="${{ github.event.inputs.validation_mode }}"
+          REMAINING_REPORTS=$(find reports -type f -name "*.json" 2>/dev/null | wc -l || echo "0")
+          
+          {
+            echo "## 🧹 Historical Reports Cleared"
+            echo ""
+            echo "### Clearing Details"
+            echo "- **Mode Cleared:** $VALIDATION_MODE"
+            echo "- **Remaining Reports:** $REMAINING_REPORTS"
+            echo "- **Cleared At:** $(date -u)"
+            echo ""
+            echo "### What was cleared:"
+            case "$VALIDATION_MODE" in
+              "all")
+                echo "- ✅ All delegated validation reports"
+                echo "- ✅ All independent validation reports"
+                echo "- ✅ All historical data and manifests"
+                ;;
+              "delegated")
+                echo "- ✅ All delegated validation reports"
+                echo "- ❌ Independent validation reports (preserved)"
+                ;;
+              "independent")
+                echo "- ✅ All independent validation reports" 
+                echo "- ❌ Delegated validation reports (preserved)"
+                ;;
+            esac
+            echo ""
+            echo "### Next Steps"
+            echo "- 📊 [View Updated Reports](https://ethpandaops.github.io/hermes-peer-score/)"
+            echo "- 🔄 New reports will be generated on the next scheduled run"
+            echo ""
+            echo "_Historical reports cleared on $(date) for $VALIDATION_MODE validation_"
+          } >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    needs: clear-reports
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

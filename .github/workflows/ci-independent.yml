@@ -14,11 +14,6 @@ on:
         description: 'Chain'
         default: 'mainnet'
         required: false
-      clear_history:
-        description: 'Clear all historical reports and start fresh'
-        type: boolean
-        default: false
-        required: false
 
 jobs:
   independent-validation-test:
@@ -73,9 +68,7 @@ jobs:
 
           ./peer-score-tool \
             --validation-mode=independent \
-            --duration="$DURATION" \
-            --timestamp-files \
-            --output=peer-score-report-independent.json
+            --duration="$DURATION"
 
       - name: Generate HTML Report
         run: |
@@ -125,62 +118,43 @@ jobs:
       - name: Generate Historical Index
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          CLEAR_HISTORY: ${{ github.event.inputs.clear_history || 'false' }}
           VALIDATION_MODE: 'independent'
         run: |
-          if [ "$CLEAR_HISTORY" = "true" ]; then
-            echo "🧹 Clear history requested - starting fresh without downloading historical independent reports"
-            echo "Skipping historical report preservation..."
+          # Download existing reports manifest from GitHub Pages to preserve history
+          echo "Attempting to preserve existing independent reports from GitHub Pages using manifest..."
+
+          # Try to download the existing reports manifest
+          MANIFEST_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/reports-manifest.json"
+          echo "Downloading reports manifest from: $MANIFEST_URL"
+
+          if curl -f -s "$MANIFEST_URL" -o reports-manifest.json 2>/dev/null; then
+            echo "Found existing reports manifest, downloading historical independent reports..."
+
+            # Set cutoff date for 28-day retention
+            CUTOFF_DATE=$(date -u -d "28 days ago" +"%Y-%m-%d")
+            echo "Cutoff date for retention: $CUTOFF_DATE"
+
+            # Download historical reports using the manifest
+            CUTOFF_DATE="$CUTOFF_DATE" VALIDATION_MODE="independent" python3 scripts/download_reports.py
           else
-            # Download existing reports manifest from GitHub Pages to preserve history
-            echo "Attempting to preserve existing independent reports from GitHub Pages using manifest..."
-
-            # Try to download the existing reports manifest
-            MANIFEST_URL="https://${{ github.repository_owner }}.github.io/hermes-peer-score/reports-manifest.json"
-            echo "Downloading reports manifest from: $MANIFEST_URL"
-
-            if curl -f -s "$MANIFEST_URL" -o reports-manifest.json 2>/dev/null; then
-              echo "Found existing reports manifest, downloading historical independent reports..."
-
-              # Set cutoff date for 28-day retention
-              CUTOFF_DATE=$(date -u -d "28 days ago" +"%Y-%m-%d")
-              echo "Cutoff date for retention: $CUTOFF_DATE"
-
-              # Download historical reports using the manifest
-              CUTOFF_DATE="$CUTOFF_DATE" VALIDATION_MODE="independent" python3 scripts/download_reports.py
-            else
-              echo "No existing reports manifest found - this might be the first independent run"
-            fi
+            echo "No existing reports manifest found - this might be the first independent run"
           fi
 
-          if [ "$CLEAR_HISTORY" = "true" ]; then
-            echo "🧹 Clearing all historical independent reports as requested..."
-            # Remove all independent report directories except the current one
-            find reports -maxdepth 2 -type d -path "*/independent" | while read dir; do
-              DIR_DATE=$(basename $(dirname "$dir"))
-              CURRENT_DATE=$(date -u +"%Y-%m-%d")
-              if [ "$DIR_DATE" != "$CURRENT_DATE" ]; then
-                echo "Removing historical independent reports from $DIR_DATE"
+          # Clean up any independent directories older than 28 days
+          echo "Cleaning up independent reports older than 28 days..."
+          find reports -maxdepth 2 -type d -path "*/independent" | while read dir; do
+            DIR_DATE=$(basename $(dirname "$dir"))
+            if [ "$DIR_DATE" != "reports" ]; then
+              # Calculate if this directory is older than 28 days
+              DIR_EPOCH=$(date -d "$DIR_DATE" +%s 2>/dev/null || echo "0")
+              CUTOFF_EPOCH=$(date -d "28 days ago" +%s)
+
+              if [ "$DIR_EPOCH" -lt "$CUTOFF_EPOCH" ] && [ "$DIR_EPOCH" -gt "0" ]; then
+                echo "Removing old independent reports from $DIR_DATE"
                 rm -rf "$dir"
               fi
-            done
-          else
-            # Clean up any independent directories older than 28 days
-            echo "Cleaning up independent reports older than 28 days..."
-            find reports -maxdepth 2 -type d -path "*/independent" | while read dir; do
-              DIR_DATE=$(basename $(dirname "$dir"))
-              if [ "$DIR_DATE" != "reports" ]; then
-                # Calculate if this directory is older than 28 days
-                DIR_EPOCH=$(date -d "$DIR_DATE" +%s 2>/dev/null || echo "0")
-                CUTOFF_EPOCH=$(date -d "28 days ago" +%s)
-
-                if [ "$DIR_EPOCH" -lt "$CUTOFF_EPOCH" ] && [ "$DIR_EPOCH" -gt "0" ]; then
-                  echo "Removing old independent reports from $DIR_DATE"
-                  rm -rf "$dir"
-                fi
-              fi
-            done
-          fi
+            fi
+          done
 
           echo "Independent cleanup complete, generating new index..."
 
@@ -286,16 +260,10 @@ jobs:
           cpu_usage=${{ steps.results.outputs.cpu_usage }}
           memory_usage=${{ steps.results.outputs.memory_usage }}
           cache_hit_rate=${{ steps.results.outputs.cache_hit_rate }}
-          clear_history=${{ github.event.inputs.clear_history || 'false' }}
 
           {
             echo "## ⚡ Independent Validation Report"
             echo ""
-            if [ "$clear_history" = "true" ]; then
-              echo "### 🧹 History Cleared"
-              echo "- **Historical reports were cleared** - Starting fresh with this report"
-              echo ""
-            fi
             echo "### Validation Configuration"
             echo "- **Mode:** Independent Validation (in-process)"
             echo "- **Hermes Version:** $hermes_version"
