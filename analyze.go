@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
 	"time"
 
@@ -107,10 +108,17 @@ type TestConfigSummary struct {
 
 // NewClaudeAPIClient creates a new Claude API client.
 func NewClaudeAPIClient(apiKey string) *ClaudeAPIClient {
+	// Allow model to be configured via environment variable
+	model := os.Getenv("OPENROUTER_MODEL")
+	if model == "" {
+		// Try different DeepSeek model variants that might be available
+		model = "deepseek/deepseek-r1" // Default fallback
+	}
+	
 	return &ClaudeAPIClient{
 		APIKey:  apiKey,
 		BaseURL: "https://openrouter.ai/api/v1/chat/completions",
-		Model:   "deepseek/deepseek-r1-0528:free", // OpenRouter model identifier
+		Model:   model,
 	}
 }
 
