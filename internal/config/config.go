@@ -333,3 +333,25 @@ func (c *DefaultConfig) Clone() *DefaultConfig {
 	
 	return &clone
 }
+
+// GetValidationConfigs returns configuration mappings for each validation mode
+func GetValidationConfigs() map[ValidationMode]ValidationConfig {
+	return map[ValidationMode]ValidationConfig{
+		ValidationModeDelegated: {
+			Mode:          ValidationModeDelegated,
+			HermesVersion: "v0.0.4-0.20250513093811-320c1c3ee6e2",
+			ConfigOverrides: map[string]interface{}{
+				"validation-mode": "delegated",
+			},
+		},
+		ValidationModeIndependent: {
+			Mode:          ValidationModeIndependent,
+			HermesVersion: "v0.0.4-0.20250611164742-0abea7d82cb4",
+			ConfigOverrides: map[string]interface{}{
+				"validation-mode":                  "independent",
+				"validation-attestation-threshold": 10,
+				"validation-cache-size":            10000,
+			},
+		},
+	}
+}

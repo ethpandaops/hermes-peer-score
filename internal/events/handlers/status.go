@@ -78,6 +78,25 @@ func (h *StatusHandler) handleStatusUpdate(peerStats *peer.Stats, payload map[st
 		peerStats.SuccessfulHandshakes++
 	}
 
+	// Extract client identification information from AgentVersion
+	if agentVersion, ok := payload["AgentVersion"].(string); ok && agentVersion != "" {
+		clientType := common.NormalizeClientType(agentVersion)
+		
+		// Update client information if not already set or if it's the default "unknown"
+		if peerStats.ClientType == "" || peerStats.ClientType == "unknown" {
+			peerStats.ClientType = clientType
+		}
+		if peerStats.ClientAgent == "" {
+			peerStats.ClientAgent = agentVersion
+		}
+		
+		h.logger.WithFields(logrus.Fields{
+			"peer_id":      common.FormatShortPeerID(peerStats.PeerID),
+			"client_type":  clientType,
+			"client_agent": agentVersion,
+		}).Info("Peer identified through status event")
+	}
+
 	h.logger.WithFields(logrus.Fields{
 		"peer_id": common.FormatShortPeerID(peerStats.PeerID),
 		"success": success,

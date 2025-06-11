@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/ethpandaops/hermes-peer-score/constants"
 )
 
 // InMemoryRepository implements the Repository interface using in-memory storage
@@ -69,6 +70,31 @@ func (r *InMemoryRepository) UpdatePeer(peerID string, updateFn func(*Stats)) {
 	if !exists {
 		r.logger.WithField("peer_id", formatShortPeerID(peerID)).Warn("Attempted to update non-existent peer")
 		return
+	}
+	
+	updateFn(peer)
+}
+
+// UpdateOrCreatePeer safely updates a peer or creates one if it doesn't exist
+func (r *InMemoryRepository) UpdateOrCreatePeer(peerID string, updateFn func(*Stats)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	
+	peer, exists := r.peers[peerID]
+	if !exists {
+		// Create a new peer with default values
+		now := time.Now()
+		peer = &Stats{
+			PeerID:               peerID,
+			ClientType:           constants.Unknown,
+			ClientAgent:          "",
+			FirstSeenAt:          &now,
+			LastSeenAt:           &now,
+			TotalConnections:     0,
+			ConnectionSessions:   []ConnectionSession{},
+		}
+		r.peers[peerID] = peer
+		r.logger.WithField("peer_id", formatShortPeerID(peerID)).Debug("Created new peer from event")
 	}
 	
 	updateFn(peer)

@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	
 	"github.com/ethpandaops/hermes-peer-score/constants"
+	"github.com/ethpandaops/hermes-peer-score/internal/peer"
 )
 
 // DefaultDataProcessor implements the DataProcessor interface
@@ -53,13 +54,13 @@ func (dp *DefaultDataProcessor) ProcessPeerData(peers map[string]interface{}) (i
 // CalculateSummaryStats calculates summary statistics from the report
 func (dp *DefaultDataProcessor) CalculateSummaryStats(report *Report) (interface{}, error) {
 	summary := map[string]interface{}{
-		"test_duration":         report.Duration.Seconds(),
-		"start_time":           report.StartTime,
-		"end_time":             report.EndTime,
-		"total_connections":    report.TotalConnections,
-		"successful_handshakes": report.SuccessfulHandshakes,
-		"failed_handshakes":    report.FailedHandshakes,
-		"unique_peers":         len(report.Peers),
+		"TestDuration":         report.Duration.Seconds(),
+		"StartTime":           report.StartTime,
+		"EndTime":             report.EndTime,
+		"TotalConnections":    report.TotalConnections,
+		"SuccessfulHandshakes": report.SuccessfulHandshakes,
+		"FailedHandshakes":    report.FailedHandshakes,
+		"UniquePeers":         len(report.Peers),
 	}
 	
 	// Calculate additional statistics
@@ -122,17 +123,87 @@ func (dp *DefaultDataProcessor) processSinglePeer(peerID string, peerData interf
 	}
 	
 	// Handle different types of peer data structures
-	switch peer := peerData.(type) {
+	switch peerObj := peerData.(type) {
 	case map[string]interface{}:
-		dp.extractFromMap(peer, processed)
+		dp.extractFromMap(peerObj, processed)
+	case *peer.Stats:
+		// Handle peer.Stats directly
+		dp.extractFromPeerStats(peerObj, processed)
 	default:
-		dp.logger.WithField("peer_id", peerID).Warn("Unknown peer data format")
+		dp.logger.WithFields(logrus.Fields{
+			"peer_id": peerID,
+			"type":    fmt.Sprintf("%T", peerData),
+		}).Warn("Unknown peer data format")
 		processed["client_type"] = constants.Unknown
 		processed["session_count"] = 0
 		processed["event_count"] = 0
 	}
 	
 	return processed
+}
+
+// extractFromPeerStats extracts data from a peer.Stats struct
+func (dp *DefaultDataProcessor) extractFromPeerStats(peerStats *peer.Stats, target map[string]interface{}) {
+	// Copy basic fields
+	target["client_type"] = peerStats.ClientType
+	target["client_agent"] = peerStats.ClientAgent
+	target["total_connections"] = peerStats.TotalConnections
+	target["total_message_count"] = peerStats.TotalMessageCount
+	target["successful_handshakes"] = peerStats.SuccessfulHandshakes
+	target["failed_handshakes"] = peerStats.FailedHandshakes
+	target["first_seen_at"] = peerStats.FirstSeenAt
+	target["last_seen_at"] = peerStats.LastSeenAt
+	
+	// Process sessions
+	sessionCount := len(peerStats.ConnectionSessions)
+	target["session_count"] = sessionCount
+	target["connection_sessions"] = peerStats.ConnectionSessions
+	
+	// Calculate session statistics
+	eventCount := 0
+	goodbyeCount := 0
+	meshCount := 0
+	hasScores := false
+	var minScore, maxScore float64
+	var lastSessionStatus string
+	
+	for _, session := range peerStats.ConnectionSessions {
+		eventCount += session.MessageCount
+		goodbyeCount += len(session.GoodbyeEvents)
+		meshCount += len(session.MeshEvents)
+		
+		if len(session.PeerScores) > 0 {
+			for _, score := range session.PeerScores {
+				if !hasScores {
+					minScore = score.Score
+					maxScore = score.Score
+					hasScores = true
+				} else {
+					if score.Score < minScore {
+						minScore = score.Score
+					}
+					if score.Score > maxScore {
+						maxScore = score.Score
+					}
+				}
+			}
+		}
+		
+		// Determine last session status
+		if session.Disconnected {
+			lastSessionStatus = "Disconnected"
+		} else {
+			lastSessionStatus = "Connected"
+		}
+	}
+	
+	target["event_count"] = eventCount
+	target["goodbye_count"] = goodbyeCount
+	target["mesh_count"] = meshCount
+	target["has_scores"] = hasScores
+	target["min_peer_score"] = minScore
+	target["max_peer_score"] = maxScore
+	target["last_session_status"] = lastSessionStatus
 }
 
 // extractFromMap extracts data from a map-based peer structure

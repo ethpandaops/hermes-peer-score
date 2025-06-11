@@ -11,6 +11,7 @@ import (
 
 const unknown = constants.Unknown
 
+
 // GetPeerID extracts the peer ID from a trace event
 func GetPeerID(event *host.TraceEvent) string {
 	if event == nil || event.Payload == nil {

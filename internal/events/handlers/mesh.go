@@ -93,8 +93,8 @@ func (h *GraftHandler) handleMeshEvent(event *host.TraceEvent, eventType string)
 		"reason":    meshData.Reason,
 	}).Debugf("Processing %s event", eventType)
 
-	// Update peer with mesh event
-	h.tool.UpdatePeer(peerID, func(p interface{}) {
+	// Update or create peer with mesh event
+	h.tool.UpdateOrCreatePeer(peerID, func(p interface{}) {
 		if peerStats, ok := p.(*peer.Stats); ok {
 			addMeshEvent(h.logger, peerStats, meshData)
 		}
@@ -135,8 +135,8 @@ func (h *PruneHandler) handleMeshEvent(event *host.TraceEvent, eventType string)
 		"reason":    meshData.Reason,
 	}).Debugf("Processing %s event", eventType)
 
-	// Update peer with mesh event
-	h.tool.UpdatePeer(peerID, func(p interface{}) {
+	// Update or create peer with mesh event
+	h.tool.UpdateOrCreatePeer(peerID, func(p interface{}) {
 		if peerStats, ok := p.(*peer.Stats); ok {
 			addMeshEvent(h.logger, peerStats, meshData)
 		}
@@ -176,5 +176,34 @@ func addMeshEvent(logger logrus.FieldLogger, peerStats *peer.Stats, meshData *pa
 		}
 	}
 	
-	logger.WithField("peer_id", common.FormatShortPeerID(peerStats.PeerID)).Warn("No active session found for mesh event")
+	// No active session found, create a new one for this mesh event
+	logger.WithField("peer_id", common.FormatShortPeerID(peerStats.PeerID)).Debug("Creating new session for mesh event")
+	
+	now := meshData.Timestamp
+	session := peer.ConnectionSession{
+		ConnectedAt:    &now,
+		Disconnected:   false,
+		PeerScores:     []peer.PeerScoreSnapshot{},
+		GoodbyeEvents:  []peer.GoodbyeEvent{},
+		MeshEvents:     []peer.MeshEvent{},
+	}
+	
+	// Add the mesh event to the new session
+	meshEvent := peer.MeshEvent{
+		Timestamp: meshData.Timestamp,
+		Type:      meshData.Type,
+		Topic:     meshData.Topic,
+		Direction: meshData.Direction,
+		Reason:    meshData.Reason,
+	}
+	
+	session.MeshEvents = append(session.MeshEvents, meshEvent)
+	peerStats.ConnectionSessions = append(peerStats.ConnectionSessions, session)
+	
+	logger.WithFields(logrus.Fields{
+		"peer_id":   common.FormatShortPeerID(peerStats.PeerID),
+		"type":      meshData.Type,
+		"topic":     meshData.Topic,
+		"timestamp": meshData.Timestamp,
+	}).Debug("Added mesh event to new session")
 }

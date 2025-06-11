@@ -58,11 +58,11 @@ func (m *MockDataProcessor) ProcessPeerData(peers map[string]interface{}) (inter
 
 func (m *MockDataProcessor) CalculateSummaryStats(report *Report) (interface{}, error) {
 	return map[string]interface{}{
-		"test_duration":         report.Duration.Seconds(),
-		"total_connections":     report.TotalConnections,
-		"successful_handshakes": report.SuccessfulHandshakes,
-		"failed_handshakes":     report.FailedHandshakes,
-		"unique_peers":          len(report.Peers),
+		"TestDuration":         report.Duration.Seconds(),
+		"TotalConnections":     report.TotalConnections,
+		"SuccessfulHandshakes": report.SuccessfulHandshakes,
+		"FailedHandshakes":     report.FailedHandshakes,
+		"UniquePeers":          len(report.Peers),
 	}, nil
 }
 

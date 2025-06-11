@@ -58,8 +58,8 @@ func (h *PeerScoreHandler) HandleEvent(ctx context.Context, event *host.TraceEve
 		"score":   scoreData.Score,
 	}).Debug("Processing peer score event")
 
-	// Update peer with new score data
-	h.tool.UpdatePeer(peerID, func(p interface{}) {
+	// Update or create peer with new score data
+	h.tool.UpdateOrCreatePeer(peerID, func(p interface{}) {
 		if peerStats, ok := p.(*peer.Stats); ok {
 			h.addPeerScore(peerStats, scoreData)
 		}
@@ -101,5 +101,37 @@ func (h *PeerScoreHandler) addPeerScore(peerStats *peer.Stats, scoreData *parser
 		}
 	}
 	
-	h.logger.WithField("peer_id", common.FormatShortPeerID(peerStats.PeerID)).Warn("No active session found for peer score event")
+	// No active session found, create a new one for this score event
+	h.logger.WithField("peer_id", common.FormatShortPeerID(peerStats.PeerID)).Debug("Creating new session for peer score event")
+	
+	now := scoreData.Timestamp
+	session := peer.ConnectionSession{
+		ConnectedAt:    &now,
+		Disconnected:   false,
+		PeerScores:     []peer.PeerScoreSnapshot{},
+		GoodbyeEvents:  []peer.GoodbyeEvent{},
+		MeshEvents:     []peer.MeshEvent{},
+	}
+	
+	// Add the score to the new session
+	scoreSnapshot := peer.PeerScoreSnapshot{
+		Score:     scoreData.Score,
+		Timestamp: scoreData.Timestamp,
+		Topics:    make(map[string]float64),
+	}
+	
+	// Copy topic scores from slice to map
+	for _, topicScore := range scoreData.Topics {
+		scoreSnapshot.Topics[topicScore.Topic] = topicScore.FirstMessageDeliveries
+	}
+	
+	session.PeerScores = append(session.PeerScores, scoreSnapshot)
+	peerStats.ConnectionSessions = append(peerStats.ConnectionSessions, session)
+	
+	h.logger.WithFields(logrus.Fields{
+		"peer_id":    common.FormatShortPeerID(peerStats.PeerID),
+		"score":      scoreData.Score,
+		"topics":     len(scoreData.Topics),
+		"timestamp":  scoreData.Timestamp,
+	}).Debug("Added peer score snapshot to new session")
 }

@@ -10,6 +10,7 @@ type Repository interface {
 	GetPeer(peerID string) (*Stats, bool)
 	CreatePeer(peerID string) *Stats
 	UpdatePeer(peerID string, updateFn func(*Stats))
+	UpdateOrCreatePeer(peerID string, updateFn func(*Stats))
 	GetAllPeers() map[string]*Stats
 	GetPeerEventCounts() map[string]map[string]int
 	IncrementEventCount(peerID, eventType string)

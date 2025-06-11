@@ -9,6 +9,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/ethpandaops/hermes-peer-score/internal/build"
 	"github.com/ethpandaops/hermes-peer-score/internal/config"
 	"github.com/ethpandaops/hermes-peer-score/internal/core"
 	"github.com/ethpandaops/hermes-peer-score/internal/reports"
@@ -29,7 +30,7 @@ func NewHandler(logger logrus.FieldLogger) *Handler {
 // Run executes the main application logic based on configuration
 func (h *Handler) Run(cfg *config.DefaultConfig) error {
 	h.logger.Info("Starting Hermes Peer Score Tool")
-	
+
 	// Handle different execution modes
 	switch {
 	case cfg.IsHTMLOnly():
@@ -46,37 +47,37 @@ func (h *Handler) Run(cfg *config.DefaultConfig) error {
 // handleHTMLOnlyMode generates HTML report from existing JSON file
 func (h *Handler) handleHTMLOnlyMode(cfg *config.DefaultConfig) error {
 	h.logger.Info("Running in HTML-only mode")
-	
+
 	inputFile := cfg.GetInputJSON()
 	if inputFile == "" {
 		return fmt.Errorf("input JSON file must be specified for HTML-only mode")
 	}
-	
+
 	// Check if input file exists
 	if _, err := os.Stat(inputFile); os.IsNotExist(err) {
 		return fmt.Errorf("input JSON file does not exist: %s", inputFile)
 	}
-	
+
 	// Generate output filename
 	outputFile := generateHTMLFilename(inputFile)
-	
+
 	h.logger.WithFields(logrus.Fields{
 		"input":  inputFile,
 		"output": outputFile,
 	}).Info("Generating HTML report from JSON")
-	
+
 	// Create report generator
 	reportGen, err := reports.NewGenerator(h.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create report generator: %w", err)
 	}
-	
+
 	// Get API key for AI analysis
 	apiKey := cfg.GetClaudeAPIKey()
 	if apiKey == "" {
 		apiKey = os.Getenv("OPENROUTER_API_KEY")
 	}
-	
+
 	// Generate HTML report
 	if apiKey != "" && !cfg.IsSkipAI() {
 		h.logger.Info("Including AI analysis in HTML report")
@@ -85,78 +86,89 @@ func (h *Handler) handleHTMLOnlyMode(cfg *config.DefaultConfig) error {
 		h.logger.Info("Generating HTML report without AI analysis")
 		err = reportGen.GenerateHTMLFromJSON(inputFile, outputFile)
 	}
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to generate HTML report: %w", err)
 	}
-	
+
 	h.logger.WithField("output", outputFile).Info("HTML report generated successfully")
 	return nil
 }
 
 // handleGoModUpdate updates go.mod for the specified validation mode
 func (h *Handler) handleGoModUpdate(cfg *config.DefaultConfig) error {
-	h.logger.WithField("validation_mode", cfg.GetValidationMode()).Info("Updating go.mod")
-	
-	// TODO: Implement go.mod update logic
-	// This would involve reading the current go.mod, updating the Hermes version
-	// based on the validation mode, and writing it back
-	
-	h.logger.Info("Go.mod update functionality not yet implemented in refactored version")
+	validationMode := cfg.GetValidationMode()
+	h.logger.WithField("validation_mode", validationMode).Info("Updating go.mod")
+
+	// Create go.mod manager
+	goModManager := build.NewGoModManager()
+
+	// Update go.mod for the validation mode
+	if err := goModManager.UpdateForValidationMode(validationMode); err != nil {
+		return fmt.Errorf("failed to update go.mod for validation mode %s: %w", validationMode, err)
+	}
+
+	h.logger.WithField("validation_mode", validationMode).Info("Successfully updated go.mod")
 	return nil
 }
 
 // handleGoModValidation validates go.mod for the specified validation mode
 func (h *Handler) handleGoModValidation(cfg *config.DefaultConfig) error {
-	h.logger.WithField("validation_mode", cfg.GetValidationMode()).Info("Validating go.mod")
-	
-	// TODO: Implement go.mod validation logic
-	// This would involve checking if the current go.mod has the correct Hermes version
-	// for the specified validation mode
-	
-	h.logger.Info("Go.mod validation functionality not yet implemented in refactored version")
+	validationMode := cfg.GetValidationMode()
+	h.logger.WithField("validation_mode", validationMode).Info("Validating go.mod")
+
+	// Create go.mod manager
+	goModManager := build.NewGoModManager()
+
+	// Validate go.mod for the validation mode
+	if err := goModManager.ValidateForValidationMode(validationMode); err != nil {
+		h.logger.WithError(err).Error("go.mod validation failed")
+		return fmt.Errorf("go.mod validation failed for validation mode %s: %w", validationMode, err)
+	}
+
+	h.logger.WithField("validation_mode", validationMode).Info("go.mod validation successful")
 	return nil
 }
 
 // handlePeerScoreTest runs the main peer scoring test
 func (h *Handler) handlePeerScoreTest(cfg *config.DefaultConfig) error {
 	h.logger.WithField("validation_mode", cfg.GetValidationMode()).Info("Starting peer score test")
-	
+
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("configuration validation failed: %w", err)
 	}
-	
+
 	// Set up graceful shutdown
 	ctx, cancel := h.setupGracefulShutdown()
 	defer cancel()
-	
+
 	// Create and configure the core tool
 	tool, err := core.NewTool(ctx, cfg, h.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create peer score tool: %w", err)
 	}
-	
+
 	// Log connection settings
 	h.logConnectionSettings(cfg)
-	
+
 	// Start the tool
 	if err := tool.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start peer score tool: %w", err)
 	}
-	
+
 	// Ensure cleanup
 	defer func() {
 		if err := tool.Stop(); err != nil {
 			h.logger.WithError(err).Error("Error stopping tool")
 		}
 	}()
-	
+
 	// Save reports
 	if err := tool.SaveReports(); err != nil {
 		return fmt.Errorf("failed to save reports: %w", err)
 	}
-	
+
 	h.logger.Info("Peer score test completed successfully")
 	return nil
 }
@@ -164,16 +176,16 @@ func (h *Handler) handlePeerScoreTest(cfg *config.DefaultConfig) error {
 // setupGracefulShutdown configures signal handling for graceful shutdown
 func (h *Handler) setupGracefulShutdown() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	
+
 	go func() {
 		<-sigChan
 		h.logger.Info("Received shutdown signal")
 		cancel()
 	}()
-	
+
 	return ctx, cancel
 }
 

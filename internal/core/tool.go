@@ -23,7 +23,7 @@ type DefaultTool struct {
 	// Core components
 	peerRepo      peer.Repository
 	sessionMgr    peer.SessionManager
-	eventMgr      events.Manager
+	eventMgr      *events.DefaultManager
 	reportGen     *reports.DefaultGenerator
 	hermesCtrl    HermesController
 }
@@ -62,6 +62,11 @@ func (t *DefaultTool) initializeComponents() error {
 	
 	// Initialize event manager
 	t.eventMgr = events.NewManager(t, t.logger)
+	
+	// Register default event handlers
+	if err := t.eventMgr.RegisterDefaultHandlers(); err != nil {
+		return fmt.Errorf("failed to register event handlers: %w", err)
+	}
 	
 	// Initialize Hermes controller
 	t.hermesCtrl = NewHermesController(t.config, t.logger)
@@ -232,6 +237,12 @@ func (t *DefaultTool) UpdatePeer(peerID string, updateFn func(interface{})) {
 	})
 }
 
+func (t *DefaultTool) UpdateOrCreatePeer(peerID string, updateFn func(interface{})) {
+	t.peerRepo.UpdateOrCreatePeer(peerID, func(peer *peer.Stats) {
+		updateFn(peer)
+	})
+}
+
 func (t *DefaultTool) IncrementEventCount(peerID, eventType string) {
 	t.peerRepo.IncrementEventCount(peerID, eventType)
 }
@@ -243,11 +254,18 @@ func (t *DefaultTool) SaveReports() error {
 		return fmt.Errorf("failed to generate report: %w", err)
 	}
 	
+	// Get validation config details for the report
+	validationConfigs := config.GetValidationConfigs()
+	validationConfig := validationConfigs[t.config.GetValidationMode()]
+	
 	// Convert to reports package format
 	reportsReport := &reports.Report{
 		Config:               report.Config,
 		ValidationMode:       report.ValidationMode,
-		ValidationConfig:     map[string]interface{}{"mode": string(t.config.GetValidationMode())},
+		ValidationConfig:     map[string]interface{}{
+			"mode":           string(t.config.GetValidationMode()),
+			"HermesVersion":  validationConfig.HermesVersion,
+		},
 		Timestamp:            report.Timestamp,
 		StartTime:            report.StartTime,
 		EndTime:              report.EndTime,

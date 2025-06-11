@@ -41,13 +41,9 @@ func (h *ConnectionHandler) HandleEvent(ctx context.Context, event *host.TraceEv
 
 	peerID := data.RemotePeer.GetValue()
 	now := time.Now()
-	clientAgent := data.AgentVersion.GetValue()
-	clientType := common.NormalizeClientType(clientAgent)
 
 	h.logger.WithFields(logrus.Fields{
 		"peer_id":      common.FormatShortPeerID(peerID),
-		"client_type":  clientType,
-		"client_agent": clientAgent,
 	}).Debug("Processing connection event")
 
 	// Check if peer already exists
@@ -61,7 +57,7 @@ func (h *ConnectionHandler) HandleEvent(ctx context.Context, event *host.TraceEv
 	// Update peer with connection information
 	h.tool.UpdatePeer(peerID, func(p interface{}) {
 		if peerStats, ok := p.(*peer.Stats); ok {
-			h.updatePeerConnection(peerStats, clientType, clientAgent, now)
+			h.updatePeerConnection(peerStats, now)
 		}
 	})
 
@@ -72,15 +68,7 @@ func (h *ConnectionHandler) HandleEvent(ctx context.Context, event *host.TraceEv
 }
 
 // updatePeerConnection updates peer connection information
-func (h *ConnectionHandler) updatePeerConnection(peerStats *peer.Stats, clientType, clientAgent string, connectedAt time.Time) {
-	// Update client information if not already set
-	if peerStats.ClientType == "" {
-		peerStats.ClientType = clientType
-	}
-	if peerStats.ClientAgent == "" {
-		peerStats.ClientAgent = clientAgent
-	}
-
+func (h *ConnectionHandler) updatePeerConnection(peerStats *peer.Stats, connectedAt time.Time) {
 	// Update last seen time
 	peerStats.LastSeenAt = &connectedAt
 
@@ -99,7 +87,6 @@ func (h *ConnectionHandler) updatePeerConnection(peerStats *peer.Stats, clientTy
 
 	h.logger.WithFields(logrus.Fields{
 		"peer_id":      common.FormatShortPeerID(peerStats.PeerID),
-		"client_type":  clientType,
 		"session_count": len(peerStats.ConnectionSessions),
 	}).Debug("Updated peer connection")
 }

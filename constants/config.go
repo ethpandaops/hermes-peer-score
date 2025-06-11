@@ -5,18 +5,18 @@ import "time"
 // Default configuration values
 const (
 	// Time-related constants
-	DefaultTestDuration           = 2 * time.Minute
-	DefaultStatusReportInterval   = 15 * time.Second
-	DefaultPeerScoreFreq          = 5 * time.Second
-	DefaultReportInterval         = 2 * time.Minute
-	DefaultLibp2pPeerscoreFreq    = 30 * time.Second
+	DefaultTestDuration         = 2 * time.Minute
+	DefaultStatusReportInterval = 15 * time.Second
+	DefaultPeerScoreFreq        = 5 * time.Second
+	DefaultReportInterval       = 2 * time.Minute
+	DefaultLibp2pPeerscoreFreq  = 30 * time.Second
 
 	// Network and connection constants
-	DefaultPrysmHTTPPort = 443
-	DefaultPrysmGRPCPort = 443
-	DefaultMaxPeers      = 30
+	DefaultPrysmHTTPPort   = 443
+	DefaultPrysmGRPCPort   = 443
+	DefaultMaxPeers        = 80
 	DefaultDialConcurrency = 16
-	DefaultDialTimeout   = 5 * time.Second
+	DefaultDialTimeout     = 5 * time.Second
 
 	// PubSub and messaging constants
 	DefaultPubSubLimit     = 200
@@ -24,8 +24,8 @@ const (
 
 	// File and data constants
 	DefaultFilePermissions = 0644
-	ShortPeerIDLength     = 12
-	MaxDisconnectReasons  = 5
+	ShortPeerIDLength      = 12
+	MaxDisconnectReasons   = 5
 
 	// Default hosts and addresses
 	DefaultDevp2pHost = "0.0.0.0"

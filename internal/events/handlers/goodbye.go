@@ -60,8 +60,8 @@ func (h *GoodbyeHandler) HandleEvent(ctx context.Context, event *host.TraceEvent
 		"reason":  goodbyeData.Reason,
 	}).Debug("Processing goodbye event")
 
-	// Update peer with goodbye event
-	h.tool.UpdatePeer(peerID, func(p interface{}) {
+	// Update or create peer with goodbye event
+	h.tool.UpdateOrCreatePeer(peerID, func(p interface{}) {
 		if peerStats, ok := p.(*peer.Stats); ok {
 			h.addGoodbyeEvent(peerStats, goodbyeData)
 		}
@@ -98,5 +98,32 @@ func (h *GoodbyeHandler) addGoodbyeEvent(peerStats *peer.Stats, goodbyeData *par
 		}
 	}
 	
-	h.logger.WithField("peer_id", common.FormatShortPeerID(peerStats.PeerID)).Warn("No active session found for goodbye event")
+	// No active session found, create a new one for this goodbye event
+	h.logger.WithField("peer_id", common.FormatShortPeerID(peerStats.PeerID)).Debug("Creating new session for goodbye event")
+	
+	now := goodbyeData.Timestamp
+	session := peer.ConnectionSession{
+		ConnectedAt:    &now,
+		Disconnected:   false,
+		PeerScores:     []peer.PeerScoreSnapshot{},
+		GoodbyeEvents:  []peer.GoodbyeEvent{},
+		MeshEvents:     []peer.MeshEvent{},
+	}
+	
+	// Add the goodbye event to the new session
+	goodbyeEvent := peer.GoodbyeEvent{
+		Timestamp: goodbyeData.Timestamp,
+		Code:      goodbyeData.Code,
+		Reason:    goodbyeData.Reason,
+	}
+	
+	session.GoodbyeEvents = append(session.GoodbyeEvents, goodbyeEvent)
+	peerStats.ConnectionSessions = append(peerStats.ConnectionSessions, session)
+	
+	h.logger.WithFields(logrus.Fields{
+		"peer_id":   common.FormatShortPeerID(peerStats.PeerID),
+		"code":      goodbyeData.Code,
+		"reason":    goodbyeData.Reason,
+		"timestamp": goodbyeData.Timestamp,
+	}).Debug("Added goodbye event to new session")
 }

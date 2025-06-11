@@ -84,9 +84,14 @@ func (g *DefaultGenerator) generateHTMLReport(report *Report, aiAnalysis string)
 		return "", fmt.Errorf("failed to format data for template: %w", err)
 	}
 	
-	// Add AI analysis if provided
+	// Generate filename first to use in template
+	htmlFilename := g.generateTimestampedFilename(report.ValidationMode, constants.DefaultHTMLReportFile, report.Timestamp)
+	dataFilename := g.generateTimestampedFilename(report.ValidationMode, constants.DefaultDataJSFile, report.Timestamp)
+	
+	// Add AI analysis and data file if provided
 	if reportData, ok := templateData.(map[string]interface{}); ok {
 		reportData["AIAnalysis"] = aiAnalysis
+		reportData["DataFile"] = dataFilename
 	}
 	
 	// Render template
@@ -95,15 +100,13 @@ func (g *DefaultGenerator) generateHTMLReport(report *Report, aiAnalysis string)
 		return "", fmt.Errorf("failed to render HTML template: %w", err)
 	}
 	
-	// Generate filename
-	htmlFilename := g.generateTimestampedFilename(report.ValidationMode, constants.DefaultHTMLReportFile, report.Timestamp)
+	// HTML filename was already generated above
 	
 	if err := g.fileManager.SaveHTML(htmlFilename, htmlContent); err != nil {
 		return "", fmt.Errorf("failed to save HTML report: %w", err)
 	}
 	
-	// Generate data file for JavaScript
-	dataFilename := g.generateTimestampedFilename(report.ValidationMode, constants.DefaultDataJSFile, report.Timestamp)
+	// Generate data file for JavaScript (filename was already generated above)
 	if err := g.generateDataFile(report, dataFilename); err != nil {
 		g.logger.WithError(err).Warn("Failed to generate data file")
 	}
@@ -174,15 +177,35 @@ func (g *DefaultGenerator) GenerateHTMLFromJSONWithAI(jsonFile, outputFile, apiK
 		}
 	}
 	
-	// Generate HTML content
-	htmlContent, err := g.generateHTMLReport(&report, aiAnalysis)
+	// Process data for template
+	templateData, err := g.dataProcessor.FormatForTemplate(&report)
 	if err != nil {
-		return fmt.Errorf("failed to generate HTML: %w", err)
+		return fmt.Errorf("failed to format data for template: %w", err)
 	}
 	
-	// Save to specified output file
+	// Generate data filename
+	dataFilename := g.generateTimestampedFilename(report.ValidationMode, constants.DefaultDataJSFile, report.Timestamp)
+	
+	// Add AI analysis and data file to template data
+	if reportData, ok := templateData.(map[string]interface{}); ok {
+		reportData["AIAnalysis"] = aiAnalysis
+		reportData["DataFile"] = dataFilename
+	}
+	
+	// Render template
+	htmlContent, err := g.templateManager.RenderReport(templateData)
+	if err != nil {
+		return fmt.Errorf("failed to render HTML template: %w", err)
+	}
+	
+	// Save HTML file
 	if err := g.fileManager.SaveHTML(outputFile, htmlContent); err != nil {
 		return fmt.Errorf("failed to save HTML file: %w", err)
+	}
+	
+	// Generate data file for JavaScript
+	if err := g.generateDataFile(&report, dataFilename); err != nil {
+		g.logger.WithError(err).Warn("Failed to generate data file")
 	}
 	
 	g.logger.WithFields(logrus.Fields{
