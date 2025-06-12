@@ -28,6 +28,14 @@ type Config interface {
 	AsHermesConfig() *eth.NodeConfig
 	Validate() error
 	HostWithRedactedSecrets() string
+	
+	// Report configuration
+	IsHTMLOnly() bool
+	GetInputJSON() string
+	GetClaudeAPIKey() string
+	IsSkipAI() bool
+	IsUpdateGoMod() bool
+	IsValidateGoMod() bool
 }
 
 // Validator defines the interface for configuration validation

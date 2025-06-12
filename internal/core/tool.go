@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -289,8 +290,22 @@ func (t *DefaultTool) SaveReports() error {
 		return fmt.Errorf("failed to save JSON report: %w", err)
 	}
 	
-	// Save HTML report
-	htmlFile, err := t.reportGen.GenerateHTML(reportsReport)
+	// Check for AI analysis API key
+	apiKey := t.config.GetClaudeAPIKey()
+	if apiKey == "" {
+		// Also check environment variable as fallback
+		apiKey = os.Getenv("OPENROUTER_API_KEY")
+	}
+
+	// Save HTML report with or without AI analysis
+	var htmlFile string
+	if apiKey != "" && !t.config.IsSkipAI() {
+		t.logger.Info("Including AI analysis in HTML report")
+		htmlFile, err = t.reportGen.GenerateHTMLWithAI(reportsReport, apiKey)
+	} else {
+		htmlFile, err = t.reportGen.GenerateHTML(reportsReport)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to save HTML report: %w", err)
 	}
