@@ -19,18 +19,21 @@ func (sc *DefaultStatsCalculator) CalculateConnectionStats(peers map[string]*Sta
 	stats := ConnectionStats{}
 	
 	for _, peer := range peers {
-		// Count all connection sessions
-		stats.TotalConnections += peer.TotalConnections
-		
 		// Count successful/failed handshakes per session
 		hasActiveSession := false
 		
 		for _, session := range peer.ConnectionSessions {
-			if session.IdentifiedAt != nil {
-				stats.SuccessfulHandshakes++
-			} else if session.ConnectedAt != nil {
-				// Connected but never identified = failed handshake
-				stats.FailedHandshakes++
+			// Count this session toward total connections
+			if session.ConnectedAt != nil {
+				stats.TotalConnections++
+				
+				// Determine if handshake was successful or failed
+				if session.IdentifiedAt != nil {
+					stats.SuccessfulHandshakes++
+				} else {
+					// Connected but never identified = failed handshake
+					stats.FailedHandshakes++
+				}
 			}
 			
 			// Check if peer has an active (non-disconnected) session

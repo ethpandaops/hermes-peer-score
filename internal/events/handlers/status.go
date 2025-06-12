@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"time"
 
 	"github.com/probe-lab/hermes/host"
 	"github.com/sirupsen/logrus"
@@ -57,7 +58,7 @@ func (h *StatusHandler) HandleEvent(ctx context.Context, event *host.TraceEvent)
 	// Update peer with status information
 	h.tool.UpdatePeer(peerID, func(p interface{}) {
 		if peerStats, ok := p.(*peer.Stats); ok {
-			h.handleStatusUpdate(peerStats, payload)
+			h.handleStatusUpdate(peerStats, payload, event.Timestamp)
 		}
 	})
 
@@ -68,16 +69,7 @@ func (h *StatusHandler) HandleEvent(ctx context.Context, event *host.TraceEvent)
 }
 
 // handleStatusUpdate processes the status update for a peer
-func (h *StatusHandler) handleStatusUpdate(peerStats *peer.Stats, payload map[string]interface{}) {
-	// Extract and process status information
-	success := true // Default assumption
-	if err, hasErr := payload["Error"]; hasErr && err != nil {
-		success = false
-		peerStats.FailedHandshakes++
-	} else {
-		peerStats.SuccessfulHandshakes++
-	}
-
+func (h *StatusHandler) handleStatusUpdate(peerStats *peer.Stats, payload map[string]interface{}, eventTime time.Time) {
 	// Extract client identification information from AgentVersion
 	if agentVersion, ok := payload["AgentVersion"].(string); ok && agentVersion != "" {
 		clientType := common.NormalizeClientType(agentVersion)
@@ -90,6 +82,9 @@ func (h *StatusHandler) handleStatusUpdate(peerStats *peer.Stats, payload map[st
 			peerStats.ClientAgent = agentVersion
 		}
 
+		// Set IdentifiedAt timestamp on the current session for handshake tracking
+		h.setSessionIdentified(peerStats, eventTime)
+
 		h.logger.WithFields(logrus.Fields{
 			"peer_id":      common.FormatShortPeerID(peerStats.PeerID),
 			"client_type":  clientType,
@@ -99,6 +94,20 @@ func (h *StatusHandler) handleStatusUpdate(peerStats *peer.Stats, payload map[st
 
 	h.logger.WithFields(logrus.Fields{
 		"peer_id": common.FormatShortPeerID(peerStats.PeerID),
-		"success": success,
 	}).Debug("Handled status update")
+}
+
+// setSessionIdentified sets the IdentifiedAt timestamp on the current session
+func (h *StatusHandler) setSessionIdentified(peerStats *peer.Stats, eventTime time.Time) {
+	if len(peerStats.ConnectionSessions) == 0 {
+		return
+	}
+
+	// Get the last (current) session
+	currentSession := &peerStats.ConnectionSessions[len(peerStats.ConnectionSessions)-1]
+	
+	// Only set IdentifiedAt if it hasn't been set yet
+	if currentSession.IdentifiedAt == nil {
+		currentSession.IdentifiedAt = &eventTime
+	}
 }
