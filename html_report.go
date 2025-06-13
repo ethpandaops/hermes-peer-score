@@ -27,14 +27,15 @@ type OptimizedHTMLTemplateData struct {
 
 // SummaryData contains high-level summary information for the report.
 type SummaryData struct {
-	TestDuration         float64       `json:"test_duration"`
-	StartTime            time.Time     `json:"start_time"`
-	EndTime              time.Time     `json:"end_time"`
-	TotalConnections     int           `json:"total_connections"`
-	SuccessfulHandshakes int           `json:"successful_handshakes"`
-	FailedHandshakes     int           `json:"failed_handshakes"`
-	UniquePeers          int           `json:"unique_peers"`
-	PeerSummaries        []PeerSummary `json:"peer_summaries"`
+	TestDuration         float64              `json:"test_duration"`
+	StartTime            time.Time            `json:"start_time"`
+	EndTime              time.Time            `json:"end_time"`
+	TotalConnections     int                  `json:"total_connections"`
+	SuccessfulHandshakes int                  `json:"successful_handshakes"`
+	FailedHandshakes     int                  `json:"failed_handshakes"`
+	UniquePeers          int                  `json:"unique_peers"`
+	PeerSummaries        []PeerSummary        `json:"peer_summaries"`
+	GoodbyeEventsSummary GoodbyeEventsSummary `json:"goodbye_events_summary"`
 }
 
 // PeerSummary contains minimal information about a peer for the overview.
@@ -178,6 +179,13 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                 <div class="text-sm font-medium text-gray-500">Unique Peers</div>
                 <div class="text-2xl font-bold text-blue-600">{{.Summary.UniquePeers}}</div>
             </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-sm font-medium text-gray-500">Goodbye Events</div>
+                <div class="text-2xl font-bold text-orange-600">{{.Summary.GoodbyeEventsSummary.TotalEvents}}</div>
+                <div class="text-xs text-gray-500 mt-1">
+                    {{.Summary.GoodbyeEventsSummary.UniqueReasons}} unique reasons
+                </div>
+            </div>
         </div>
 
         <!-- Controls -->
@@ -221,6 +229,9 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                 </div>
             </div>
         </div>
+
+        <!-- Goodbye Events Breakdown -->
+        <div id="goodbyeBreakdownContainer"></div>
 
         <!-- Peer List -->
         <div class="bg-white rounded-lg shadow-lg">
@@ -367,6 +378,11 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                 renderPeerList();
                 setupEventListeners();
                 updateResultsInfo();
+                
+                // Render goodbye events breakdown if available
+                if (reportData.summary && reportData.summary.goodbye_events_summary) {
+                    renderGoodbyeEventsBreakdown(reportData.summary.goodbye_events_summary);
+                }
             } else {
                 console.error('reportData is undefined - data file may have failed to load');
                 document.getElementById('peerList').innerHTML =
@@ -565,6 +581,48 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                 info = ` + "`" + `${filtered} of ${total} peers` + "`" + `;
             }
             document.getElementById('resultsInfo').textContent = info;
+        }
+
+        function renderGoodbyeEventsBreakdown(summary) {
+            if (!summary || summary.total_events === 0) return;
+            
+            const container = document.getElementById('goodbyeBreakdownContainer');
+            if (!container) return;
+            
+            const html = ` + "`" + `
+                <div class="bg-white rounded-lg shadow mb-6">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold mb-4">Top Goodbye Reasons</h3>
+                        <div class="space-y-3">
+                            ${summary.reason_stats
+                                .slice(0, 10) // Show top 10
+                                .map(stat => ` + "`" + `
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                                        <div class="flex-1">
+                                            <div class="font-medium text-gray-900">
+                                                ${stat.reason || '<span class="italic text-gray-500">no reason provided</span>'}
+                                            </div>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                Codes: ${stat.codes.join(', ')}
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-lg font-semibold">${stat.count}</div>
+                                            <div class="text-xs text-gray-500">${((stat.count / summary.total_events) * 100).toFixed(1)}%</div>
+                                        </div>
+                                    </div>
+                                ` + "`" + `).join('')}
+                        </div>
+                        ${summary.unique_reasons > 10 ? ` + "`" + `
+                            <div class="text-sm text-gray-500 mt-4 text-center">
+                                Showing top 10 of ${summary.unique_reasons} unique reasons
+                            </div>
+                        ` + "`" + ` : ''}
+                    </div>
+                </div>
+            ` + "`" + `;
+            
+            container.innerHTML = html;
         }
 
         async function showPeerDetails(peerId) {
@@ -821,6 +879,44 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                                                     <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded">${meshEvent.topic}</span>
                                                                 </td>
                                                                 <td class="px-3 py-2 text-xs text-gray-600">${meshEvent.reason || '-'}</td>
+                                                            </tr>
+                                                        ` + "`" + `).join('')}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` + "`" + ` : ''}
+                                    ${session.goodbye_events && session.goodbye_events.length > 0 ? ` + "`" + `
+                                    <div>
+                                        <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-goodbye')">
+                                            <div class="flex items-center justify-between">
+                                                <h6 class="font-medium text-gray-800">Goodbye Events (${session.goodbye_events.length} events)</h6>
+                                                <svg class="w-4 h-4 text-gray-500 transform transition-transform" id="${sessionId}-goodbye-arrow">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="hidden mt-2" id="${sessionId}-goodbye">
+                                            <div class="max-h-64 overflow-y-auto">
+                                                <table class="min-w-full bg-white border border-gray-200 rounded text-xs">
+                                                    <thead class="bg-gray-50">
+                                                        <tr>
+                                                            <th class="px-3 py-2 text-left">Time</th>
+                                                            <th class="px-3 py-2 text-left">Code</th>
+                                                            <th class="px-3 py-2 text-left">Reason</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-100">
+                                                        ${session.goodbye_events.map(event => ` + "`" + `
+                                                            <tr class="hover:bg-gray-50">
+                                                                <td class="px-3 py-2 text-xs">${new Date(event.timestamp).toLocaleTimeString()}</td>
+                                                                <td class="px-3 py-2 text-xs">
+                                                                    <span class="font-mono bg-gray-100 px-1 py-0.5 rounded">${event.code}</span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-xs text-gray-700">
+                                                                    ${event.reason || '<span class="text-gray-400 italic">no reason provided</span>'}
+                                                                </td>
                                                             </tr>
                                                         ` + "`" + `).join('')}
                                                     </tbody>
@@ -1093,6 +1189,9 @@ func extractSummaryData(report PeerScoreReport) SummaryData {
 			LastSessionTime:   lastSessionTime,
 		})
 	}
+
+	// Calculate goodbye events summary
+	summary.GoodbyeEventsSummary = calculateGoodbyeEventsSummary(report.Peers)
 
 	return summary
 }
