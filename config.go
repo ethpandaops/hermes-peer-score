@@ -171,14 +171,14 @@ func GetValidationConfigs() map[ValidationMode]ValidationConfig {
 	return map[ValidationMode]ValidationConfig{
 		ValidationModeDelegated: {
 			Mode:          ValidationModeDelegated,
-			HermesVersion: "v0.0.4-0.20250513093811-320c1c3ee6e2",
+			HermesVersion: "v0.0.4-0.20250613124328-491d55340eb7",
 			ConfigOverrides: map[string]interface{}{
 				"validation-mode": "delegated",
 			},
 		},
 		ValidationModeIndependent: {
 			Mode:          ValidationModeIndependent,
-			HermesVersion: "v0.0.4-0.20250611164742-0abea7d82cb4",
+			HermesVersion: "v0.0.4-0.20250613124328-491d55340eb7",
 			ConfigOverrides: map[string]interface{}{
 				"validation-mode":                  "independent",
 				"validation-attestation-threshold": 10,
