@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// GoodbyeReasonStats tracks statistics for a specific goodbye reason
+// GoodbyeReasonStats tracks statistics for a specific goodbye reason.
 type GoodbyeReasonStats struct {
 	Reason   string   `json:"reason"`   // Original reason string
 	Count    int      `json:"count"`    // Number of occurrences
@@ -13,7 +13,7 @@ type GoodbyeReasonStats struct {
 	Examples []string `json:"examples"` // First few examples of this reason
 }
 
-// GoodbyeEventsSummary contains aggregated goodbye event statistics
+// GoodbyeEventsSummary contains aggregated goodbye event statistics.
 type GoodbyeEventsSummary struct {
 	TotalEvents   int                   `json:"total_events"`   // Total number of goodbye events
 	ReasonStats   []*GoodbyeReasonStats `json:"reason_stats"`   // Sorted by count (most common first)
@@ -22,7 +22,7 @@ type GoodbyeEventsSummary struct {
 	CodeFrequency map[uint64]int        `json:"code_frequency"` // Code occurrence count
 }
 
-// AnalyzeGoodbyeReasons groups and analyzes goodbye reasons from events
+// AnalyzeGoodbyeReasons groups and analyzes goodbye reasons from events.
 func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats {
 	stats := make(map[string]*GoodbyeReasonStats)
 
@@ -43,12 +43,15 @@ func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats
 			if len(stat.Examples) < 3 && event.Reason != "" {
 				// Check if this exact example already exists
 				alreadyExists := false
+
 				for _, ex := range stat.Examples {
 					if ex == event.Reason {
 						alreadyExists = true
+
 						break
 					}
 				}
+
 				if !alreadyExists {
 					stat.Examples = append(stat.Examples, event.Reason)
 				}
@@ -58,6 +61,7 @@ func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats
 			if event.Reason != "" {
 				examples = []string{event.Reason}
 			}
+
 			stats[key] = &GoodbyeReasonStats{
 				Reason:   event.Reason, // Preserve original casing
 				Count:    1,
@@ -70,19 +74,21 @@ func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats
 	return stats
 }
 
-// containsCode checks if a code exists in the slice
+// containsCode checks if a code exists in the slice.
 func containsCode(codes []uint64, code uint64) bool {
 	for _, c := range codes {
 		if c == code {
 			return true
 		}
 	}
+
 	return false
 }
 
-// calculateGoodbyeEventsSummary aggregates goodbye event statistics from all peers
+// calculateGoodbyeEventsSummary aggregates goodbye event statistics from all peers.
 func calculateGoodbyeEventsSummary(peers map[string]*PeerStats) GoodbyeEventsSummary {
 	var allEvents []GoodbyeEvent
+
 	codeFreq := make(map[uint64]int)
 
 	// Collect all goodbye events from all peers
@@ -99,7 +105,7 @@ func calculateGoodbyeEventsSummary(peers map[string]*PeerStats) GoodbyeEventsSum
 	reasonStats := AnalyzeGoodbyeReasons(allEvents)
 
 	// Convert map to sorted slice
-	var statsList []*GoodbyeReasonStats
+	statsList := make([]*GoodbyeReasonStats, 0, len(reasonStats))
 	for _, stat := range reasonStats {
 		statsList = append(statsList, stat)
 	}
@@ -110,11 +116,13 @@ func calculateGoodbyeEventsSummary(peers map[string]*PeerStats) GoodbyeEventsSum
 
 	// Get top 5 reasons
 	var topReasons []string
+
 	for i := 0; i < 5 && i < len(statsList); i++ {
 		reason := statsList[i].Reason
 		if reason == "" {
 			reason = "no reason provided"
 		}
+
 		topReasons = append(topReasons, reason)
 	}
 
