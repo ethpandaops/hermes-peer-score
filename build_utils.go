@@ -17,7 +17,7 @@ func UpdateGoModForValidationMode(validationMode ValidationMode) error {
 
 	switch validationMode {
 	case ValidationModeDelegated:
-		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250513093811-320c1c3ee6e2"
+		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250613124328-491d55340eb7"
 	case ValidationModeIndependent:
 		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250613124328-491d55340eb7"
 	default:
