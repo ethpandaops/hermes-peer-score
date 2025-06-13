@@ -19,7 +19,7 @@ func UpdateGoModForValidationMode(validationMode ValidationMode) error {
 	case ValidationModeDelegated:
 		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250513093811-320c1c3ee6e2"
 	case ValidationModeIndependent:
-		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250611164742-0abea7d82cb4"
+		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250613124328-491d55340eb7"
 	default:
 		return fmt.Errorf("unknown validation mode: %s", validationMode)
 	}
