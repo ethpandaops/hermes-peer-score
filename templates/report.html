@@ -316,7 +316,7 @@
                 renderPeerList();
                 setupEventListeners();
                 updateResultsInfo();
-                
+
                 // Initialize goodbye events summary
                 if (reportData.summary && reportData.summary.goodbye_events_summary) {
                     initializeGoodbyeEventsSummary(reportData.summary.goodbye_events_summary);
@@ -664,8 +664,7 @@
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-4">
                                         <span class="font-medium text-gray-900">Session ${sessionIdx + 1}</span>
-                                        <span class="text-sm text-gray-600">${session.connection_duration ? (session.connection_duration / 1000000000).toFixed(2) + 's' : 'Unknown duration'}</span>
-                                        <span class="text-sm text-gray-600">${session.message_count || 0} messages</span>
+                                        <span class="text-sm text-gray-600">${session.duration ? (session.duration / 1000000000).toFixed(2) + 's' : 'Active session'}</span>
                                         ${session.peer_scores ? `<span class="text-sm text-gray-600">${session.peer_scores.length} score snapshots</span>` : ''}
                                         ${session.goodbye_events && session.goodbye_events.length > 0 ? `<span class="text-sm text-orange-600">${session.goodbye_events.length} goodbye events</span>` : ''}
                                         ${session.mesh_events && session.mesh_events.length > 0 ? `<span class="text-sm text-purple-600">${session.mesh_events.length} mesh events</span>` : ''}
@@ -974,16 +973,16 @@
             // Update the summary card
             const countElement = document.getElementById('goodbyeEventsCount');
             const detailsElement = document.getElementById('goodbyeEventsDetails');
-            
+
             if (countElement) {
                 countElement.textContent = summary.total_events || 0;
             }
-            
+
             if (detailsElement) {
                 const uniqueReasons = summary.unique_reasons || 0;
                 detailsElement.textContent = `${uniqueReasons} unique reason${uniqueReasons !== 1 ? 's' : ''}`;
             }
-            
+
             // Render goodbye events breakdown section if there are events
             if (summary.total_events > 0) {
                 renderGoodbyeEventsBreakdown(summary);
