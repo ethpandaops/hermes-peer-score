@@ -204,11 +204,9 @@ func (r *InMemoryRepository) deepCopySession(original ConnectionSession) Connect
 	// Deep copy peer scores
 	scoresCopy := make([]PeerScoreSnapshot, len(original.PeerScores))
 	for i, score := range original.PeerScores {
-		// Deep copy topics map
-		topicsCopy := make(map[string]float64)
-		for topic, value := range score.Topics {
-			topicsCopy[topic] = value
-		}
+		// Deep copy topics slice
+		topicsCopy := make([]TopicScore, len(score.Topics))
+		copy(topicsCopy, score.Topics)
 		
 		scoresCopy[i] = PeerScoreSnapshot{
 			Timestamp:          score.Timestamp,

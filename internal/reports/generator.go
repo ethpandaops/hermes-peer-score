@@ -92,6 +92,13 @@ func (g *DefaultGenerator) generateHTMLReport(report *Report, aiAnalysis string)
 	if reportData, ok := templateData.(map[string]interface{}); ok {
 		reportData["AIAnalysis"] = aiAnalysis
 		reportData["DataFile"] = dataFilename
+		
+		// Convert AI analysis to safe HTML
+		if aiAnalysis != "" {
+			if processor, ok := g.dataProcessor.(*DefaultDataProcessor); ok {
+				reportData["AIAnalysisHTML"] = processor.CleanAIHTML(aiAnalysis)
+			}
+		}
 	}
 	
 	// Render template
@@ -229,6 +236,13 @@ func (g *DefaultGenerator) GenerateHTMLFromJSONWithAI(jsonFile, outputFile, apiK
 	if reportData, ok := templateData.(map[string]interface{}); ok {
 		reportData["AIAnalysis"] = aiAnalysis
 		reportData["DataFile"] = dataFilename
+		
+		// Convert AI analysis to safe HTML
+		if aiAnalysis != "" {
+			if processor, ok := g.dataProcessor.(*DefaultDataProcessor); ok {
+				reportData["AIAnalysisHTML"] = processor.CleanAIHTML(aiAnalysis)
+			}
+		}
 	}
 	
 	// Render template

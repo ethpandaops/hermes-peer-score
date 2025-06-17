@@ -31,12 +31,12 @@ type ConnectionSession struct {
 
 // PeerScoreSnapshot represents a snapshot of a peer's score at a specific time
 type PeerScoreSnapshot struct {
-	Timestamp          time.Time          `json:"timestamp"`
-	Score              float64            `json:"score"`
-	AppSpecificScore   float64            `json:"app_specific_score"`
-	IPColocationFactor float64            `json:"ip_colocation_factor"`
-	BehaviourPenalty   float64            `json:"behaviour_penalty"`
-	Topics             map[string]float64 `json:"topics"`
+	Timestamp          time.Time    `json:"timestamp"`
+	Score              float64      `json:"score"`
+	AppSpecificScore   float64      `json:"app_specific_score"`
+	IPColocationFactor float64      `json:"ip_colocation_factor"`
+	BehaviourPenalty   float64      `json:"behaviour_penalty"`
+	Topics             []TopicScore `json:"topics"`
 }
 
 // TopicScore represents the peer score for a specific topic

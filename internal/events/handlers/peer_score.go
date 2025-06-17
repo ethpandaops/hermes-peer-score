@@ -82,14 +82,23 @@ func (h *PeerScoreHandler) addPeerScore(peerStats *peer.Stats, scoreData *parser
 		if !session.Disconnected {
 			// Add score to this session
 			scoreSnapshot := peer.PeerScoreSnapshot{
-				Score:     scoreData.Score,
-				Timestamp: scoreData.Timestamp,
-				Topics:    make(map[string]float64),
+				Score:              scoreData.Score,
+				Timestamp:          scoreData.Timestamp,
+				AppSpecificScore:   scoreData.AppSpecificScore,
+				IPColocationFactor: scoreData.IPColocationFactor,
+				BehaviourPenalty:   scoreData.BehaviourPenalty,
+				Topics:             make([]peer.TopicScore, 0, len(scoreData.Topics)),
 			}
 			
-			// Copy topic scores from slice to map
+			// Copy topic scores with full data
 			for _, topicScore := range scoreData.Topics {
-				scoreSnapshot.Topics[topicScore.Topic] = topicScore.FirstMessageDeliveries
+				scoreSnapshot.Topics = append(scoreSnapshot.Topics, peer.TopicScore{
+					Topic:                    topicScore.Topic,
+					TimeInMesh:               topicScore.TimeInMesh,
+					FirstMessageDeliveries:   topicScore.FirstMessageDeliveries,
+					MeshMessageDeliveries:    topicScore.MeshMessageDeliveries,
+					InvalidMessageDeliveries: topicScore.InvalidMessageDeliveries,
+				})
 			}
 			
 			session.PeerScores = append(session.PeerScores, scoreSnapshot)
@@ -118,14 +127,23 @@ func (h *PeerScoreHandler) addPeerScore(peerStats *peer.Stats, scoreData *parser
 	
 	// Add the score to the new session
 	scoreSnapshot := peer.PeerScoreSnapshot{
-		Score:     scoreData.Score,
-		Timestamp: scoreData.Timestamp,
-		Topics:    make(map[string]float64),
+		Score:              scoreData.Score,
+		Timestamp:          scoreData.Timestamp,
+		AppSpecificScore:   scoreData.AppSpecificScore,
+		IPColocationFactor: scoreData.IPColocationFactor,
+		BehaviourPenalty:   scoreData.BehaviourPenalty,
+		Topics:             make([]peer.TopicScore, 0, len(scoreData.Topics)),
 	}
 	
-	// Copy topic scores from slice to map
+	// Copy topic scores with full data
 	for _, topicScore := range scoreData.Topics {
-		scoreSnapshot.Topics[topicScore.Topic] = topicScore.FirstMessageDeliveries
+		scoreSnapshot.Topics = append(scoreSnapshot.Topics, peer.TopicScore{
+			Topic:                    topicScore.Topic,
+			TimeInMesh:               topicScore.TimeInMesh,
+			FirstMessageDeliveries:   topicScore.FirstMessageDeliveries,
+			MeshMessageDeliveries:    topicScore.MeshMessageDeliveries,
+			InvalidMessageDeliveries: topicScore.InvalidMessageDeliveries,
+		})
 	}
 	
 	session.PeerScores = append(session.PeerScores, scoreSnapshot)
