@@ -1,6 +1,6 @@
 package constants
 
-// Common string constants for consensus clients
+// Common string constants for consensus clients.
 const (
 	Unknown    = "unknown"
 	Lighthouse = "lighthouse"
