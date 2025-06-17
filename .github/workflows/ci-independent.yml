@@ -212,7 +212,7 @@ jobs:
             failed_handshakes=$(jq -r '.failed_handshakes // 0' "$INDEPENDENT_JSON")
             unique_peers=$(jq -r '.peers | length' "$INDEPENDENT_JSON")
             duration_seconds=$(jq -r '.duration / 1000000000' "$INDEPENDENT_JSON")
-            test_duration=$(jq -r '.config.TestDuration / 1000000000' "$INDEPENDENT_JSON")
+            test_duration=$(jq -r '(.config.TestDuration // 0) / 1000000000' "$INDEPENDENT_JSON")
 
             # Extract validation metrics (these fields were removed, so default to 0)
             validation_success_rate=0
