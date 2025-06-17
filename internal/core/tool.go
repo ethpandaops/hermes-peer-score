@@ -254,6 +254,12 @@ func (t *DefaultTool) IncrementEventCount(peerID, eventType string) {
 	t.peerRepo.IncrementEventCount(peerID, eventType)
 }
 
+func (t *DefaultTool) IncrementMessageCount(peerID string) {
+	if err := t.sessionMgr.IncrementMessageCount(peerID); err != nil {
+		t.logger.WithError(err).WithField("peer_id", peerID).Debug("Failed to increment message count")
+	}
+}
+
 // SaveReports generates and saves both JSON and HTML reports
 func (t *DefaultTool) SaveReports() error {
 	report, err := t.GenerateReport()

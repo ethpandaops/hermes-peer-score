@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -50,6 +51,10 @@ func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats
 				Examples: examples,
 			}
 		}
+	}
+
+	for _, stat := range stats {
+		fmt.Printf("stat: %+v\n", stat)
 	}
 
 	return stats

@@ -670,7 +670,7 @@
                                 '<div class="flex items-center justify-between">' +
                                     '<div class="flex items-center space-x-4">' +
                                         '<span class="font-medium text-gray-900">Session ' + (sessionIdx + 1) + '</span>' +
-                                        '<span class="text-sm text-gray-600">' + (session.connection_duration ? (session.connection_duration / 1000000000).toFixed(2) + 's' : 'Unknown duration') + '</span>' +
+                                        '<span class="text-sm text-gray-600">' + (session.duration ? (session.duration / 1000000000).toFixed(2) + 's' : 'Active session') + '</span>' +
                                         '<span class="text-sm text-gray-600">' + (session.message_count || 0) + ' messages</span>' +
                                         (session.peer_scores ? '<span class="text-sm text-gray-600">' + session.peer_scores.length + ' score snapshots</span>' : '') +
                                         (session.goodbye_events && session.goodbye_events.length > 0 ? '<span class="text-sm text-orange-600">' + session.goodbye_events.length + ' goodbye events</span>' : '') +

@@ -12,4 +12,5 @@ type ToolInterface interface {
 	UpdateOrCreatePeer(peerID string, updateFn func(interface{}))
 	GetLogger() logrus.FieldLogger
 	IncrementEventCount(peerID, eventType string)
+	IncrementMessageCount(peerID string)
 }

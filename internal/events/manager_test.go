@@ -65,6 +65,10 @@ func (m *MockToolInterface) IncrementEventCount(peerID, eventType string) {
 	m.eventCounts[peerID][eventType]++
 }
 
+func (m *MockToolInterface) IncrementMessageCount(peerID string) {
+	// Mock implementation - in a real test this could track message counts
+}
+
 func TestEventManager(t *testing.T) {
 	tool := NewMockToolInterface()
 	logger := logrus.New()

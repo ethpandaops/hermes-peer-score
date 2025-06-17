@@ -70,6 +70,9 @@ func (h *GoodbyeHandler) HandleEvent(ctx context.Context, event *host.TraceEvent
 	// Increment goodbye event count
 	h.tool.IncrementEventCount(peerID, "HANDLE_GOODBYE")
 
+	// Increment message count for this session
+	h.tool.IncrementMessageCount(peerID)
+
 	return nil
 }
 

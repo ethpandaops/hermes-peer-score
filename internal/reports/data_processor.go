@@ -27,10 +27,15 @@ func NewDefaultDataProcessor(logger logrus.FieldLogger) *DefaultDataProcessor {
 
 // ProcessPeerData processes peer data for JavaScript consumption
 func (dp *DefaultDataProcessor) ProcessPeerData(peers map[string]interface{}) (interface{}, error) {
+	return dp.ProcessPeerDataWithEventCounts(peers, nil)
+}
+
+// ProcessPeerDataWithEventCounts processes peer data with event counts
+func (dp *DefaultDataProcessor) ProcessPeerDataWithEventCounts(peers map[string]interface{}, eventCounts map[string]map[string]int) (interface{}, error) {
 	processedPeers := make([]map[string]interface{}, 0, len(peers))
 	
 	for peerID, peerData := range peers {
-		processed := dp.processSinglePeer(peerID, peerData)
+		processed := dp.processSinglePeerWithEventCounts(peerID, peerData, eventCounts)
 		processedPeers = append(processedPeers, processed)
 	}
 	
@@ -121,18 +126,33 @@ func (dp *DefaultDataProcessor) FormatForTemplate(report *Report) (interface{}, 
 
 // processSinglePeer processes a single peer's data
 func (dp *DefaultDataProcessor) processSinglePeer(peerID string, peerData interface{}) map[string]interface{} {
+	return dp.processSinglePeerWithEventCounts(peerID, peerData, nil)
+}
+
+// processSinglePeerWithEventCounts processes a single peer's data with event counts
+func (dp *DefaultDataProcessor) processSinglePeerWithEventCounts(peerID string, peerData interface{}, eventCounts map[string]map[string]int) map[string]interface{} {
 	processed := map[string]interface{}{
 		"peer_id":       peerID,
 		"short_peer_id": dp.formatShortPeerID(peerID),
 	}
 	
+	// Calculate total event count for this peer
+	totalEventCount := 0
+	if eventCounts != nil {
+		if peerEvents, exists := eventCounts[peerID]; exists {
+			for _, count := range peerEvents {
+				totalEventCount += count
+			}
+		}
+	}
+	
 	// Handle different types of peer data structures
 	switch peerObj := peerData.(type) {
 	case map[string]interface{}:
-		dp.extractFromMap(peerObj, processed)
+		dp.extractFromMapWithEventCounts(peerObj, processed, totalEventCount)
 	case *peer.Stats:
 		// Handle peer.Stats directly
-		dp.extractFromPeerStats(peerObj, processed)
+		dp.extractFromPeerStatsWithEventCounts(peerObj, processed, totalEventCount)
 	default:
 		dp.logger.WithFields(logrus.Fields{
 			"peer_id": peerID,
@@ -140,7 +160,7 @@ func (dp *DefaultDataProcessor) processSinglePeer(peerID string, peerData interf
 		}).Warn("Unknown peer data format")
 		processed["client_type"] = constants.Unknown
 		processed["session_count"] = 0
-		processed["event_count"] = 0
+		processed["event_count"] = totalEventCount
 	}
 	
 	return processed
@@ -148,6 +168,11 @@ func (dp *DefaultDataProcessor) processSinglePeer(peerID string, peerData interf
 
 // extractFromPeerStats extracts data from a peer.Stats struct
 func (dp *DefaultDataProcessor) extractFromPeerStats(peerStats *peer.Stats, target map[string]interface{}) {
+	dp.extractFromPeerStatsWithEventCounts(peerStats, target, 0)
+}
+
+// extractFromPeerStatsWithEventCounts extracts data from a peer.Stats struct with event counts
+func (dp *DefaultDataProcessor) extractFromPeerStatsWithEventCounts(peerStats *peer.Stats, target map[string]interface{}, totalEventCount int) {
 	// Copy basic fields
 	target["client_type"] = peerStats.ClientType
 	target["client_agent"] = peerStats.ClientAgent
@@ -164,7 +189,6 @@ func (dp *DefaultDataProcessor) extractFromPeerStats(peerStats *peer.Stats, targ
 	target["connection_sessions"] = peerStats.ConnectionSessions
 	
 	// Calculate session statistics
-	eventCount := 0
 	goodbyeCount := 0
 	meshCount := 0
 	hasScores := false
@@ -172,7 +196,6 @@ func (dp *DefaultDataProcessor) extractFromPeerStats(peerStats *peer.Stats, targ
 	var lastSessionStatus string
 	
 	for _, session := range peerStats.ConnectionSessions {
-		eventCount += session.MessageCount
 		goodbyeCount += len(session.GoodbyeEvents)
 		meshCount += len(session.MeshEvents)
 		
@@ -201,7 +224,8 @@ func (dp *DefaultDataProcessor) extractFromPeerStats(peerStats *peer.Stats, targ
 		}
 	}
 	
-	target["event_count"] = eventCount
+	// Use the correct event count from PeerEventCounts
+	target["event_count"] = totalEventCount
 	target["goodbye_count"] = goodbyeCount
 	target["mesh_count"] = meshCount
 	target["has_scores"] = hasScores
@@ -212,6 +236,11 @@ func (dp *DefaultDataProcessor) extractFromPeerStats(peerStats *peer.Stats, targ
 
 // extractFromMap extracts data from a map-based peer structure
 func (dp *DefaultDataProcessor) extractFromMap(source, target map[string]interface{}) {
+	dp.extractFromMapWithEventCounts(source, target, 0)
+}
+
+// extractFromMapWithEventCounts extracts data from a map-based peer structure with event counts
+func (dp *DefaultDataProcessor) extractFromMapWithEventCounts(source, target map[string]interface{}, totalEventCount int) {
 	// Copy basic fields
 	if clientType, ok := source["client_type"].(string); ok {
 		target["client_type"] = clientType
@@ -235,10 +264,10 @@ func (dp *DefaultDataProcessor) extractFromMap(source, target map[string]interfa
 	
 	target["session_count"] = sessionCount
 	
+	// Use the correct event count from PeerEventCounts
+	target["event_count"] = totalEventCount
+	
 	// Set default values for missing fields
-	if _, ok := target["event_count"]; !ok {
-		target["event_count"] = 0
-	}
 	if _, ok := target["goodbye_count"]; !ok {
 		target["goodbye_count"] = 0
 	}

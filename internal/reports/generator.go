@@ -121,8 +121,17 @@ func (g *DefaultGenerator) generateHTMLReport(report *Report, aiAnalysis string)
 
 // generateDataFile creates a JavaScript data file for the HTML report
 func (g *DefaultGenerator) generateDataFile(report *Report, filename string) error {
-	// Process the full report data for JavaScript consumption
-	processedData, err := g.dataProcessor.ProcessPeerData(report.Peers)
+	// Process the full report data for JavaScript consumption with event counts
+	var processedData interface{}
+	var err error
+	
+	// Check if dataProcessor supports event counts
+	if processor, ok := g.dataProcessor.(*DefaultDataProcessor); ok {
+		processedData, err = processor.ProcessPeerDataWithEventCounts(report.Peers, report.PeerEventCounts)
+	} else {
+		processedData, err = g.dataProcessor.ProcessPeerData(report.Peers)
+	}
+	
 	if err != nil {
 		return fmt.Errorf("failed to process peer data: %w", err)
 	}

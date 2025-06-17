@@ -68,6 +68,9 @@ func (h *PeerScoreHandler) HandleEvent(ctx context.Context, event *host.TraceEve
 	// Increment peer score event count
 	h.tool.IncrementEventCount(peerID, "PEERSCORE")
 
+	// Increment message count for this session
+	h.tool.IncrementMessageCount(peerID)
+
 	return nil
 }
 

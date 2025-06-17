@@ -26,6 +26,7 @@ type SessionManager interface {
 	AddPeerScore(peerID string, score PeerScoreSnapshot) error
 	AddGoodbyeEvent(peerID string, event GoodbyeEvent) error
 	AddMeshEvent(peerID string, event MeshEvent) error
+	IncrementMessageCount(peerID string) error
 }
 
 // StatsCalculator defines the interface for calculating peer statistics

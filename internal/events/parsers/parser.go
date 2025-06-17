@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -258,7 +259,105 @@ func parseUint64(val interface{}) (uint64, error) {
 	case string:
 		return strconv.ParseUint(v, 10, 64)
 	default:
-		return 0, fmt.Errorf("cannot convert %T to uint64", val)
+		// Try to extract uint64 value from SSZ types or other custom types
+		// Use reflection to check if the type has methods or fields we can use
+		rval := reflect.ValueOf(v)
+		
+		// If it's a pointer, dereference it
+		if rval.Kind() == reflect.Ptr && !rval.IsNil() {
+			rval = rval.Elem()
+		}
+		
+		// Handle struct types (like SSZ types)
+		if rval.Kind() == reflect.Struct {
+			// Try common method names for getting uint64 value
+			methodNames := []string{"Uint64", "Value", "Get", "Raw", "Unwrap"}
+			for _, methodName := range methodNames {
+				if method := rval.MethodByName(methodName); method.IsValid() {
+					result := method.Call(nil)
+					if len(result) == 1 {
+						resultVal := result[0]
+						switch resultVal.Kind() {
+						case reflect.Uint64:
+							return resultVal.Uint(), nil
+						case reflect.Uint, reflect.Uint32, reflect.Uint16, reflect.Uint8:
+							return resultVal.Uint(), nil
+						case reflect.Int, reflect.Int32, reflect.Int64, reflect.Int16, reflect.Int8:
+							if resultVal.Int() >= 0 {
+								return uint64(resultVal.Int()), nil
+							}
+						}
+						
+						// If the method returns an interface{}, try to recursively parse it
+						if resultVal.Kind() == reflect.Interface && !resultVal.IsNil() {
+							if parsed, err := parseUint64(resultVal.Interface()); err == nil {
+								return parsed, nil
+							}
+						}
+					}
+				}
+			}
+			
+			// Try accessing common field names if no methods work
+			fieldNames := []string{"Value", "Val", "Data", "Raw"}
+			for _, fieldName := range fieldNames {
+				if field := rval.FieldByName(fieldName); field.IsValid() && field.CanInterface() {
+					switch field.Kind() {
+					case reflect.Uint64:
+						return field.Uint(), nil
+					case reflect.Uint, reflect.Uint32, reflect.Uint16, reflect.Uint8:
+						return field.Uint(), nil
+					case reflect.Int, reflect.Int32, reflect.Int64, reflect.Int16, reflect.Int8:
+						if field.Int() >= 0 {
+							return uint64(field.Int()), nil
+						}
+					}
+					
+					// Try recursive parsing on field value
+					if parsed, err := parseUint64(field.Interface()); err == nil {
+						return parsed, nil
+					}
+				}
+			}
+		}
+		
+		// For direct numeric types that might be wrapped
+		switch rval.Kind() {
+		case reflect.Uint64:
+			return rval.Uint(), nil
+		case reflect.Uint, reflect.Uint32, reflect.Uint16, reflect.Uint8:
+			return rval.Uint(), nil
+		case reflect.Int, reflect.Int32, reflect.Int64, reflect.Int16, reflect.Int8:
+			if rval.Int() >= 0 {
+				return uint64(rval.Int()), nil
+			}
+		}
+		
+		// Try type assertion for common SSZ uint64 types with String method
+		if stringer, ok := v.(fmt.Stringer); ok {
+			// If it has a String method, try parsing that
+			if strVal := stringer.String(); strVal != "" {
+				if parsed, err := strconv.ParseUint(strVal, 10, 64); err == nil {
+					return parsed, nil
+				}
+			}
+		}
+		
+		// Special handling for known Ethereum SSZ types by name
+		typeName := reflect.TypeOf(v).String()
+		if strings.Contains(typeName, "SSZ") || strings.Contains(typeName, "Uint64") {
+			// For SSZ types, try direct byte extraction if it's a simple wrapper
+			if rval.Kind() == reflect.Struct && rval.NumField() == 1 {
+				field := rval.Field(0)
+				if field.CanInterface() {
+					if parsed, err := parseUint64(field.Interface()); err == nil {
+						return parsed, nil
+					}
+				}
+			}
+		}
+		
+		return 0, fmt.Errorf("cannot convert %T to uint64", v)
 	}
 }
 

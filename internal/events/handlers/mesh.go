@@ -103,6 +103,9 @@ func (h *GraftHandler) handleMeshEvent(event *host.TraceEvent, eventType string)
 	// Increment mesh event count
 	h.tool.IncrementEventCount(peerID, eventType)
 
+	// Increment message count for this session
+	h.tool.IncrementMessageCount(peerID)
+
 	return nil
 }
 
@@ -144,6 +147,9 @@ func (h *PruneHandler) handleMeshEvent(event *host.TraceEvent, eventType string)
 
 	// Increment mesh event count
 	h.tool.IncrementEventCount(peerID, eventType)
+
+	// Increment message count for this session
+	h.tool.IncrementMessageCount(peerID)
 
 	return nil
 }
