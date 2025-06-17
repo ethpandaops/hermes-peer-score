@@ -11,7 +11,6 @@ toolchain go1.24.3
 
 require (
 	github.com/OffchainLabs/prysm/v6 v6.0.3
-	github.com/ethpandaops/xatu v1.1.15
 	github.com/probe-lab/hermes v0.0.0-20250328140724-f552d3382c38
 	github.com/sirupsen/logrus v1.9.3
 	go.opentelemetry.io/otel v1.35.0
@@ -81,6 +80,7 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/gofrs/flock v0.12.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
