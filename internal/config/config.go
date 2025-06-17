@@ -19,8 +19,8 @@ type DefaultConfig struct {
 	reportInterval time.Duration
 
 	// Connection settings
-	prysmHost     string
-	prysmHTTPPort int
+	prysmHost       string
+	prysmHTTPPort   int
 	prysmGRPCPort   int
 	useTLS          bool
 	network         string

@@ -46,10 +46,11 @@ func (hc *DefaultHermesController) Start(ctx context.Context) error {
 	// Derive network configuration
 	network := hc.config.GetNetwork()
 	hc.logger.WithField("network", network).Info("Configuring Hermes for network")
-	
+
 	var c *eth.NetworkConfig
+
 	var err error
-	
+
 	if network == "devnet" {
 		// For devnet, we need to derive config from URLs
 		apacheURL := hc.config.GetDevnetApacheURL()
@@ -60,9 +61,9 @@ func (hc *DefaultHermesController) Start(ctx context.Context) error {
 				return fmt.Errorf("devnet requires Apache URL - use --devnet-apache-url flag or DEVNET_APACHE_URL env var")
 			}
 		}
-		
+
 		hc.logger.WithField("apache_url", apacheURL).Info("Using Apache URL for devnet config")
-		
+
 		c, err = eth.DeriveDevnetConfig(ctx, eth.DevnetOptions{
 			GenesisSSZURL:           apacheURL + "/network-configs/genesis.ssz",
 			ConfigURL:               apacheURL + "/network-configs/config.yaml",
