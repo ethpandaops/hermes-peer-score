@@ -21,8 +21,10 @@ type DefaultConfig struct {
 	// Connection settings
 	prysmHost     string
 	prysmHTTPPort int
-	prysmGRPCPort int
-	useTLS        bool
+	prysmGRPCPort   int
+	useTLS          bool
+	network         string
+	devnetApacheURL string
 
 	// Networking settings
 	privateKeyStr   string
@@ -55,6 +57,7 @@ func NewDefaultConfig() *DefaultConfig {
 		reportInterval:  constants.DefaultReportInterval,
 		prysmHTTPPort:   constants.DefaultPrysmHTTPPort,
 		prysmGRPCPort:   constants.DefaultPrysmGRPCPort,
+		network:         "mainnet",
 		dialTimeout:     constants.DefaultDialTimeout,
 		devp2pHost:      constants.DefaultDevp2pHost,
 		libp2pHost:      constants.DefaultLibp2pHost,
@@ -62,11 +65,6 @@ func NewDefaultConfig() *DefaultConfig {
 		dialConcurrency: constants.DefaultDialConcurrency,
 		dataStreamType:  constants.DefaultDataStreamType,
 		subnets:         make(map[string]*eth.SubnetConfig),
-	}
-
-	// Set TLS if using default ports
-	if cfg.prysmHTTPPort == 443 || cfg.prysmGRPCPort == 443 {
-		cfg.useTLS = true
 	}
 
 	return cfg
@@ -105,6 +103,16 @@ func (c *DefaultConfig) GetPrysmGRPCPort() int {
 // GetUseTLS returns whether TLS is enabled.
 func (c *DefaultConfig) GetUseTLS() bool {
 	return c.useTLS
+}
+
+// GetNetwork returns the Ethereum network.
+func (c *DefaultConfig) GetNetwork() string {
+	return c.network
+}
+
+// GetDevnetApacheURL returns the Apache URL for devnet configuration.
+func (c *DefaultConfig) GetDevnetApacheURL() string {
+	return c.devnetApacheURL
 }
 
 // GetMaxPeers returns the maximum number of peers.
@@ -205,17 +213,26 @@ func (c *DefaultConfig) SetPrysmHost(host string) {
 // SetPrysmHTTPPort sets the Prysm HTTP port.
 func (c *DefaultConfig) SetPrysmHTTPPort(port int) {
 	c.prysmHTTPPort = port
-	if port == 443 {
-		c.useTLS = true
-	}
 }
 
 // SetPrysmGRPCPort sets the Prysm gRPC port.
 func (c *DefaultConfig) SetPrysmGRPCPort(port int) {
 	c.prysmGRPCPort = port
-	if port == 443 {
-		c.useTLS = true
-	}
+}
+
+// SetUseTLS sets whether to use TLS for Prysm connections.
+func (c *DefaultConfig) SetUseTLS(useTLS bool) {
+	c.useTLS = useTLS
+}
+
+// SetNetwork sets the Ethereum network.
+func (c *DefaultConfig) SetNetwork(network string) {
+	c.network = network
+}
+
+// SetDevnetApacheURL sets the Apache URL for devnet configuration.
+func (c *DefaultConfig) SetDevnetApacheURL(url string) {
+	c.devnetApacheURL = url
 }
 
 // SetHTMLOnly sets HTML-only mode.

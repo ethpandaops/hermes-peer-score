@@ -23,6 +23,8 @@ type Config interface {
 	GetPrysmHTTPPort() int
 	GetPrysmGRPCPort() int
 	GetUseTLS() bool
+	GetNetwork() string
+	GetDevnetApacheURL() string
 	GetMaxPeers() int
 	GetDialConcurrency() int
 	AsHermesConfig() *eth.NodeConfig

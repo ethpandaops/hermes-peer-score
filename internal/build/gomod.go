@@ -30,7 +30,7 @@ func (g *GoModManager) UpdateForValidationMode(validationMode config.ValidationM
 	case config.ValidationModeDelegated:
 		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250513093811-320c1c3ee6e2"
 	case config.ValidationModeIndependent:
-		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250613124328-491d55340eb7"
+		newReplaceLine = "replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250617034808-891696585269"
 	default:
 		return fmt.Errorf("unknown validation mode: %s", validationMode)
 	}

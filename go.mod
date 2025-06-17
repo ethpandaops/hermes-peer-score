@@ -1,6 +1,6 @@
 module github.com/ethpandaops/hermes-peer-score
 
-replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250613124328-491d55340eb7
+replace github.com/probe-lab/hermes => github.com/ethpandaops/hermes v0.0.4-0.20250617034808-891696585269
 
 go 1.24.0
 

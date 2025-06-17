@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -43,9 +44,39 @@ func (hc *DefaultHermesController) Start(ctx context.Context) error {
 	hc.logger.Info("Starting Hermes node")
 
 	// Derive network configuration
-	c, err := eth.DeriveKnownNetworkConfig(ctx, params.MainnetName)
-	if err != nil {
-		return fmt.Errorf("get config for %s: %w", params.MainnetName, err)
+	network := hc.config.GetNetwork()
+	hc.logger.WithField("network", network).Info("Configuring Hermes for network")
+	
+	var c *eth.NetworkConfig
+	var err error
+	
+	if network == "devnet" {
+		// For devnet, we need to derive config from URLs
+		apacheURL := hc.config.GetDevnetApacheURL()
+		if apacheURL == "" {
+			// Try to discover from environment or use default
+			apacheURL = os.Getenv("DEVNET_APACHE_URL")
+			if apacheURL == "" {
+				return fmt.Errorf("devnet requires Apache URL - use --devnet-apache-url flag or DEVNET_APACHE_URL env var")
+			}
+		}
+		
+		hc.logger.WithField("apache_url", apacheURL).Info("Using Apache URL for devnet config")
+		
+		c, err = eth.DeriveDevnetConfig(ctx, eth.DevnetOptions{
+			GenesisSSZURL:           apacheURL + "/network-configs/genesis.ssz",
+			ConfigURL:               apacheURL + "/network-configs/config.yaml",
+			BootnodesURL:            apacheURL + "/network-configs/boot_enr.yaml",
+			DepositContractBlockURL: apacheURL + "/network-configs/deposit_contract_block.txt",
+		})
+		if err != nil {
+			return fmt.Errorf("derive devnet config: %w", err)
+		}
+	} else {
+		c, err = eth.DeriveKnownNetworkConfig(ctx, network)
+		if err != nil {
+			return fmt.Errorf("get config for %s: %w", network, err)
+		}
 	}
 
 	hc.networkConfig = c.Network
