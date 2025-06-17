@@ -1,62 +1,4 @@
-package main
-
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"html/template"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"time"
-
-	"github.com/sirupsen/logrus"
-)
-
-// OptimizedHTMLTemplateData represents the minimal data structure for the optimized HTML report.
-type OptimizedHTMLTemplateData struct {
-	GeneratedAt      time.Time        `json:"generated_at"`
-	Summary          SummaryData      `json:"summary"`
-	DataFile         string           `json:"data_file"`
-	AIAnalysis       string           `json:"ai_analysis"`
-	AIAnalysisHTML   template.HTML    `json:"-"`
-	ValidationMode   ValidationMode   `json:"validation_mode"`
-	ValidationConfig ValidationConfig `json:"validation_config"`
-}
-
-// SummaryData contains high-level summary information for the report.
-type SummaryData struct {
-	TestDuration         float64              `json:"test_duration"`
-	StartTime            time.Time            `json:"start_time"`
-	EndTime              time.Time            `json:"end_time"`
-	TotalConnections     int                  `json:"total_connections"`
-	SuccessfulHandshakes int                  `json:"successful_handshakes"`
-	FailedHandshakes     int                  `json:"failed_handshakes"`
-	UniquePeers          int                  `json:"unique_peers"`
-	PeerSummaries        []PeerSummary        `json:"peer_summaries"`
-	GoodbyeEventsSummary GoodbyeEventsSummary `json:"goodbye_events_summary"`
-}
-
-// PeerSummary contains minimal information about a peer for the overview.
-type PeerSummary struct {
-	PeerID            string  `json:"peer_id"`
-	ShortPeerID       string  `json:"short_peer_id"`
-	ClientType        string  `json:"client_type"`
-	ClientAgent       string  `json:"client_agent"`
-	SessionCount      int     `json:"session_count"`
-	EventCount        int     `json:"event_count"`
-	GoodbyeCount      int     `json:"goodbye_count"`
-	MeshCount         int     `json:"mesh_count"`
-	MinPeerScore      float64 `json:"min_peer_score"`
-	MaxPeerScore      float64 `json:"max_peer_score"`
-	HasScores         bool    `json:"has_scores"`
-	LastSessionStatus string  `json:"last_session_status"`
-	LastSessionTime   string  `json:"last_session_time"`
-}
-
-// optimizedHTMLTemplate contains the optimized HTML template that loads data dynamically.
-const optimizedHTMLTemplate = `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -136,7 +78,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                 <div>
                     <div class="flex items-center">
                         <div class="validation-icon">
-                            {{if eq .ValidationMode "delegated"}}🔗{{else}}⚡{{end}}
+                            {{if eq .ValidationMode "delegated"}}={{else}}�{{end}}
                         </div>
                         <h1 class="text-3xl font-bold">Hermes Peer Score Report</h1>
                     </div>
@@ -159,10 +101,8 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             </div>
         </div>
 
-
-
         <!-- Summary Statistics -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="text-sm font-medium text-gray-500">Total Connections</div>
                 <div class="text-2xl font-bold text-gray-900">{{.Summary.TotalConnections}}</div>
@@ -181,10 +121,8 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             </div>
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="text-sm font-medium text-gray-500">Goodbye Events</div>
-                <div class="text-2xl font-bold text-orange-600">{{.Summary.GoodbyeEventsSummary.TotalEvents}}</div>
-                <div class="text-xs text-gray-500 mt-1">
-                    {{.Summary.GoodbyeEventsSummary.UniqueReasons}} unique reasons
-                </div>
+                <div class="text-2xl font-bold text-orange-600" id="goodbyeEventsCount">0</div>
+                <div class="text-xs text-gray-500 mt-1" id="goodbyeEventsDetails">0 unique reasons</div>
             </div>
         </div>
 
@@ -231,7 +169,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
         </div>
 
         <!-- Goodbye Events Breakdown -->
-        <div id="goodbyeBreakdownContainer"></div>
+        <div id="goodbyeBreakdownContainer" class="mb-6"></div>
 
         <!-- Peer List -->
         <div class="bg-white rounded-lg shadow-lg">
@@ -378,10 +316,10 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                 renderPeerList();
                 setupEventListeners();
                 updateResultsInfo();
-                
-                // Render goodbye events breakdown if available
+
+                // Initialize goodbye events summary
                 if (reportData.summary && reportData.summary.goodbye_events_summary) {
-                    renderGoodbyeEventsBreakdown(reportData.summary.goodbye_events_summary);
+                    initializeGoodbyeEventsSummary(reportData.summary.goodbye_events_summary);
                 }
             } else {
                 console.error('reportData is undefined - data file may have failed to load');
@@ -478,14 +416,14 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
         function renderPeerCard(peer) {
             const clientInfo = getClientLogo(peer.client_type);
             const logoImg = clientInfo ?
-                ` + "`" + `<img src="${clientInfo.logo}" alt="${clientInfo.displayName}" class="w-8 h-8 rounded-md object-cover client-logo" onerror="this.style.display='none'">` + "`" + ` :
-                ` + "`" + `<div class="w-8 h-8 rounded-md flex items-center justify-center text-white text-xs client-fallback">${peer.client_type.substring(0, 2).toUpperCase()}</div>` + "`" + `;
+                `<img src="${clientInfo.logo}" alt="${clientInfo.displayName}" class="w-8 h-8 rounded-md object-cover client-logo" onerror="this.style.display='none'">` :
+                `<div class="w-8 h-8 rounded-md flex items-center justify-center text-white text-xs client-fallback">${peer.client_type.substring(0, 2).toUpperCase()}</div>`;
 
             const clientDisplay = clientInfo ?
-                ` + "`" + `<span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded" title="${clientInfo.displayName}">${peer.client_type}</span>` + "`" + ` :
-                ` + "`" + `<span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">${peer.client_type}</span>` + "`" + `;
+                `<span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded" title="${clientInfo.displayName}">${peer.client_type}</span>` :
+                `<span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">${peer.client_type}</span>`;
 
-            return ` + "`" + `
+            return `
                 <div class="peer-card border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all" onclick="showPeerDetails('${peer.peer_id}')">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-4">
@@ -497,28 +435,28 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 ${clientDisplay}
-                                ${peer.last_session_status ? ` + "`" + `<span class="px-2 py-1 text-xs rounded ${peer.last_session_status === 'Connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${peer.last_session_status}</span>` + "`" + ` : ''}
+                                ${peer.last_session_status ? `<span class="px-2 py-1 text-xs rounded ${peer.last_session_status === 'Connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${peer.last_session_status}</span>` : ''}
                                 <span class="text-sm text-gray-600">${peer.session_count} sessions</span>
                                 <span class="text-sm text-gray-600">${peer.event_count} events</span>
-                                ${peer.goodbye_count > 0 ? ` + "`" + `<span class="text-sm text-orange-600">${peer.goodbye_count} goodbyes</span>` + "`" + ` : ''}
-                                ${peer.mesh_count > 0 ? ` + "`" + `<span class="text-sm text-purple-600">${peer.mesh_count} mesh</span>` + "`" + ` : ''}
+                                ${peer.goodbye_count > 0 ? `<span class="text-sm text-orange-600">${peer.goodbye_count} goodbyes</span>` : ''}
+                                ${peer.mesh_count > 0 ? `<span class="text-sm text-purple-600">${peer.mesh_count} mesh</span>` : ''}
                             </div>
                         </div>
                         <div class="text-right text-sm text-gray-500 flex-shrink-0">
-                            ${peer.has_scores ? ` + "`" + `
+                            ${peer.has_scores ? `
                                 <div class="text-xs">
                                     <div>Min Score: <span class="${peer.min_peer_score > 0 ? 'text-green-600' : peer.min_peer_score < 0 ? 'text-red-600' : 'text-gray-600'}">${peer.min_peer_score.toFixed(3)}</span></div>
                                     <div>Max Score: <span class="${peer.max_peer_score > 0 ? 'text-green-600' : peer.max_peer_score < 0 ? 'text-red-600' : 'text-gray-600'}">${peer.max_peer_score.toFixed(3)}</span></div>
                                 </div>
-                            ` + "`" + ` : ` + "`" + `
+                            ` : `
                                 <div class="text-xs text-gray-400">
                                     <div>No score data</div>
                                 </div>
-                            ` + "`" + `}
+                            `}
                         </div>
                     </div>
                 </div>
-            ` + "`" + `;
+            `;
         }
 
         function renderPagination() {
@@ -527,7 +465,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             const endIndex = Math.min(startIndex + pageSize, filteredPeers.length);
 
             document.getElementById('paginationInfo').textContent =
-                ` + "`" + `Showing ${startIndex + 1}-${endIndex} of ${filteredPeers.length} peers` + "`" + `;
+                `Showing ${startIndex + 1}-${endIndex} of ${filteredPeers.length} peers`;
 
             if (totalPages <= 1) {
                 document.getElementById('paginationControls').innerHTML = '';
@@ -538,7 +476,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
 
             // Previous button
             if (currentPage > 1) {
-                controls += ` + "`" + `<button onclick="changePage(${currentPage - 1})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Previous</button>` + "`" + `;
+                controls += `<button onclick="changePage(${currentPage - 1})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Previous</button>`;
             }
 
             // Page numbers (show up to 5 pages around current)
@@ -546,23 +484,23 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             const endPage = Math.min(totalPages, currentPage + 2);
 
             if (startPage > 1) {
-                controls += ` + "`" + `<button onclick="changePage(1)" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">1</button>` + "`" + `;
+                controls += `<button onclick="changePage(1)" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">1</button>`;
                 if (startPage > 2) controls += '<span class="px-2 text-gray-500">...</span>';
             }
 
             for (let i = startPage; i <= endPage; i++) {
                 const isActive = i === currentPage;
-                controls += ` + "`" + `<button onclick="changePage(${i})" class="px-3 py-2 border rounded-md text-sm ${isActive ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-50'}">${i}</button>` + "`" + `;
+                controls += `<button onclick="changePage(${i})" class="px-3 py-2 border rounded-md text-sm ${isActive ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-50'}">${i}</button>`;
             }
 
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) controls += '<span class="px-2 text-gray-500">...</span>';
-                controls += ` + "`" + `<button onclick="changePage(${totalPages})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">${totalPages}</button>` + "`" + `;
+                controls += `<button onclick="changePage(${totalPages})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">${totalPages}</button>`;
             }
 
             // Next button
             if (currentPage < totalPages) {
-                controls += ` + "`" + `<button onclick="changePage(${currentPage + 1})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Next</button>` + "`" + `;
+                controls += `<button onclick="changePage(${currentPage + 1})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Next</button>`;
             }
 
             document.getElementById('paginationControls').innerHTML = controls;
@@ -576,58 +514,16 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
         function updateResultsInfo() {
             const total = allPeers.length;
             const filtered = filteredPeers.length;
-            let info = ` + "`" + `${total} total peers` + "`" + `;
+            let info = `${total} total peers`;
             if (filtered !== total) {
-                info = ` + "`" + `${filtered} of ${total} peers` + "`" + `;
+                info = `${filtered} of ${total} peers`;
             }
             document.getElementById('resultsInfo').textContent = info;
         }
 
-        function renderGoodbyeEventsBreakdown(summary) {
-            if (!summary || summary.total_events === 0) return;
-            
-            const container = document.getElementById('goodbyeBreakdownContainer');
-            if (!container) return;
-            
-            const html = ` + "`" + `
-                <div class="bg-white rounded-lg shadow mb-6">
-                    <div class="p-6">
-                        <h3 class="text-lg font-semibold mb-4">Top Goodbye Reasons</h3>
-                        <div class="space-y-3">
-                            ${summary.reason_stats
-                                .slice(0, 10) // Show top 10
-                                .map(stat => ` + "`" + `
-                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
-                                        <div class="flex-1">
-                                            <div class="font-medium text-gray-900">
-                                                ${stat.reason || '<span class="italic text-gray-500">no reason provided</span>'}
-                                            </div>
-                                            <div class="text-xs text-gray-500 mt-1">
-                                                Codes: ${stat.codes.join(', ')}
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-lg font-semibold">${stat.count}</div>
-                                            <div class="text-xs text-gray-500">${((stat.count / summary.total_events) * 100).toFixed(1)}%</div>
-                                        </div>
-                                    </div>
-                                ` + "`" + `).join('')}
-                        </div>
-                        ${summary.unique_reasons > 10 ? ` + "`" + `
-                            <div class="text-sm text-gray-500 mt-4 text-center">
-                                Showing top 10 of ${summary.unique_reasons} unique reasons
-                            </div>
-                        ` + "`" + ` : ''}
-                    </div>
-                </div>
-            ` + "`" + `;
-            
-            container.innerHTML = html;
-        }
-
         async function showPeerDetails(peerId) {
             document.getElementById('peerModal').classList.remove('hidden');
-            document.getElementById('modalTitle').textContent = ` + "`" + `Peer: ${peerId.substring(0, 12)}...` + "`" + `;
+            document.getElementById('modalTitle').textContent = `Peer: ${peerId.substring(0, 12)}...`;
             document.getElementById('modalContent').innerHTML =
                 '<div class="text-center py-8 text-gray-500"><div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>Loading detailed peer data...</div>';
 
@@ -653,7 +549,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             // Sort events by count (descending)
             const sortedEvents = Object.entries(eventCounts).sort((a, b) => b[1] - a[1]);
 
-            let html = ` + "`" + `
+            let html = `
                 <table class="min-w-full bg-white border border-gray-200 rounded text-xs">
                     <thead class="bg-gray-50">
                         <tr>
@@ -662,21 +558,21 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-            ` + "`" + `;
+            `;
 
             sortedEvents.forEach(([eventType, count]) => {
-                html += ` + "`" + `
+                html += `
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-2 text-xs text-gray-900"><code>${eventType}</code></td>
                         <td class="px-3 py-2 text-xs text-gray-700">${count.toLocaleString()}</td>
                     </tr>
-                ` + "`" + `;
+                `;
             });
 
-            html += ` + "`" + `
+            html += `
                     </tbody>
                 </table>
-            ` + "`" + `;
+            `;
 
             return html;
         }
@@ -686,19 +582,19 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             let sessionsHtml = '';
             if (peerData.connection_sessions && peerData.connection_sessions.length > 0) {
                 peerData.connection_sessions.forEach((session, sessionIdx) => {
-                    const sessionId = ` + "`" + `session-${sessionIdx}` + "`" + `;
+                    const sessionId = `session-${sessionIdx}`;
                     let timelineEvents = [];
 
                     if (session.connected_at) timelineEvents.push({type: 'connected', time: session.connected_at, label: 'Connected'});
                     if (session.identified_at) timelineEvents.push({type: 'identified', time: session.identified_at, label: 'Identified'});
                     if (session.mesh_events) {
                         session.mesh_events.forEach(event => {
-                            timelineEvents.push({type: 'mesh', time: event.timestamp, label: ` + "`" + `${event.type}: ${event.topic}` + "`" + `});
+                            timelineEvents.push({type: 'mesh', time: event.timestamp, label: `${event.type}: ${event.topic}`});
                         });
                     }
                     if (session.goodbye_events) {
                         session.goodbye_events.forEach(event => {
-                            timelineEvents.push({type: 'goodbye', time: event.timestamp, label: ` + "`" + `Goodbye: ${event.reason}` + "`" + `});
+                            timelineEvents.push({type: 'goodbye', time: event.timestamp, label: `Goodbye: ${event.reason}`});
                         });
                     }
                     if (session.disconnected_at) timelineEvents.push({type: 'disconnected', time: session.disconnected_at, label: 'Disconnected'});
@@ -710,7 +606,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                      event.type === 'identified' ? 'blue' :
                                      event.type === 'mesh' ? 'purple' :
                                      event.type === 'goodbye' ? 'orange' : 'red';
-                        return ` + "`" + `
+                        return `
                             <tr class="hover:bg-gray-50">
                                 <td class="px-3 py-2 text-xs">${new Date(event.time).toLocaleTimeString()}</td>
                                 <td class="px-3 py-2 text-xs">
@@ -718,13 +614,13 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                 </td>
                                 <td class="px-3 py-2 text-xs text-gray-700">${event.label}</td>
                             </tr>
-                        ` + "`" + `;
+                        `;
                     }).join('');
 
                     const scoreSnapshotsHtml = session.peer_scores ? session.peer_scores.map((snapshot, idx) => {
-                        const rowId = ` + "`" + `${sessionId}-score-${idx}` + "`" + `;
+                        const rowId = `${sessionId}-score-${idx}`;
                         const topicsHtml = snapshot.topics && snapshot.topics.length > 0 ?
-                            snapshot.topics.map(topic => ` + "`" + `
+                            snapshot.topics.map(topic => `
                                 <div class="mb-2 p-2 bg-gray-50 rounded text-xs">
                                     <div class="font-medium text-gray-700 mb-1">Topic: ${topic.topic}</div>
                                     <div class="grid grid-cols-2 gap-2 text-xs">
@@ -734,9 +630,9 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                         <div>Invalid Deliveries: ${topic.invalid_message_deliveries.toFixed(3)}</div>
                                     </div>
                                 </div>
-                            ` + "`" + `).join('') : '<div class="text-gray-500 text-xs p-2">No topic data available</div>';
+                            `).join('') : '<div class="text-gray-500 text-xs p-2">No topic data available</div>';
 
-                        return ` + "`" + `
+                        return `
                             <tr class="hover:bg-gray-50">
                                 <td class="px-3 py-2 text-xs">${new Date(snapshot.timestamp).toLocaleTimeString()}</td>
                                 <td class="px-3 py-2 text-xs font-medium ${snapshot.score > 0 ? 'text-green-600' : snapshot.score < 0 ? 'text-red-600' : 'text-gray-600'}">${snapshot.score.toFixed(3)}</td>
@@ -745,12 +641,12 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                 <td class="px-3 py-2 text-xs">${snapshot.behaviour_penalty.toFixed(3)}</td>
                                 <td class="px-3 py-2 text-xs">
                                     ${snapshot.topics && snapshot.topics.length > 0 ?
-                                        ` + "`" + `<button class="text-blue-600 hover:text-blue-800 underline cursor-pointer" onclick="toggleSection('${rowId}')">${snapshot.topics.length} topics</button>` + "`" + ` :
+                                        `<button class="text-blue-600 hover:text-blue-800 underline cursor-pointer" onclick="toggleSection('${rowId}')">${snapshot.topics.length} topics</button>` :
                                         'None'
                                     }
                                 </td>
                             </tr>
-                            ${snapshot.topics && snapshot.topics.length > 0 ? ` + "`" + `
+                            ${snapshot.topics && snapshot.topics.length > 0 ? `
                             <tr id="${rowId}" class="hidden">
                                 <td colspan="6" class="px-3 py-2 bg-blue-50">
                                     <div class="max-h-48 overflow-y-auto">
@@ -758,21 +654,20 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                     </div>
                                 </td>
                             </tr>
-                            ` + "`" + ` : ''}
-                        ` + "`" + `;
+                            ` : ''}
+                        `;
                     }).join('') : '<tr><td colspan="6" class="text-center py-4 text-gray-500">No score data</td></tr>';
 
-                    sessionsHtml += ` + "`" + `
+                    sessionsHtml += `
                         <div class="border border-gray-200 rounded-lg mb-4">
                             <div class="p-3 bg-gray-50 cursor-pointer" onclick="toggleSection('${sessionId}')">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-4">
                                         <span class="font-medium text-gray-900">Session ${sessionIdx + 1}</span>
-                                        <span class="text-sm text-gray-600">${session.connection_duration ? (session.connection_duration / 1000000000).toFixed(2) + 's' : 'Unknown duration'}</span>
-                                        <span class="text-sm text-gray-600">${session.message_count || 0} messages</span>
-                                        ${session.peer_scores ? ` + "`" + `<span class="text-sm text-gray-600">${session.peer_scores.length} score snapshots</span>` + "`" + ` : ''}
-                                        ${session.goodbye_events && session.goodbye_events.length > 0 ? ` + "`" + `<span class="text-sm text-orange-600">${session.goodbye_events.length} goodbye events</span>` + "`" + ` : ''}
-                                        ${session.mesh_events && session.mesh_events.length > 0 ? ` + "`" + `<span class="text-sm text-purple-600">${session.mesh_events.length} mesh events</span>` + "`" + ` : ''}
+                                        <span class="text-sm text-gray-600">${session.duration ? (session.duration / 1000000000).toFixed(2) + 's' : 'Active session'}</span>
+                                        ${session.peer_scores ? `<span class="text-sm text-gray-600">${session.peer_scores.length} score snapshots</span>` : ''}
+                                        ${session.goodbye_events && session.goodbye_events.length > 0 ? `<span class="text-sm text-orange-600">${session.goodbye_events.length} goodbye events</span>` : ''}
+                                        ${session.mesh_events && session.mesh_events.length > 0 ? `<span class="text-sm text-purple-600">${session.mesh_events.length} mesh events</span>` : ''}
                                         <span class="px-2 py-1 text-xs ${session.disconnected ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} rounded">
                                             ${session.disconnected ? 'Disconnected' : 'Connected'}
                                         </span>
@@ -784,7 +679,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                             </div>
                             <div class="hidden p-4 border-t border-gray-200" id="${sessionId}">
                                 <div class="space-y-4">
-                                    ${session.peer_scores ? ` + "`" + `
+                                    ${session.peer_scores ? `
                                     <div>
                                         <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-scores')">
                                             <div class="flex items-center justify-between">
@@ -814,7 +709,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                             </div>
                                         </div>
                                     </div>
-                                    ` + "`" + ` : ''}
+                                    ` : ''}
                                     <div>
                                         <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-timeline')">
                                             <div class="flex items-center justify-between">
@@ -842,8 +737,48 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                         </div>
                                     </div>
 
+                                    <!-- Goodbye Events Section -->
+                                    ${session.goodbye_events && session.goodbye_events.length > 0 ? `
+                                    <div>
+                                        <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-goodbye')">
+                                            <div class="flex items-center justify-between">
+                                                <h6 class="font-medium text-gray-800">Goodbye Events (${session.goodbye_events.length} events)</h6>
+                                                <svg class="w-4 h-4 text-gray-500 transform transition-transform" id="${sessionId}-goodbye-arrow">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="hidden mt-2" id="${sessionId}-goodbye">
+                                            <div class="max-h-64 overflow-y-auto">
+                                                <table class="min-w-full bg-white border border-gray-200 rounded text-xs">
+                                                    <thead class="bg-gray-50">
+                                                        <tr>
+                                                            <th class="px-3 py-2 text-left">Time</th>
+                                                            <th class="px-3 py-2 text-left">Code</th>
+                                                            <th class="px-3 py-2 text-left">Reason</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-100">
+                                                        ${session.goodbye_events.map(event => `
+                                                            <tr class="hover:bg-gray-50">
+                                                                <td class="px-3 py-2 text-xs">${new Date(event.timestamp).toLocaleTimeString()}</td>
+                                                                <td class="px-3 py-2 text-xs">
+                                                                    <span class="font-mono bg-gray-100 px-1 py-0.5 rounded">${event.code}</span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-xs text-gray-700">
+                                                                    ${event.reason || '<span class="text-gray-400 italic">no reason provided</span>'}
+                                                                </td>
+                                                            </tr>
+                                                        `).join('')}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+
                                     <!-- Mesh Events Section -->
-                                    ${session.mesh_events && session.mesh_events.length > 0 ? ` + "`" + `
+                                    ${session.mesh_events && session.mesh_events.length > 0 ? `
                                     <div>
                                         <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-mesh')">
                                             <div class="flex items-center justify-between">
@@ -866,7 +801,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="divide-y divide-gray-100">
-                                                        ${session.mesh_events.map(meshEvent => ` + "`" + `
+                                                        ${session.mesh_events.map(meshEvent => `
                                                             <tr class="hover:bg-gray-50">
                                                                 <td class="px-3 py-2 text-xs">${new Date(meshEvent.timestamp).toLocaleTimeString()}</td>
                                                                 <td class="px-3 py-2 text-xs">
@@ -880,64 +815,26 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                                                                 </td>
                                                                 <td class="px-3 py-2 text-xs text-gray-600">${meshEvent.reason || '-'}</td>
                                                             </tr>
-                                                        ` + "`" + `).join('')}
+                                                        `).join('')}
                                                     </tbody>
                                                 </table>
                                             </div>
                                         </div>
                                     </div>
-                                    ` + "`" + ` : ''}
-                                    ${session.goodbye_events && session.goodbye_events.length > 0 ? ` + "`" + `
-                                    <div>
-                                        <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-goodbye')">
-                                            <div class="flex items-center justify-between">
-                                                <h6 class="font-medium text-gray-800">Goodbye Events (${session.goodbye_events.length} events)</h6>
-                                                <svg class="w-4 h-4 text-gray-500 transform transition-transform" id="${sessionId}-goodbye-arrow">
-                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <div class="hidden mt-2" id="${sessionId}-goodbye">
-                                            <div class="max-h-64 overflow-y-auto">
-                                                <table class="min-w-full bg-white border border-gray-200 rounded text-xs">
-                                                    <thead class="bg-gray-50">
-                                                        <tr>
-                                                            <th class="px-3 py-2 text-left">Time</th>
-                                                            <th class="px-3 py-2 text-left">Code</th>
-                                                            <th class="px-3 py-2 text-left">Reason</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody class="divide-y divide-gray-100">
-                                                        ${session.goodbye_events.map(event => ` + "`" + `
-                                                            <tr class="hover:bg-gray-50">
-                                                                <td class="px-3 py-2 text-xs">${new Date(event.timestamp).toLocaleTimeString()}</td>
-                                                                <td class="px-3 py-2 text-xs">
-                                                                    <span class="font-mono bg-gray-100 px-1 py-0.5 rounded">${event.code}</span>
-                                                                </td>
-                                                                <td class="px-3 py-2 text-xs text-gray-700">
-                                                                    ${event.reason || '<span class="text-gray-400 italic">no reason provided</span>'}
-                                                                </td>
-                                                            </tr>
-                                                        ` + "`" + `).join('')}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    ` + "`" + ` : ''}
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
-                    ` + "`" + `;
+                    `;
                 });
             }
 
             const clientInfo = getClientLogo(peerData.client_type);
             const logoImg = clientInfo ?
-                ` + "`" + `<img src="${clientInfo.logo}" alt="${clientInfo.displayName}" class="w-12 h-12 rounded-md object-cover client-logo" onerror="this.style.display='none'">` + "`" + ` :
-                ` + "`" + `<div class="w-12 h-12 rounded-md flex items-center justify-center text-white text-lg client-fallback">${peerData.client_type.substring(0, 2).toUpperCase()}</div>` + "`" + `;
+                `<img src="${clientInfo.logo}" alt="${clientInfo.displayName}" class="w-12 h-12 rounded-md object-cover client-logo" onerror="this.style.display='none'">` :
+                `<div class="w-12 h-12 rounded-md flex items-center justify-center text-white text-lg client-fallback">${peerData.client_type.substring(0, 2).toUpperCase()}</div>`;
 
-            document.getElementById('modalContent').innerHTML = ` + "`" + `
+            document.getElementById('modalContent').innerHTML = `
                 <div class="space-y-6">
                     <!-- Client Header -->
                     <div class="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
@@ -962,18 +859,18 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                             <div class="text-sm font-medium text-gray-500">Total Sessions</div>
                             <div class="text-sm">${peerData.connection_sessions ? peerData.connection_sessions.length : 0}</div>
                         </div>
-                        ${peerData.first_seen_at ? ` + "`" + `
+                        ${peerData.first_seen_at ? `
                         <div>
                             <div class="text-sm font-medium text-gray-500">First Seen</div>
                             <div class="text-sm">${new Date(peerData.first_seen_at).toLocaleString()}</div>
                         </div>
-                        ` + "`" + ` : ''}
-                        ${peerData.last_seen_at ? ` + "`" + `
+                        ` : ''}
+                        ${peerData.last_seen_at ? `
                         <div>
                             <div class="text-sm font-medium text-gray-500">Last Seen</div>
                             <div class="text-sm">${new Date(peerData.last_seen_at).toLocaleString()}</div>
                         </div>
-                        ` + "`" + ` : ''}
+                        ` : ''}
                     </div>
 
                     <!-- Connection Sessions -->
@@ -998,7 +895,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                         </div>
                     </div>
                 </div>
-            ` + "`" + `;
+            `;
         }
 
         function toggleSection(sectionId) {
@@ -1047,7 +944,7 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = ` + "`" + `hermes-peer-score-filtered-${new Date().toISOString().split('T')[0]}.json` + "`" + `;
+            a.download = `hermes-peer-score-filtered-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1070,527 +967,86 @@ const optimizedHTMLTemplate = `<!DOCTYPE html>
                 }
             });
         }
+
+        // Initialize goodbye events summary display
+        function initializeGoodbyeEventsSummary(summary) {
+            // Update the summary card
+            const countElement = document.getElementById('goodbyeEventsCount');
+            const detailsElement = document.getElementById('goodbyeEventsDetails');
+
+            if (countElement) {
+                countElement.textContent = summary.total_events || 0;
+            }
+
+            if (detailsElement) {
+                const uniqueReasons = summary.unique_reasons || 0;
+                detailsElement.textContent = `${uniqueReasons} unique reason${uniqueReasons !== 1 ? 's' : ''}`;
+            }
+
+            // Render goodbye events breakdown section if there are events
+            if (summary.total_events > 0) {
+                renderGoodbyeEventsBreakdown(summary);
+            }
+        }
+
+        // Render goodbye events breakdown section
+        function renderGoodbyeEventsBreakdown(summary) {
+            const container = document.getElementById('goodbyeBreakdownContainer');
+            if (!container || !summary.reason_stats || summary.reason_stats.length === 0) {
+                return;
+            }
+
+            const breakdownHtml = `
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Goodbye Event Reasons</h3>
+                        <span class="text-sm text-gray-500">${summary.total_events} total events</span>
+                    </div>
+                    <div class="space-y-3">
+                        ${summary.reason_stats.slice(0, 10).map(stat => `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900">
+                                        ${formatGoodbyeReason(stat.reason)}
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        Codes: ${stat.codes ? stat.codes.join(', ') : 'Unknown'}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-semibold text-orange-600">${stat.count}</div>
+                                    <div class="text-xs text-gray-500">
+                                        ${((stat.count / summary.total_events) * 100).toFixed(1)}%
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${summary.unique_reasons > 10 ? `
+                        <div class="text-sm text-gray-500 mt-4 text-center">
+                            Showing top 10 of ${summary.unique_reasons} unique reasons
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            container.innerHTML = breakdownHtml;
+        }
+
+        // Helper function to format goodbye reason display
+        function formatGoodbyeReason(reason) {
+            if (!reason || reason === "" || reason === "unknown") {
+                return '<span class="text-gray-400 italic">no reason provided</span>';
+            }
+            return escapeHtml(reason);
+        }
+
+        // Helper to escape HTML for security
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
 </body>
-</html>`
-
-// Helper functions for the optimized report generation
-
-// extractSummaryData creates a summary from the full report data.
-func extractSummaryData(report PeerScoreReport) SummaryData {
-	summary := SummaryData{
-		TestDuration:         report.Duration.Seconds(),
-		StartTime:            report.StartTime,
-		EndTime:              report.EndTime,
-		TotalConnections:     report.TotalConnections,
-		SuccessfulHandshakes: report.SuccessfulHandshakes,
-		FailedHandshakes:     report.FailedHandshakes,
-		UniquePeers:          len(report.Peers),
-		PeerSummaries:        make([]PeerSummary, 0, len(report.Peers)),
-	}
-
-	// Create peer summaries sorted by event count
-	for peerID, peer := range report.Peers {
-		eventCount := 0
-
-		if events, exists := report.PeerEventCounts[peerID]; exists {
-			for _, count := range events {
-				eventCount += count
-			}
-		}
-
-		var (
-			goodbyeCount       = 0
-			meshCount          = 0
-			minScore, maxScore float64
-			hasScores          = false
-			scoreInitialized   = false
-		)
-
-		for _, session := range peer.ConnectionSessions {
-			goodbyeCount += len(session.GoodbyeEvents)
-			meshCount += len(session.MeshEvents)
-
-			// Find min/max peer scores across all sessions
-			for _, scoreSnapshot := range session.PeerScores {
-				if !scoreInitialized {
-					minScore = scoreSnapshot.Score
-					maxScore = scoreSnapshot.Score
-					scoreInitialized = true
-					hasScores = true
-				} else {
-					if scoreSnapshot.Score < minScore {
-						minScore = scoreSnapshot.Score
-					}
-
-					if scoreSnapshot.Score > maxScore {
-						maxScore = scoreSnapshot.Score
-					}
-				}
-			}
-		}
-
-		shortPeerID := peerID
-		if len(peerID) > 12 {
-			shortPeerID = peerID[:12]
-		}
-
-		// Determine last session status and time
-		var (
-			lastSessionStatus string
-			lastSessionTime   string
-		)
-
-		if len(peer.ConnectionSessions) > 0 {
-			// Find the most recent session (by connected_at time)
-			var (
-				mostRecentSession *ConnectionSession
-				mostRecentTime    time.Time
-			)
-
-			for i := range peer.ConnectionSessions {
-				session := &peer.ConnectionSessions[i]
-				if session.ConnectedAt != nil && (mostRecentSession == nil || session.ConnectedAt.After(mostRecentTime)) {
-					mostRecentSession = session
-					mostRecentTime = *session.ConnectedAt
-				}
-			}
-
-			if mostRecentSession != nil {
-				if mostRecentSession.Disconnected {
-					lastSessionStatus = "Disconnected"
-
-					if mostRecentSession.DisconnectedAt != nil {
-						lastSessionTime = mostRecentSession.DisconnectedAt.Format("15:04:05")
-					}
-				} else {
-					lastSessionStatus = "Connected"
-
-					if mostRecentSession.ConnectedAt != nil {
-						lastSessionTime = mostRecentSession.ConnectedAt.Format("15:04:05")
-					}
-				}
-			}
-		}
-
-		summary.PeerSummaries = append(summary.PeerSummaries, PeerSummary{
-			PeerID:            peerID,
-			ShortPeerID:       shortPeerID,
-			ClientType:        peer.ClientType,
-			ClientAgent:       peer.ClientAgent,
-			SessionCount:      len(peer.ConnectionSessions),
-			EventCount:        eventCount,
-			GoodbyeCount:      goodbyeCount,
-			MeshCount:         meshCount,
-			MinPeerScore:      minScore,
-			MaxPeerScore:      maxScore,
-			HasScores:         hasScores,
-			LastSessionStatus: lastSessionStatus,
-			LastSessionTime:   lastSessionTime,
-		})
-	}
-
-	// Calculate goodbye events summary
-	summary.GoodbyeEventsSummary = calculateGoodbyeEventsSummary(report.Peers)
-
-	return summary
-}
-
-// cleanAIHTML sanitizes AI-generated HTML content to prevent JavaScript errors.
-func cleanAIHTML(content string) string {
-	if content == "" {
-		return content
-	}
-
-	// Remove any null bytes or other control characters that could break JavaScript.
-	re := regexp.MustCompile(`[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]`)
-	content = re.ReplaceAllString(content, "")
-
-	// Replace any problematic characters that could break JSON/JavaScript.
-	content = strings.ReplaceAll(content, "\u0000", "")
-	content = strings.ReplaceAll(content, "\ufffd", "") // Replacement character
-
-	// Escape Go template syntax that AI might accidentally generate
-	// This is critical because {{}} syntax would break the Go template parsing
-	content = strings.ReplaceAll(content, "{{", "&#123;&#123;")
-	content = strings.ReplaceAll(content, "}}", "&#125;&#125;")
-
-	// Escape other problematic template-like syntax
-	content = strings.ReplaceAll(content, "${", "&#36;&#123;")
-
-	// Trim any trailing whitespace
-	content = strings.TrimSpace(content)
-
-	return content
-}
-
-// generateDataFile creates a JavaScript file containing the report data.
-func generateDataFile(log logrus.FieldLogger, report PeerScoreReport, dataFile string) error {
-	log.Printf("Starting data cleaning for %d peers...", len(report.Peers))
-
-	// Clean all peer data to ensure no invalid characters
-	cleanedPeers := make(map[string]*PeerStats)
-
-	for peerID, peer := range report.Peers {
-		cleanedPeer := *peer
-		// Clean client agent strings that might contain invalid characters
-		cleanedPeer.ClientAgent = cleanAIHTML(peer.ClientAgent)
-		cleanedPeer.ClientType = cleanAIHTML(peer.ClientType)
-		cleanedPeers[peerID] = &cleanedPeer
-	}
-
-	log.Printf("Data cleaning completed, extracting summary data...")
-
-	// Create the data structure that will be embedded in the JS file
-	summaryData := extractSummaryData(report)
-
-	log.Printf("Summary extraction completed")
-
-	data := map[string]interface{}{
-		"peers":           summaryData.PeerSummaries,
-		"detailedPeers":   cleanedPeers,           // Full detailed data for on-demand loading
-		"peerEventCounts": report.PeerEventCounts, // Event counts by peer ID
-		"summary":         summaryData,
-	}
-
-	log.Printf("Starting JSON marshaling...")
-
-	jsonData, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal data: %w", err)
-	}
-
-	log.Printf("JSON marshaling completed, data size: %d bytes", len(jsonData))
-
-	// Validate that the JSON is valid by unmarshaling it
-	var testData interface{}
-	if err := json.Unmarshal(jsonData, &testData); err != nil {
-		return fmt.Errorf("generated JSON is invalid: %w", err)
-	}
-
-	// Create JavaScript file with embedded data
-	jsContent := fmt.Sprintf("const reportData = %s;", string(jsonData))
-
-	// Validate that the JavaScript content looks reasonable
-	if len(jsContent) < 50 {
-		return fmt.Errorf("generated JavaScript content is suspiciously small: %d bytes", len(jsContent))
-	}
-
-	log.Printf("Writing data file: %s (size: %d bytes)\n", dataFile, len(jsContent))
-
-	//nolint:gosec // controlled.
-	if err := os.WriteFile(dataFile, []byte(jsContent), 0644); err != nil {
-		return fmt.Errorf("failed to write data file: %w", err)
-	}
-
-	log.Printf("Data file written successfully\n")
-
-	return nil
-}
-
-// GenerateHTMLReport creates an optimized HTML report from a JSON report file.
-// It generates a report that loads data dynamically to avoid browser lockup with large datasets.
-//
-// Parameters:
-//   - jsonFile: Path to the input JSON report file
-//   - outputFile: Path where the HTML report should be written
-//
-// Returns an error if file operations or template processing fails.
-func GenerateHTMLReport(log logrus.FieldLogger, jsonFile, outputFile string) error {
-	return GenerateHTMLReportWithAI(log, jsonFile, outputFile, "", "")
-}
-
-// GenerateHTMLReportFromReport creates an optimized HTML report from a report object.
-// This is more efficient than GenerateHTMLReport as it avoids file I/O and JSON unmarshaling.
-//
-// Parameters:
-//   - report: The report object to generate HTML from
-//   - outputFile: Path where the HTML report should be written
-//   - apiKey: Optional API key for AI analysis
-//   - aiAnalysis: Optional pre-generated AI analysis
-//
-// Returns an error if file operations or template processing fails.
-func GenerateHTMLReportFromReport(log logrus.FieldLogger, report PeerScoreReport, outputFile, apiKey, aiAnalysis string) error {
-	log.Printf("Starting HTML report generation...")
-	log.Printf("Report contains %d peers", len(report.Peers))
-
-	// Generate AI analysis if API key is provided and analysis is not pre-generated
-	var finalAIAnalysis string
-
-	if aiAnalysis != "" {
-		log.Printf("Using pre-generated AI analysis")
-
-		finalAIAnalysis = aiAnalysis
-	} else if apiKey != "" {
-		log.Printf("Generating AI analysis...")
-
-		// Create a timeout context for AI analysis to prevent CI lockups
-		aiCtx, aiCancel := context.WithTimeout(context.Background(), 300*time.Second)
-		defer aiCancel()
-
-		// Use a channel to handle the AI analysis with timeout
-		resultChan := make(chan struct {
-			analysis string
-			err      error
-		}, 1)
-
-		go func() {
-			summary := SummarizeReport(&report)
-
-			// Check summary size and log it
-			summaryJSON, _ := json.Marshal(summary)
-			summarySize := len(summaryJSON)
-
-			log.Printf("Summary data size: %d bytes (%d KB)", summarySize, summarySize/1024)
-
-			log.Printf("Creating AI client and sending analysis request...")
-
-			client := NewClaudeAPIClient(apiKey)
-			analysis, aerr := client.AnalyzeReport(log, summary)
-
-			resultChan <- struct {
-				analysis string
-				err      error
-			}{analysis, aerr}
-		}()
-
-		select {
-		case result := <-resultChan:
-			if result.err != nil {
-				log.Printf("Warning: Failed to generate AI analysis: %v", result.err)
-
-				finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
-			} else {
-				// Clean the AI-generated content to prevent JavaScript errors
-				finalAIAnalysis = cleanAIHTML(result.analysis)
-
-				log.Printf("AI analysis generated successfully")
-			}
-		case <-aiCtx.Done():
-			log.Printf("Warning: AI analysis timed out after 120 seconds")
-
-			finalAIAnalysis = "⚠️ AI analysis timed out. This may be due to network issues or large dataset size in CI environment."
-		}
-	} else {
-		log.Printf("No API key provided, skipping AI analysis")
-	}
-
-	// Generate the data file alongside the HTML report
-	log.Printf("Generating data file...")
-
-	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
-
-	if gerr := generateDataFile(log, report, dataFile); gerr != nil {
-		return fmt.Errorf("failed to generate data file: %w", gerr)
-	}
-
-	log.Printf("Data file generation completed")
-
-	// Prepare template data with summary information only
-	templateData := OptimizedHTMLTemplateData{
-		GeneratedAt:      time.Now(),
-		Summary:          extractSummaryData(report),
-		DataFile:         filepath.Base(dataFile),
-		AIAnalysis:       finalAIAnalysis,
-		AIAnalysisHTML:   template.HTML(finalAIAnalysis), //nolint:gosec // data sanitized further down.
-		ValidationMode:   report.ValidationMode,
-		ValidationConfig: report.ValidationConfig,
-	}
-
-	// Create the optimized HTML template with custom functions
-	tmpl := template.New("report").Funcs(template.FuncMap{
-		"mul": func(a, b interface{}) float64 {
-			switch va := a.(type) {
-			case float64:
-				if vb, ok := b.(float64); ok {
-					return va * vb
-				}
-			case int:
-				if vb, ok := b.(int); ok {
-					return float64(va * vb)
-				}
-				if vb, ok := b.(float64); ok {
-					return float64(va) * vb
-				}
-			}
-
-			return 0
-		},
-		"div": func(a, b interface{}) float64 {
-			switch va := a.(type) {
-			case float64:
-				if vb, ok := b.(float64); ok && vb != 0 {
-					return va / vb
-				}
-			case int:
-				if vb, ok := b.(int); ok && vb != 0 {
-					return float64(va) / float64(vb)
-				}
-				if vb, ok := b.(float64); ok && vb != 0 {
-					return float64(va) / vb
-				}
-			}
-
-			return 0
-		},
-	})
-
-	// Parse the optimized HTML template string
-	tmpl, err := tmpl.Parse(optimizedHTMLTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to parse template: %w", err)
-	}
-
-	// Ensure the output directory exists
-	if mkErr := os.MkdirAll(filepath.Dir(outputFile), 0755); mkErr != nil {
-		return fmt.Errorf("failed to create output directory: %w", mkErr)
-	}
-
-	// Create the output HTML file
-	file, err := os.Create(outputFile)
-	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer file.Close()
-
-	// Execute the template with summary data
-	if err := tmpl.Execute(file, templateData); err != nil {
-		return fmt.Errorf("failed to execute template: %w", err)
-	}
-
-	log.Printf("Optimized HTML report generated: %s", outputFile)
-	log.Printf("Data file generated: %s", dataFile)
-
-	return nil
-}
-
-// GenerateHTMLReportWithAI creates an optimized HTML report with optional AI analysis.
-func GenerateHTMLReportWithAI(log logrus.FieldLogger, jsonFile, outputFile, apiKey, aiAnalysis string) error {
-	// Read the JSON report file from disk.
-	data, err := os.ReadFile(jsonFile)
-	if err != nil {
-		return fmt.Errorf("failed to read JSON file: %w", err)
-	}
-
-	// Parse the JSON data into our report structure.
-	var report PeerScoreReport
-	if uErr := json.Unmarshal(data, &report); uErr != nil {
-		return fmt.Errorf("failed to unmarshal JSON: %w", uErr)
-	}
-
-	// Generate AI analysis if API key is provided and analysis is not pre-generated
-	var finalAIAnalysis string
-	if aiAnalysis != "" {
-		finalAIAnalysis = aiAnalysis
-	} else if apiKey != "" {
-		log.Printf("Generating AI analysis...")
-
-		summary := SummarizeReport(&report)
-
-		// Check summary size and log it
-		summaryJSON, _ := json.Marshal(summary)
-		summarySize := len(summaryJSON)
-
-		log.Printf("Summary data size: %d bytes (%d KB)", summarySize, summarySize/1024)
-
-		log.Printf("Creating AI client and sending analysis request...")
-
-		client := NewClaudeAPIClient(apiKey)
-
-		analysis, aerr := client.AnalyzeReport(log, summary)
-		if aerr != nil {
-			log.Printf("Warning: Failed to generate AI analysis: %v", aerr)
-
-			finalAIAnalysis = "⚠️ AI analysis failed to generate. Large dataset may have caused timeout. Please try with a smaller report or check your API connection."
-		} else {
-			// Clean the AI-generated content to prevent JavaScript errors
-			finalAIAnalysis = cleanAIHTML(analysis)
-
-			log.Printf("AI analysis generated successfully")
-		}
-	}
-
-	// Generate the data file alongside the HTML report
-	dataFile := strings.Replace(outputFile, ".html", "-data.js", 1)
-
-	if gerr := generateDataFile(log, report, dataFile); gerr != nil {
-		return fmt.Errorf("failed to generate data file: %w", gerr)
-	}
-
-	// Prepare template data with summary information only
-	templateData := OptimizedHTMLTemplateData{
-		GeneratedAt:      time.Now(),
-		Summary:          extractSummaryData(report),
-		DataFile:         filepath.Base(dataFile),
-		AIAnalysis:       finalAIAnalysis,
-		AIAnalysisHTML:   template.HTML(finalAIAnalysis), //nolint:gosec // data sanitized further down.
-		ValidationMode:   report.ValidationMode,
-		ValidationConfig: report.ValidationConfig,
-	}
-
-	// Create the optimized HTML template with custom functions
-	tmpl := template.New("report").Funcs(template.FuncMap{
-		"mul": func(a, b interface{}) float64 {
-			switch va := a.(type) {
-			case float64:
-				if vb, ok := b.(float64); ok {
-					return va * vb
-				}
-			case int:
-				if vb, ok := b.(int); ok {
-					return float64(va * vb)
-				}
-				if vb, ok := b.(float64); ok {
-					return float64(va) * vb
-				}
-			}
-
-			return 0
-		},
-		"div": func(a, b interface{}) float64 {
-			switch va := a.(type) {
-			case float64:
-				if vb, ok := b.(float64); ok && vb != 0 {
-					return va / vb
-				}
-			case int:
-				if vb, ok := b.(int); ok && vb != 0 {
-					return float64(va) / float64(vb)
-				}
-				if vb, ok := b.(float64); ok && vb != 0 {
-					return float64(va) / vb
-				}
-			}
-
-			return 0
-		},
-	})
-
-	// Parse the optimized HTML template string
-	tmpl, err = tmpl.Parse(optimizedHTMLTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to parse template: %w", err)
-	}
-
-	// Ensure the output directory exists
-	if mkErr := os.MkdirAll(filepath.Dir(outputFile), 0755); mkErr != nil {
-		return fmt.Errorf("failed to create output directory: %w", mkErr)
-	}
-
-	// Create the output HTML file
-	file, err := os.Create(outputFile)
-	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer file.Close()
-
-	// Execute the template with summary data
-	if err := tmpl.Execute(file, templateData); err != nil {
-		return fmt.Errorf("failed to execute template: %w", err)
-	}
-
-	log.Printf("Optimized HTML report generated: %s", outputFile)
-	log.Printf("Data file generated: %s", dataFile)
-
-	return nil
-}
+</html>

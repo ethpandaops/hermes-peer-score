@@ -1,0 +1,29 @@
+---
+description: Core orchestration layer - main application lifecycle and component coordination
+globs: 
+  - "internal/core/*.go"
+  - "internal/core/**/*.go"
+alwaysApply: false
+---
+
+# Core Component Rules
+
+Central orchestration layer that manages application lifecycle and coordinates all other components.
+
+## Key Patterns
+- **Dependency Injection**: Tool acts as composition root, injecting dependencies into all components
+- **Interface-Driven Design**: All component interactions go through well-defined interfaces
+- **Event-Driven Architecture**: Hermes events flow through registered callback handlers
+- **Dual Validation Support**: Seamlessly switches between delegated and independent validation modes
+
+## Critical Constraints
+- DefaultTool must remain the single source of truth for component coordination
+- All component lifecycle management (start/stop) flows through the core Tool interface
+- Event callbacks from Hermes must be thread-safe and handle errors gracefully
+- Validation mode configuration determines Hermes version and behavior at runtime
+
+## Integration Requirements
+- Components must implement their respective interfaces (EventManager, PeerManager, ReportGenerator, HermesController)
+- Event handlers register through EventManager and receive callbacks via ToolInterface
+- Report generation coordinates data from PeerRepository and SessionManager
+- Hermes controller manages network connection lifecycle and event callback registration

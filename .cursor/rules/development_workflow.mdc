@@ -1,72 +1,193 @@
 ---
-description: Development workflow and practices for the Hermes Peer Score Tool
+description: Development workflow and processes for hermes-peer-score
 alwaysApply: true
 ---
 
-# Development Workflow
+# Hermes Peer Score Tool - Development Workflow
 
-## Git Workflow
-- Use `master` as the main branch
-- Create feature branches for new development
-- Use descriptive commit messages that explain the "why"
-- Squash commits when appropriate to maintain clean history
+Follow these development workflow guidelines when contributing to the hermes-peer-score project.
 
-## Build and Testing
-- Use `go build` for compiling the binary
-- Run `go mod tidy` to maintain clean dependencies
-- Test locally before committing changes
-- Ensure the tool builds and runs with basic functionality
+## Git Workflow and Branching Strategy
 
-## Development Environment
-- Go 1.24+ required
-- Dependencies managed through `go.mod`
-- Local development against test Prysm instances recommended
-- Use environment variables for sensitive configuration (API keys)
+### Branch Naming
+- Use descriptive branch names with prefixes:
+  - `feat/` - New features
+  - `fix/` - Bug fixes  
+  - `refactor/` - Code refactoring
+  - `docs/` - Documentation updates
+  - `test/` - Test additions or improvements
 
-## Code Quality
-- Run `gofmt` before committing
-- Use `go vet` to catch common issues
-- Consider using `golint` for style consistency
-- Review code for security issues, especially credential handling
+### Branch Management
+- Create feature branches from `master` branch
+- Keep branches focused on single features or fixes
+- Regularly rebase feature branches against master
+- Delete merged branches to keep repository clean
+
+### Commit Guidelines
+- Make atomic commits that represent logical changes
+- Write clear, descriptive commit messages
+- Use conventional commit format when appropriate
+- Squash related commits before merging if needed
+
+## Validation Mode Management
+
+### Dependency Switching
+Before working with different validation modes, use the built-in commands:
+
+```bash
+# Switch to delegated validation mode
+./peer-score-tool --validation-mode=delegated --update-go-mod
+
+# Switch to independent validation mode  
+./peer-score-tool --validation-mode=independent --update-go-mod
+
+# Validate current configuration
+./peer-score-tool --validation-mode=delegated --validate-go-mod
+```
+
+### Testing Both Modes
+- Always test changes in both validation modes when applicable
+- Use the CI workflows to validate both modes automatically
+- Document any mode-specific behavior or limitations
+
+## Testing Requirements
+
+### Unit Testing
+- Write unit tests for all business logic
+- Aim for high test coverage on critical paths
+- Use table-driven tests for multiple scenarios
+- Mock external dependencies using interfaces
+
+### Integration Testing
+- CI workflows provide integration testing with real network conditions
+- Test both validation modes in separate workflows
+- Validate report generation and AI analysis integration
+
+### Running Tests Locally
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with coverage
+go test -cover ./...
+
+# Run specific package tests
+go test ./internal/peer/
+```
+
+## Build and Development Commands
+
+### Building the Application
+```bash
+# Build for current platform
+go build -o peer-score-tool
+
+# Build with version information
+go build -ldflags "-X main.version=$(git describe --tags)" -o peer-score-tool
+```
+
+### Code Quality Checks
+```bash
+# Format code
+go fmt ./...
+
+# Vet code for common errors  
+go vet ./...
+
+# Run static analysis (if golangci-lint is available)
+golangci-lint run
+```
+
+## CI/CD Pipeline
+
+### GitHub Actions Workflows
+- **ci-delegated.yml** - Daily delegated validation tests at 11 AM UTC
+- **ci-independent.yml** - Daily independent validation tests at 12 PM UTC  
+- **clear-reports.yml** - Manual workflow for clearing historical reports
+
+### Pipeline Expectations
+- All tests must pass before merging
+- Code must be properly formatted (go fmt)
+- No vet warnings or errors
+- Both validation modes must work correctly
+
+### Automated Deployment
+- Reports are automatically deployed to GitHub Pages
+- Historical reports have 28-day retention
+- Index page provides interactive report browsing
+
+## Code Review Guidelines
+
+### Pull Request Requirements
+- Include clear description of changes
+- Reference related issues or tickets
+- Include test coverage for new functionality
+- Ensure both validation modes work if applicable
+- Update documentation if needed
+
+### Review Checklist
+- Code follows project standards and conventions
+- Error handling is appropriate and consistent
+- Logging provides adequate information for debugging
+- Configuration changes are documented
+- Security best practices are followed
 
 ## Configuration Management
-- Use CLI flags for runtime configuration
-- Support environment variables for sensitive data
-- Validate configuration early in the application startup
-- Provide helpful error messages for configuration issues
 
-## Dependency Management
-- Pin dependency versions in go.mod for reproducible builds
-- Review dependency updates for security and compatibility
-- Use replace directives when necessary for development
-- Document any non-standard dependency requirements
+### Environment Variables
+- Use environment variables for sensitive configuration (API keys)
+- Document all environment variables in README
+- Provide reasonable defaults where possible
+
+### Command-Line Options
+- Document all CLI options with examples
+- Validate configuration at startup
+- Provide helpful error messages for invalid configuration
+
+## Report Management
+
+### Local Development
+- Generated reports include timestamps to prevent conflicts
+- HTML reports include embedded CSS and JavaScript for portability
+- JSON reports provide raw data for further analysis
+
+### Production Deployment
+- Reports are automatically archived and deployed
+- GitHub Pages provides historical report access
+- Python scripts handle report synchronization and index generation
+
+## AI Analysis Integration
+
+### OpenRouter Configuration
+- API key provided via environment variable or CLI flag  
+- AI analysis is optional and can be skipped with `--skip-ai` flag
+- AI responses are cleaned and formatted for HTML display
+
+### Development Testing
+- Test AI analysis with real API key when available
+- Validate report generation with and without AI analysis
+- Ensure graceful handling of API failures or rate limits
+
+## Debugging and Monitoring
+
+### Logging Configuration
+- Use structured logging with appropriate levels
+- Include context information (peer IDs, session details, etc.)
+- Log timing information for performance analysis
+
+### Performance Monitoring
+- Monitor memory usage during long-running sessions
+- Track peer discovery and connection success rates
+- Profile performance-critical code paths when needed
 
 ## Release Process
-- Tag releases with semantic versioning
-- Generate release notes documenting new features and fixes
-- Test releases in realistic environments before tagging
-- Maintain backward compatibility for configuration and output formats
 
-## CI/CD Integration
-- Tool supports CI/CD pipeline integration
-- Historical report management through Python scripts
-- Clear history input support for automated environments
-- JSON and HTML output formats for different use cases
+### Version Management
+- Use semantic versioning (major.minor.patch)
+- Tag releases with descriptive release notes
+- Update README and documentation for new features
 
-## Monitoring and Observability
-- Structured logging for operational visibility
-- Progress reporting for long-running operations
-- Graceful shutdown handling for clean termination
-- Status reporting during execution
-
-## External Integrations
-- Prysm beacon node connectivity (gRPC/HTTP)
-- Hermes gossipsub listener integration
-- Optional AI analysis through OpenRouter API
-- Report generation and management automation
-
-## Security Considerations
-- Redact sensitive information in logs and output
-- Secure handling of API keys and credentials
-- Network connection security (TLS when available)
-- Input validation for external data
+### Deployment Verification
+- Test both validation modes with new releases
+- Verify report generation and AI analysis
+- Confirm GitHub Pages deployment works correctly

@@ -1,7 +1,10 @@
 hermes
+reports/
+peer-score-report-*
 peer-score-tool
 peer-score-report.json
 peer-score-report.html
+old-monolithic-code
 
 # Binaries for programs and plugins
 *.exe
