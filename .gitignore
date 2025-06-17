@@ -27,8 +27,9 @@ vendor/
 # Go workspace file
 go.work
 
-# Build directory
+# Build directory (but not internal/build source code)
 build/
+!internal/build/
 
 # Configuration files (except examples)
 config.yaml
