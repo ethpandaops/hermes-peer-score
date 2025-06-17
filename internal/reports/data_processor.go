@@ -63,6 +63,10 @@ func (dp *DefaultDataProcessor) CalculateSummaryStats(report *Report) (interface
 		"UniquePeers":         len(report.Peers),
 	}
 	
+	// Calculate goodbye events summary
+	goodbyeSummary := peer.CalculateGoodbyeEventsSummaryFromInterface(report.Peers)
+	summary["goodbye_events_summary"] = goodbyeSummary
+	
 	// Calculate additional statistics
 	clientDistribution := make(map[string]int)
 	peerSummaries := make([]map[string]interface{}, 0, len(report.Peers))

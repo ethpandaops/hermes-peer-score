@@ -40,7 +40,7 @@ const (
 // Hermes version constants for different validation modes
 const (
 	HermesVersionDelegated   = "v0.0.4-0.20250513093811-320c1c3ee6e2"
-	HermesVersionIndependent = "v0.0.4-0.20250611021139-b3e6fc7d4d79"
+	HermesVersionIndependent = "v0.0.4-0.20250613124328-491d55340eb7"
 )
 
 // Default filenames

@@ -139,6 +139,12 @@ func (g *DefaultGenerator) generateDataFile(report *Report, filename string) err
 		peersArray = processedData // Use as-is if not a map
 	}
 	
+	// Calculate summary statistics including goodbye events
+	summaryStats, err := g.dataProcessor.CalculateSummaryStats(report)
+	if err != nil {
+		return fmt.Errorf("failed to calculate summary stats for data file: %w", err)
+	}
+	
 	// Create the complete data structure including event counts
 	jsData := map[string]interface{}{
 		"metadata": map[string]interface{}{
@@ -148,6 +154,7 @@ func (g *DefaultGenerator) generateDataFile(report *Report, filename string) err
 		},
 		"peers":            peersArray,
 		"peerEventCounts":  report.PeerEventCounts,
+		"summary":          summaryStats,
 	}
 	
 	dataJSON, err := json.MarshalIndent(jsData, "", "  ")

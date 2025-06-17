@@ -102,7 +102,7 @@
         </div>
 
         <!-- Summary Statistics -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="text-sm font-medium text-gray-500">Total Connections</div>
                 <div class="text-2xl font-bold text-gray-900">{{.Summary.TotalConnections}}</div>
@@ -118,6 +118,11 @@
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="text-sm font-medium text-gray-500">Unique Peers</div>
                 <div class="text-2xl font-bold text-blue-600">{{.Summary.UniquePeers}}</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-sm font-medium text-gray-500">Goodbye Events</div>
+                <div class="text-2xl font-bold text-orange-600" id="goodbyeEventsCount">0</div>
+                <div class="text-xs text-gray-500 mt-1" id="goodbyeEventsDetails">0 unique reasons</div>
             </div>
         </div>
 
@@ -162,6 +167,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- Goodbye Events Breakdown -->
+        <div id="goodbyeBreakdownContainer" class="mb-6"></div>
 
         <!-- Peer List -->
         <div class="bg-white rounded-lg shadow-lg">
@@ -310,6 +318,11 @@
                 renderPeerList();
                 setupEventListeners();
                 updateResultsInfo();
+                
+                // Initialize goodbye events summary
+                if (data.summary && data.summary.goodbye_events_summary) {
+                    initializeGoodbyeEventsSummary(data.summary.goodbye_events_summary);
+                }
             } else {
                 console.error('reportData is undefined - data file may have failed to load');
                 document.getElementById('peerList').innerHTML =
@@ -918,6 +931,86 @@
                     closeAIAnalysisModal();
                 }
             });
+        }
+
+        // Initialize goodbye events summary display
+        function initializeGoodbyeEventsSummary(summary) {
+            // Update the summary card
+            const countElement = document.getElementById('goodbyeEventsCount');
+            const detailsElement = document.getElementById('goodbyeEventsDetails');
+            
+            if (countElement) {
+                countElement.textContent = summary.total_events || 0;
+            }
+            
+            if (detailsElement) {
+                const uniqueReasons = summary.unique_reasons || 0;
+                detailsElement.textContent = `${uniqueReasons} unique reason${uniqueReasons !== 1 ? 's' : ''}`;
+            }
+            
+            // Render goodbye events breakdown section if there are events
+            if (summary.total_events > 0) {
+                renderGoodbyeEventsBreakdown(summary);
+            }
+        }
+
+        // Render goodbye events breakdown section
+        function renderGoodbyeEventsBreakdown(summary) {
+            const container = document.getElementById('goodbyeBreakdownContainer');
+            if (!container || !summary.reason_stats || summary.reason_stats.length === 0) {
+                return;
+            }
+
+            const breakdownHtml = `
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Goodbye Event Reasons</h3>
+                        <span class="text-sm text-gray-500">${summary.total_events} total events</span>
+                    </div>
+                    <div class="space-y-3">
+                        ${summary.reason_stats.slice(0, 10).map(stat => `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900">
+                                        ${formatGoodbyeReason(stat.reason)}
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        Codes: ${stat.codes ? stat.codes.join(', ') : 'Unknown'}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-semibold text-orange-600">${stat.count}</div>
+                                    <div class="text-xs text-gray-500">
+                                        ${((stat.count / summary.total_events) * 100).toFixed(1)}%
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${summary.unique_reasons > 10 ? `
+                        <div class="text-sm text-gray-500 mt-4 text-center">
+                            Showing top 10 of ${summary.unique_reasons} unique reasons
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            container.innerHTML = breakdownHtml;
+        }
+
+        // Helper function to format goodbye reason display
+        function formatGoodbyeReason(reason) {
+            if (!reason || reason === "" || reason === "unknown") {
+                return '<span class="text-gray-400 italic">no reason provided</span>';
+            }
+            return escapeHtml(reason);
+        }
+
+        // Helper to escape HTML for security
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     </script>
 </body>

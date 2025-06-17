@@ -31,12 +31,12 @@ type ConnectionSession struct {
 
 // PeerScoreSnapshot represents a snapshot of a peer's score at a specific time
 type PeerScoreSnapshot struct {
-	Timestamp          time.Time             `json:"timestamp"`
-	Score              float64               `json:"score"`
-	AppSpecificScore   float64               `json:"app_specific_score"`
-	IPColocationFactor float64               `json:"ip_colocation_factor"`
-	BehaviourPenalty   float64               `json:"behaviour_penalty"`
-	Topics             map[string]float64    `json:"topics"`
+	Timestamp          time.Time          `json:"timestamp"`
+	Score              float64            `json:"score"`
+	AppSpecificScore   float64            `json:"app_specific_score"`
+	IPColocationFactor float64            `json:"ip_colocation_factor"`
+	BehaviourPenalty   float64            `json:"behaviour_penalty"`
+	Topics             map[string]float64 `json:"topics"`
 }
 
 // TopicScore represents the peer score for a specific topic
@@ -53,6 +53,23 @@ type GoodbyeEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	Code      uint64    `json:"code"`
 	Reason    string    `json:"reason"`
+}
+
+// GoodbyeReasonStats tracks statistics for a specific goodbye reason
+type GoodbyeReasonStats struct {
+	Reason   string   `json:"reason"`   // Original reason string
+	Count    int      `json:"count"`    // Number of occurrences
+	Codes    []uint64 `json:"codes"`    // All unique codes seen with this reason
+	Examples []string `json:"examples"` // First few examples of this reason
+}
+
+// GoodbyeEventsSummary contains aggregated goodbye event statistics
+type GoodbyeEventsSummary struct {
+	TotalEvents   int                   `json:"total_events"`   // Total number of goodbye events
+	ReasonStats   []*GoodbyeReasonStats `json:"reason_stats"`   // Sorted by count (most common first)
+	UniqueReasons int                   `json:"unique_reasons"` // Number of unique reasons
+	TopReasons    []string              `json:"top_reasons"`    // Top 5 most common reasons
+	CodeFrequency map[uint64]int        `json:"code_frequency"` // Code occurrence count
 }
 
 // MeshEvent represents a GRAFT/PRUNE event for mesh participation tracking

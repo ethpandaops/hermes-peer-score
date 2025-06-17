@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -77,7 +78,7 @@
                 <div>
                     <div class="flex items-center">
                         <div class="validation-icon">
-                            {{if eq .ValidationMode "delegated"}}🔗{{else}}⚡{{end}}
+                            {{if eq .ValidationMode "delegated"}}={{else}}�{{end}}
                         </div>
                         <h1 class="text-3xl font-bold">Hermes Peer Score Report</h1>
                     </div>
@@ -100,10 +101,8 @@
             </div>
         </div>
 
-
-
         <!-- Summary Statistics -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="text-sm font-medium text-gray-500">Total Connections</div>
                 <div class="text-2xl font-bold text-gray-900">{{.Summary.TotalConnections}}</div>
@@ -119,6 +118,11 @@
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="text-sm font-medium text-gray-500">Unique Peers</div>
                 <div class="text-2xl font-bold text-blue-600">{{.Summary.UniquePeers}}</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-sm font-medium text-gray-500">Goodbye Events</div>
+                <div class="text-2xl font-bold text-orange-600" id="goodbyeEventsCount">0</div>
+                <div class="text-xs text-gray-500 mt-1" id="goodbyeEventsDetails">0 unique reasons</div>
             </div>
         </div>
 
@@ -163,6 +167,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- Goodbye Events Breakdown -->
+        <div id="goodbyeBreakdownContainer" class="mb-6"></div>
 
         <!-- Peer List -->
         <div class="bg-white rounded-lg shadow-lg">
@@ -303,13 +310,17 @@
 
             if (typeof reportData !== 'undefined') {
                 console.log('Report data loaded successfully:', Object.keys(reportData));
-                // Convert peers object to array for the UI
-                allPeers = reportData.peers ? Object.values(reportData.peers) : [];
+                allPeers = reportData.peers || [];
                 filteredPeers = [...allPeers];
                 sortPeers();
                 renderPeerList();
                 setupEventListeners();
                 updateResultsInfo();
+                
+                // Initialize goodbye events summary
+                if (reportData.summary && reportData.summary.goodbye_events_summary) {
+                    initializeGoodbyeEventsSummary(reportData.summary.goodbye_events_summary);
+                }
             } else {
                 console.error('reportData is undefined - data file may have failed to load');
                 document.getElementById('peerList').innerHTML =
@@ -405,14 +416,14 @@
         function renderPeerCard(peer) {
             const clientInfo = getClientLogo(peer.client_type);
             const logoImg = clientInfo ?
-                ` + "`" + `<img src="${clientInfo.logo}" alt="${clientInfo.displayName}" class="w-8 h-8 rounded-md object-cover client-logo" onerror="this.style.display='none'">` + "`" + ` :
-                ` + "`" + `<div class="w-8 h-8 rounded-md flex items-center justify-center text-white text-xs client-fallback">${peer.client_type.substring(0, 2).toUpperCase()}</div>` + "`" + `;
+                `<img src="${clientInfo.logo}" alt="${clientInfo.displayName}" class="w-8 h-8 rounded-md object-cover client-logo" onerror="this.style.display='none'">` :
+                `<div class="w-8 h-8 rounded-md flex items-center justify-center text-white text-xs client-fallback">${peer.client_type.substring(0, 2).toUpperCase()}</div>`;
 
             const clientDisplay = clientInfo ?
-                ` + "`" + `<span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded" title="${clientInfo.displayName}">${peer.client_type}</span>` + "`" + ` :
-                ` + "`" + `<span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">${peer.client_type}</span>` + "`" + `;
+                `<span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded" title="${clientInfo.displayName}">${peer.client_type}</span>` :
+                `<span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">${peer.client_type}</span>`;
 
-            return ` + "`" + 
+            return `
                 <div class="peer-card border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all" onclick="showPeerDetails('${peer.peer_id}')">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-4">
@@ -424,28 +435,28 @@
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 ${clientDisplay}
-                                ${peer.last_session_status ? ` + "`" + `<span class="px-2 py-1 text-xs rounded ${peer.last_session_status === 'Connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${peer.last_session_status}</span>` + "`" + ` : ''}
+                                ${peer.last_session_status ? `<span class="px-2 py-1 text-xs rounded ${peer.last_session_status === 'Connected' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${peer.last_session_status}</span>` : ''}
                                 <span class="text-sm text-gray-600">${peer.session_count} sessions</span>
                                 <span class="text-sm text-gray-600">${peer.event_count} events</span>
-                                ${peer.goodbye_count > 0 ? ` + "`" + `<span class="text-sm text-orange-600">${peer.goodbye_count} goodbyes</span>` + "`" + ` : ''}
-                                ${peer.mesh_count > 0 ? ` + "`" + `<span class="text-sm text-purple-600">${peer.mesh_count} mesh</span>` + "`" + ` : ''}
+                                ${peer.goodbye_count > 0 ? `<span class="text-sm text-orange-600">${peer.goodbye_count} goodbyes</span>` : ''}
+                                ${peer.mesh_count > 0 ? `<span class="text-sm text-purple-600">${peer.mesh_count} mesh</span>` : ''}
                             </div>
                         </div>
                         <div class="text-right text-sm text-gray-500 flex-shrink-0">
-                            ${peer.has_scores ? ` + "`" + 
+                            ${peer.has_scores ? `
                                 <div class="text-xs">
                                     <div>Min Score: <span class="${peer.min_peer_score > 0 ? 'text-green-600' : peer.min_peer_score < 0 ? 'text-red-600' : 'text-gray-600'}">${peer.min_peer_score.toFixed(3)}</span></div>
                                     <div>Max Score: <span class="${peer.max_peer_score > 0 ? 'text-green-600' : peer.max_peer_score < 0 ? 'text-red-600' : 'text-gray-600'}">${peer.max_peer_score.toFixed(3)}</span></div>
                                 </div>
-                            ` + "`" + ` : ` + "`" + 
+                            ` : `
                                 <div class="text-xs text-gray-400">
                                     <div>No score data</div>
                                 </div>
-                            ` + "`" + `}
+                            `}
                         </div>
                     </div>
                 </div>
-            ` + "`" + `;
+            `;
         }
 
         function renderPagination() {
@@ -454,7 +465,7 @@
             const endIndex = Math.min(startIndex + pageSize, filteredPeers.length);
 
             document.getElementById('paginationInfo').textContent =
-                ` + "`" + `Showing ${startIndex + 1}-${endIndex} of ${filteredPeers.length} peers` + "`" + `;
+                `Showing ${startIndex + 1}-${endIndex} of ${filteredPeers.length} peers`;
 
             if (totalPages <= 1) {
                 document.getElementById('paginationControls').innerHTML = '';
@@ -465,7 +476,7 @@
 
             // Previous button
             if (currentPage > 1) {
-                controls += ` + "`" + `<button onclick="changePage(${currentPage - 1})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Previous</button>` + "`" + `;
+                controls += `<button onclick="changePage(${currentPage - 1})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Previous</button>`;
             }
 
             // Page numbers (show up to 5 pages around current)
@@ -473,23 +484,23 @@
             const endPage = Math.min(totalPages, currentPage + 2);
 
             if (startPage > 1) {
-                controls += ` + "`" + `<button onclick="changePage(1)" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">1</button>` + "`" + `;
+                controls += `<button onclick="changePage(1)" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">1</button>`;
                 if (startPage > 2) controls += '<span class="px-2 text-gray-500">...</span>';
             }
 
             for (let i = startPage; i <= endPage; i++) {
                 const isActive = i === currentPage;
-                controls += ` + "`" + `<button onclick="changePage(${i})" class="px-3 py-2 border rounded-md text-sm ${isActive ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-50'}">${i}</button>` + "`" + `;
+                controls += `<button onclick="changePage(${i})" class="px-3 py-2 border rounded-md text-sm ${isActive ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-50'}">${i}</button>`;
             }
 
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) controls += '<span class="px-2 text-gray-500">...</span>';
-                controls += ` + "`" + `<button onclick="changePage(${totalPages})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">${totalPages}</button>` + "`" + `;
+                controls += `<button onclick="changePage(${totalPages})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">${totalPages}</button>`;
             }
 
             // Next button
             if (currentPage < totalPages) {
-                controls += ` + "`" + `<button onclick="changePage(${currentPage + 1})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Next</button>` + "`" + `;
+                controls += `<button onclick="changePage(${currentPage + 1})" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Next</button>`;
             }
 
             document.getElementById('paginationControls').innerHTML = controls;
@@ -503,62 +514,42 @@
         function updateResultsInfo() {
             const total = allPeers.length;
             const filtered = filteredPeers.length;
-            let info = ` + "`" + `${total} total peers` + "`" + `;
+            let info = `${total} total peers`;
             if (filtered !== total) {
-                info = ` + "`" + `${filtered} of ${total} peers` + "`" + `;
+                info = `${filtered} of ${total} peers`;
             }
             document.getElementById('resultsInfo').textContent = info;
         }
 
         async function showPeerDetails(peerId) {
             document.getElementById('peerModal').classList.remove('hidden');
-            document.getElementById('modalTitle').textContent = ` + "`" + `Peer: ${peerId.substring(0, 12)}...` + "`" + `;
+            document.getElementById('modalTitle').textContent = `Peer: ${peerId.substring(0, 12)}...`;
             document.getElementById('modalContent').innerHTML =
                 '<div class="text-center py-8 text-gray-500"><div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>Loading detailed peer data...</div>';
 
             // Simulate async loading of detailed data
             setTimeout(() => {
-                if (typeof reportData !== 'undefined' && reportData.peers) {
-                    // Find the peer in the array by peer_id
-                    const peerData = reportData.peers.find(peer => peer.peer_id === peerId);
-                    if (peerData) {
-                        renderPeerDetails(peerData);
-                    } else {
-                        document.getElementById('modalContent').innerHTML =
-                            '<div class="text-center py-8 text-red-500">Detailed peer data not found</div>';
-                    }
+                if (typeof reportData !== 'undefined' && reportData.detailedPeers && reportData.detailedPeers[peerId]) {
+                    renderPeerDetails(reportData.detailedPeers[peerId]);
                 } else {
                     document.getElementById('modalContent').innerHTML =
-                        '<div class="text-center py-8 text-red-500">Report data not available</div>';
+                        '<div class="text-center py-8 text-red-500">Detailed peer data not found</div>';
                 }
             }, 500);
         }
 
         // Generate HTML for event counts table
         function generateEventCountsHtml(peerId) {
-            // Find the peer data to get event counts
-            const peerData = reportData.peers ? reportData.peers.find(peer => peer.peer_id === peerId) : null;
-            
-            if (!peerData) {
-                return '<div class="p-4 text-center text-gray-500">No event data available</div>';
-            }
+            const eventCounts = reportData.peerEventCounts && reportData.peerEventCounts[peerId];
 
-            // Create basic event counts from peer data
-            const eventCounts = {};
-            if (peerData.event_count > 0) eventCounts['Total Events'] = peerData.event_count;
-            if (peerData.goodbye_count > 0) eventCounts['Goodbye Events'] = peerData.goodbye_count;
-            if (peerData.mesh_count > 0) eventCounts['Mesh Events'] = peerData.mesh_count;
-            if (peerData.session_count > 0) eventCounts['Connection Sessions'] = peerData.session_count;
-            if (peerData.total_connections > 0) eventCounts['Total Connections'] = peerData.total_connections;
-
-            if (Object.keys(eventCounts).length === 0) {
+            if (!eventCounts || Object.keys(eventCounts).length === 0) {
                 return '<div class="p-4 text-center text-gray-500">No event data available</div>';
             }
 
             // Sort events by count (descending)
             const sortedEvents = Object.entries(eventCounts).sort((a, b) => b[1] - a[1]);
 
-            let html = ` + "`" + 
+            let html = `
                 <table class="min-w-full bg-white border border-gray-200 rounded text-xs">
                     <thead class="bg-gray-50">
                         <tr>
@@ -567,21 +558,21 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-            ` + "`" + `;
+            `;
 
             sortedEvents.forEach(([eventType, count]) => {
-                html += ` + "`" + 
+                html += `
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-2 text-xs text-gray-900"><code>${eventType}</code></td>
                         <td class="px-3 py-2 text-xs text-gray-700">${count.toLocaleString()}</td>
                     </tr>
-                ` + "`" + `;
+                `;
             });
 
-            html += ` + "`" + 
+            html += `
                     </tbody>
                 </table>
-            ` + "`" + `;
+            `;
 
             return html;
         }
@@ -591,19 +582,19 @@
             let sessionsHtml = '';
             if (peerData.connection_sessions && peerData.connection_sessions.length > 0) {
                 peerData.connection_sessions.forEach((session, sessionIdx) => {
-                    const sessionId = ` + "`" + `session-${sessionIdx}` + "`" + `;
+                    const sessionId = `session-${sessionIdx}`;
                     let timelineEvents = [];
 
                     if (session.connected_at) timelineEvents.push({type: 'connected', time: session.connected_at, label: 'Connected'});
                     if (session.identified_at) timelineEvents.push({type: 'identified', time: session.identified_at, label: 'Identified'});
                     if (session.mesh_events) {
                         session.mesh_events.forEach(event => {
-                            timelineEvents.push({type: 'mesh', time: event.timestamp, label: ` + "`" + `${event.type}: ${event.topic}` + "`" + `});
+                            timelineEvents.push({type: 'mesh', time: event.timestamp, label: `${event.type}: ${event.topic}`});
                         });
                     }
                     if (session.goodbye_events) {
                         session.goodbye_events.forEach(event => {
-                            timelineEvents.push({type: 'goodbye', time: event.timestamp, label: ` + "`" + `Goodbye: ${event.reason}` + "`" + `});
+                            timelineEvents.push({type: 'goodbye', time: event.timestamp, label: `Goodbye: ${event.reason}`});
                         });
                     }
                     if (session.disconnected_at) timelineEvents.push({type: 'disconnected', time: session.disconnected_at, label: 'Disconnected'});
@@ -615,7 +606,7 @@
                                      event.type === 'identified' ? 'blue' :
                                      event.type === 'mesh' ? 'purple' :
                                      event.type === 'goodbye' ? 'orange' : 'red';
-                        return ` + "`" + 
+                        return `
                             <tr class="hover:bg-gray-50">
                                 <td class="px-3 py-2 text-xs">${new Date(event.time).toLocaleTimeString()}</td>
                                 <td class="px-3 py-2 text-xs">
@@ -623,13 +614,13 @@
                                 </td>
                                 <td class="px-3 py-2 text-xs text-gray-700">${event.label}</td>
                             </tr>
-                        ` + "`" + `;
+                        `;
                     }).join('');
 
                     const scoreSnapshotsHtml = session.peer_scores ? session.peer_scores.map((snapshot, idx) => {
-                        const rowId = ` + "`" + `${sessionId}-score-${idx}` + "`" + `;
+                        const rowId = `${sessionId}-score-${idx}`;
                         const topicsHtml = snapshot.topics && snapshot.topics.length > 0 ?
-                            snapshot.topics.map(topic => ` + "`" + 
+                            snapshot.topics.map(topic => `
                                 <div class="mb-2 p-2 bg-gray-50 rounded text-xs">
                                     <div class="font-medium text-gray-700 mb-1">Topic: ${topic.topic}</div>
                                     <div class="grid grid-cols-2 gap-2 text-xs">
@@ -639,9 +630,9 @@
                                         <div>Invalid Deliveries: ${topic.invalid_message_deliveries.toFixed(3)}</div>
                                     </div>
                                 </div>
-                            ` + "`" + `).join('') : '<div class="text-gray-500 text-xs p-2">No topic data available</div>';
+                            `).join('') : '<div class="text-gray-500 text-xs p-2">No topic data available</div>';
 
-                        return ` + "`" + 
+                        return `
                             <tr class="hover:bg-gray-50">
                                 <td class="px-3 py-2 text-xs">${new Date(snapshot.timestamp).toLocaleTimeString()}</td>
                                 <td class="px-3 py-2 text-xs font-medium ${snapshot.score > 0 ? 'text-green-600' : snapshot.score < 0 ? 'text-red-600' : 'text-gray-600'}">${snapshot.score.toFixed(3)}</td>
@@ -650,12 +641,12 @@
                                 <td class="px-3 py-2 text-xs">${snapshot.behaviour_penalty.toFixed(3)}</td>
                                 <td class="px-3 py-2 text-xs">
                                     ${snapshot.topics && snapshot.topics.length > 0 ?
-                                        ` + "`" + `<button class="text-blue-600 hover:text-blue-800 underline cursor-pointer" onclick="toggleSection('${rowId}')">${snapshot.topics.length} topics</button>` + "`" + ` :
+                                        `<button class="text-blue-600 hover:text-blue-800 underline cursor-pointer" onclick="toggleSection('${rowId}')">${snapshot.topics.length} topics</button>` :
                                         'None'
                                     }
                                 </td>
                             </tr>
-                            ${snapshot.topics && snapshot.topics.length > 0 ? ` + "`" + 
+                            ${snapshot.topics && snapshot.topics.length > 0 ? `
                             <tr id="${rowId}" class="hidden">
                                 <td colspan="6" class="px-3 py-2 bg-blue-50">
                                     <div class="max-h-48 overflow-y-auto">
@@ -663,11 +654,11 @@
                                     </div>
                                 </td>
                             </tr>
-                            ` + "`" + ` : ''}
-                        ` + "`" + `;
+                            ` : ''}
+                        `;
                     }).join('') : '<tr><td colspan="6" class="text-center py-4 text-gray-500">No score data</td></tr>';
 
-                    sessionsHtml += ` + "`" + 
+                    sessionsHtml += `
                         <div class="border border-gray-200 rounded-lg mb-4">
                             <div class="p-3 bg-gray-50 cursor-pointer" onclick="toggleSection('${sessionId}')">
                                 <div class="flex items-center justify-between">
@@ -675,9 +666,9 @@
                                         <span class="font-medium text-gray-900">Session ${sessionIdx + 1}</span>
                                         <span class="text-sm text-gray-600">${session.connection_duration ? (session.connection_duration / 1000000000).toFixed(2) + 's' : 'Unknown duration'}</span>
                                         <span class="text-sm text-gray-600">${session.message_count || 0} messages</span>
-                                        ${session.peer_scores ? ` + "`" + `<span class="text-sm text-gray-600">${session.peer_scores.length} score snapshots</span>` + "`" + ` : ''}
-                                        ${session.goodbye_events && session.goodbye_events.length > 0 ? ` + "`" + `<span class="text-sm text-orange-600">${session.goodbye_events.length} goodbye events</span>` + "`" + ` : ''}
-                                        ${session.mesh_events && session.mesh_events.length > 0 ? ` + "`" + `<span class="text-sm text-purple-600">${session.mesh_events.length} mesh events</span>` + "`" + ` : ''}
+                                        ${session.peer_scores ? `<span class="text-sm text-gray-600">${session.peer_scores.length} score snapshots</span>` : ''}
+                                        ${session.goodbye_events && session.goodbye_events.length > 0 ? `<span class="text-sm text-orange-600">${session.goodbye_events.length} goodbye events</span>` : ''}
+                                        ${session.mesh_events && session.mesh_events.length > 0 ? `<span class="text-sm text-purple-600">${session.mesh_events.length} mesh events</span>` : ''}
                                         <span class="px-2 py-1 text-xs ${session.disconnected ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} rounded">
                                             ${session.disconnected ? 'Disconnected' : 'Connected'}
                                         </span>
@@ -689,7 +680,7 @@
                             </div>
                             <div class="hidden p-4 border-t border-gray-200" id="${sessionId}">
                                 <div class="space-y-4">
-                                    ${session.peer_scores ? ` + "`" + 
+                                    ${session.peer_scores ? `
                                     <div>
                                         <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-scores')">
                                             <div class="flex items-center justify-between">
@@ -719,7 +710,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    ` + "`" + ` : ''}
+                                    ` : ''}
                                     <div>
                                         <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-timeline')">
                                             <div class="flex items-center justify-between">
@@ -747,8 +738,48 @@
                                         </div>
                                     </div>
 
+                                    <!-- Goodbye Events Section -->
+                                    ${session.goodbye_events && session.goodbye_events.length > 0 ? `
+                                    <div>
+                                        <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-goodbye')">
+                                            <div class="flex items-center justify-between">
+                                                <h6 class="font-medium text-gray-800">Goodbye Events (${session.goodbye_events.length} events)</h6>
+                                                <svg class="w-4 h-4 text-gray-500 transform transition-transform" id="${sessionId}-goodbye-arrow">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="hidden mt-2" id="${sessionId}-goodbye">
+                                            <div class="max-h-64 overflow-y-auto">
+                                                <table class="min-w-full bg-white border border-gray-200 rounded text-xs">
+                                                    <thead class="bg-gray-50">
+                                                        <tr>
+                                                            <th class="px-3 py-2 text-left">Time</th>
+                                                            <th class="px-3 py-2 text-left">Code</th>
+                                                            <th class="px-3 py-2 text-left">Reason</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-100">
+                                                        ${session.goodbye_events.map(event => `
+                                                            <tr class="hover:bg-gray-50">
+                                                                <td class="px-3 py-2 text-xs">${new Date(event.timestamp).toLocaleTimeString()}</td>
+                                                                <td class="px-3 py-2 text-xs">
+                                                                    <span class="font-mono bg-gray-100 px-1 py-0.5 rounded">${event.code}</span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-xs text-gray-700">
+                                                                    ${event.reason || '<span class="text-gray-400 italic">no reason provided</span>'}
+                                                                </td>
+                                                            </tr>
+                                                        `).join('')}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+
                                     <!-- Mesh Events Section -->
-                                    ${session.mesh_events && session.mesh_events.length > 0 ? ` + "`" + 
+                                    ${session.mesh_events && session.mesh_events.length > 0 ? `
                                     <div>
                                         <div class="p-3 bg-gray-50 cursor-pointer border rounded-lg" onclick="toggleSection('${sessionId}-mesh')">
                                             <div class="flex items-center justify-between">
@@ -771,7 +802,7 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody class="divide-y divide-gray-100">
-                                                        ${session.mesh_events.map(meshEvent => ` + "`" + 
+                                                        ${session.mesh_events.map(meshEvent => `
                                                             <tr class="hover:bg-gray-50">
                                                                 <td class="px-3 py-2 text-xs">${new Date(meshEvent.timestamp).toLocaleTimeString()}</td>
                                                                 <td class="px-3 py-2 text-xs">
@@ -785,26 +816,26 @@
                                                                 </td>
                                                                 <td class="px-3 py-2 text-xs text-gray-600">${meshEvent.reason || '-'}</td>
                                                             </tr>
-                                                        ` + "`" + `).join('')}
+                                                        `).join('')}
                                                     </tbody>
                                                 </table>
                                             </div>
                                         </div>
                                     </div>
-                                    ` + "`" + ` : ''}
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
-                    ` + "`" + `;
+                    `;
                 });
             }
 
             const clientInfo = getClientLogo(peerData.client_type);
             const logoImg = clientInfo ?
-                ` + "`" + `<img src="${clientInfo.logo}" alt="${clientInfo.displayName}" class="w-12 h-12 rounded-md object-cover client-logo" onerror="this.style.display='none'">` + "`" + ` :
-                ` + "`" + `<div class="w-12 h-12 rounded-md flex items-center justify-center text-white text-lg client-fallback">${peerData.client_type.substring(0, 2).toUpperCase()}</div>` + "`" + `;
+                `<img src="${clientInfo.logo}" alt="${clientInfo.displayName}" class="w-12 h-12 rounded-md object-cover client-logo" onerror="this.style.display='none'">` :
+                `<div class="w-12 h-12 rounded-md flex items-center justify-center text-white text-lg client-fallback">${peerData.client_type.substring(0, 2).toUpperCase()}</div>`;
 
-            document.getElementById('modalContent').innerHTML = ` + "`" + 
+            document.getElementById('modalContent').innerHTML = `
                 <div class="space-y-6">
                     <!-- Client Header -->
                     <div class="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
@@ -829,18 +860,18 @@
                             <div class="text-sm font-medium text-gray-500">Total Sessions</div>
                             <div class="text-sm">${peerData.connection_sessions ? peerData.connection_sessions.length : 0}</div>
                         </div>
-                        ${peerData.first_seen_at ? ` + "`" + 
+                        ${peerData.first_seen_at ? `
                         <div>
                             <div class="text-sm font-medium text-gray-500">First Seen</div>
                             <div class="text-sm">${new Date(peerData.first_seen_at).toLocaleString()}</div>
                         </div>
-                        ` + "`" + ` : ''}
-                        ${peerData.last_seen_at ? ` + "`" + 
+                        ` : ''}
+                        ${peerData.last_seen_at ? `
                         <div>
                             <div class="text-sm font-medium text-gray-500">Last Seen</div>
                             <div class="text-sm">${new Date(peerData.last_seen_at).toLocaleString()}</div>
                         </div>
-                        ` + "`" + ` : ''}
+                        ` : ''}
                     </div>
 
                     <!-- Connection Sessions -->
@@ -865,7 +896,7 @@
                         </div>
                     </div>
                 </div>
-            ` + "`" + `;
+            `;
         }
 
         function toggleSection(sectionId) {
@@ -914,7 +945,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = ` + "`" + `hermes-peer-score-filtered-${new Date().toISOString().split('T')[0]}.json` + "`" + `;
+            a.download = `hermes-peer-score-filtered-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -936,6 +967,86 @@
                     closeAIAnalysisModal();
                 }
             });
+        }
+
+        // Initialize goodbye events summary display
+        function initializeGoodbyeEventsSummary(summary) {
+            // Update the summary card
+            const countElement = document.getElementById('goodbyeEventsCount');
+            const detailsElement = document.getElementById('goodbyeEventsDetails');
+            
+            if (countElement) {
+                countElement.textContent = summary.total_events || 0;
+            }
+            
+            if (detailsElement) {
+                const uniqueReasons = summary.unique_reasons || 0;
+                detailsElement.textContent = `${uniqueReasons} unique reason${uniqueReasons !== 1 ? 's' : ''}`;
+            }
+            
+            // Render goodbye events breakdown section if there are events
+            if (summary.total_events > 0) {
+                renderGoodbyeEventsBreakdown(summary);
+            }
+        }
+
+        // Render goodbye events breakdown section
+        function renderGoodbyeEventsBreakdown(summary) {
+            const container = document.getElementById('goodbyeBreakdownContainer');
+            if (!container || !summary.reason_stats || summary.reason_stats.length === 0) {
+                return;
+            }
+
+            const breakdownHtml = `
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Goodbye Event Reasons</h3>
+                        <span class="text-sm text-gray-500">${summary.total_events} total events</span>
+                    </div>
+                    <div class="space-y-3">
+                        ${summary.reason_stats.slice(0, 10).map(stat => `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900">
+                                        ${formatGoodbyeReason(stat.reason)}
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        Codes: ${stat.codes ? stat.codes.join(', ') : 'Unknown'}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-semibold text-orange-600">${stat.count}</div>
+                                    <div class="text-xs text-gray-500">
+                                        ${((stat.count / summary.total_events) * 100).toFixed(1)}%
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${summary.unique_reasons > 10 ? `
+                        <div class="text-sm text-gray-500 mt-4 text-center">
+                            Showing top 10 of ${summary.unique_reasons} unique reasons
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            container.innerHTML = breakdownHtml;
+        }
+
+        // Helper function to format goodbye reason display
+        function formatGoodbyeReason(reason) {
+            if (!reason || reason === "" || reason === "unknown") {
+                return '<span class="text-gray-400 italic">no reason provided</span>';
+            }
+            return escapeHtml(reason);
+        }
+
+        // Helper to escape HTML for security
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     </script>
 </body>

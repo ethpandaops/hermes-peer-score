@@ -17,13 +17,13 @@ type DefaultConfig struct {
 	validationMode ValidationMode
 	testDuration   time.Duration
 	reportInterval time.Duration
-	
+
 	// Connection settings
 	prysmHost     string
 	prysmHTTPPort int
 	prysmGRPCPort int
 	useTLS        bool
-	
+
 	// Networking settings
 	privateKeyStr   string
 	dialTimeout     time.Duration
@@ -33,11 +33,11 @@ type DefaultConfig struct {
 	libp2pPort      int
 	maxPeers        int
 	dialConcurrency int
-	
+
 	// Data stream settings
 	dataStreamType string
 	subnets        map[string]*eth.SubnetConfig
-	
+
 	// Report settings
 	htmlOnly      bool
 	inputJSON     string
@@ -63,12 +63,12 @@ func NewDefaultConfig() *DefaultConfig {
 		dataStreamType:  constants.DefaultDataStreamType,
 		subnets:         make(map[string]*eth.SubnetConfig),
 	}
-	
+
 	// Set TLS if using default ports
 	if cfg.prysmHTTPPort == 443 || cfg.prysmGRPCPort == 443 {
 		cfg.useTLS = true
 	}
-	
+
 	return cfg
 }
 
@@ -257,26 +257,26 @@ func (c *DefaultConfig) Validate() error {
 	default:
 		return fmt.Errorf(constants.ErrInvalidValidationMode)
 	}
-	
+
 	// Both validation modes require Prysm connection
 	if c.prysmHost == "" {
 		return fmt.Errorf(constants.ErrPrysmHostRequired, c.validationMode)
 	}
-	
+
 	// Test duration should be positive
 	if c.testDuration <= 0 {
 		return fmt.Errorf("test duration must be positive")
 	}
-	
+
 	// Ports should be valid
 	if c.prysmHTTPPort <= 0 || c.prysmHTTPPort > 65535 {
 		return fmt.Errorf("Prysm HTTP port must be between 1 and 65535")
 	}
-	
+
 	if c.prysmGRPCPort <= 0 || c.prysmGRPCPort > 65535 {
 		return fmt.Errorf("Prysm gRPC port must be between 1 and 65535")
 	}
-	
+
 	return nil
 }
 
@@ -324,13 +324,13 @@ func redactConnectionString(connStr string) string {
 // Clone creates a deep copy of the configuration
 func (c *DefaultConfig) Clone() *DefaultConfig {
 	clone := *c
-	
+
 	// Deep copy subnets map
 	clone.subnets = make(map[string]*eth.SubnetConfig)
 	for k, v := range c.subnets {
 		clone.subnets[k] = v
 	}
-	
+
 	return &clone
 }
 
@@ -346,7 +346,7 @@ func GetValidationConfigs() map[ValidationMode]ValidationConfig {
 		},
 		ValidationModeIndependent: {
 			Mode:          ValidationModeIndependent,
-			HermesVersion: "v0.0.4-0.20250611164742-0abea7d82cb4",
+			HermesVersion: "v0.0.4-0.20250613124328-491d55340eb7",
 			ConfigOverrides: map[string]interface{}{
 				"validation-mode":                  "independent",
 				"validation-attestation-threshold": 10,
