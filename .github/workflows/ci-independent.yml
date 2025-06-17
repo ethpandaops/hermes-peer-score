@@ -118,7 +118,7 @@ jobs:
               cp "$INDEPENDENT_HTML" "reports/$DATE_DIR/$INDEPENDENT_HTML"
 
               # Copy the JavaScript data file that's generated with the HTML report
-              INDEPENDENT_JS=$(ls peer-score-report-independent-*-data.js 2>/dev/null | head -1)
+              INDEPENDENT_JS=$(ls peer-score-report-data-independent-*.js 2>/dev/null | head -1)
               if [ -n "$INDEPENDENT_JS" ] && [ -f "$INDEPENDENT_JS" ]; then
                 echo "Found JS data file: $INDEPENDENT_JS"
                 cp "$INDEPENDENT_JS" "reports/$DATE_DIR/$INDEPENDENT_JS"

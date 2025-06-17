@@ -137,7 +137,7 @@ jobs:
               cp "$DELEGATED_HTML" "reports/$DATE_DIR/$DELEGATED_HTML"
 
               # Copy the JavaScript data file that's generated with the HTML report
-              DELEGATED_JS=$(ls peer-score-report-delegated-*-data.js 2>/dev/null | head -1)
+              DELEGATED_JS=$(ls peer-score-report-data-delegated-*.js 2>/dev/null | head -1)
               if [ -n "$DELEGATED_JS" ] && [ -f "$DELEGATED_JS" ]; then
                 echo "Found JS data file: $DELEGATED_JS"
                 cp "$DELEGATED_JS" "reports/$DATE_DIR/$DELEGATED_JS"

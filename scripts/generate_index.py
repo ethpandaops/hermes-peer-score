@@ -219,7 +219,7 @@ def clean_html_template_syntax(html):
     return html
 
 
-def generate_reports_manifest(reports):
+def generate_reports_manifest(reports, reports_dir):
     """Generate the reports manifest JSON file."""
     manifest_data = {
         "generated_at": datetime.utcnow().isoformat() + "Z",
@@ -247,8 +247,30 @@ def generate_reports_manifest(reports):
                 "type": "html"
             })
 
-        # Add JS data file
-        js_filename = f"peer-score-report-{report['timestamp']}-data.js"
+        # Add JS data file - handle both old and new patterns
+        # New pattern: peer-score-report-data-{validation_mode}-{timestamp}.js
+        validation_mode = report.get('validation_mode', 'delegated')
+        timestamp_clean = report['timestamp']
+        
+        # Extract timestamp without validation mode prefix for new pattern
+        if timestamp_clean.startswith('delegated-') or timestamp_clean.startswith('independent-'):
+            timestamp_for_js = timestamp_clean.split('-', 1)[1]  # Remove validation mode prefix
+        else:
+            timestamp_for_js = timestamp_clean
+            
+        js_filename_new = f"peer-score-report-data-{validation_mode}-{timestamp_for_js}.js"
+        js_filename_old = f"peer-score-report-{report['timestamp']}-data.js"
+        
+        # Check which pattern exists (prefer new pattern)
+        js_file_new = reports_dir / report['date'] / js_filename_new
+        js_file_old = reports_dir / report['date'] / js_filename_old
+        
+        if js_file_new.exists():
+            js_filename = js_filename_new
+        elif js_file_old.exists():
+            js_filename = js_filename_old
+        else:
+            js_filename = js_filename_new  # Default to new pattern
         report_files.append({
             "filename": js_filename,
             "path": f"{report['date']}/{js_filename}",
@@ -380,7 +402,7 @@ def generate_index():
         f.write(html)
 
     # Generate and write manifest
-    manifest_data = generate_reports_manifest(reports)
+    manifest_data = generate_reports_manifest(reports, reports_dir)
     with open('reports/reports-manifest.json', 'w') as f:
         json.dump(manifest_data, f, indent=2)
 
