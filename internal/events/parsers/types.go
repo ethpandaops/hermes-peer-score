@@ -2,7 +2,7 @@ package parsers
 
 import "time"
 
-// PeerScoreData represents parsed peer score information
+// PeerScoreData represents parsed peer score information.
 type PeerScoreData struct {
 	Timestamp          time.Time    `json:"timestamp"`
 	Score              float64      `json:"score"`
@@ -12,7 +12,7 @@ type PeerScoreData struct {
 	Topics             []TopicScore `json:"topics"`
 }
 
-// TopicScore represents the peer score for a specific topic
+// TopicScore represents the peer score for a specific topic.
 type TopicScore struct {
 	Topic                    string        `json:"topic"`
 	TimeInMesh               time.Duration `json:"time_in_mesh"`
@@ -21,14 +21,14 @@ type TopicScore struct {
 	InvalidMessageDeliveries float64       `json:"invalid_message_deliveries"`
 }
 
-// GoodbyeData represents parsed goodbye event information
+// GoodbyeData represents parsed goodbye event information.
 type GoodbyeData struct {
 	Timestamp time.Time `json:"timestamp"`
 	Code      uint64    `json:"code"`
 	Reason    string    `json:"reason"`
 }
 
-// MeshData represents parsed mesh event information
+// MeshData represents parsed mesh event information.
 type MeshData struct {
 	Timestamp time.Time `json:"timestamp"`
 	Type      string    `json:"type"`      // "GRAFT" or "PRUNE"
@@ -37,7 +37,7 @@ type MeshData struct {
 	Reason    string    `json:"reason"`
 }
 
-// ConnectionData represents parsed connection event information
+// ConnectionData represents parsed connection event information.
 type ConnectionData struct {
 	Timestamp   time.Time `json:"timestamp"`
 	PeerID      string    `json:"peer_id"`
@@ -45,13 +45,13 @@ type ConnectionData struct {
 	ClientType  string    `json:"client_type"`
 }
 
-// DisconnectionData represents parsed disconnection event information
+// DisconnectionData represents parsed disconnection event information.
 type DisconnectionData struct {
 	Timestamp time.Time `json:"timestamp"`
 	PeerID    string    `json:"peer_id"`
 }
 
-// StatusData represents parsed status event information
+// StatusData represents parsed status event information.
 type StatusData struct {
 	Timestamp time.Time `json:"timestamp"`
 	PeerID    string    `json:"peer_id"`

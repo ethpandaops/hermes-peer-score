@@ -20,7 +20,7 @@ import (
 	"github.com/ethpandaops/hermes-peer-score/internal/config"
 )
 
-// DefaultHermesController implements the HermesController interface
+// DefaultHermesController implements the HermesController interface.
 type DefaultHermesController struct {
 	config        config.Config
 	logger        logrus.FieldLogger
@@ -30,7 +30,7 @@ type DefaultHermesController struct {
 	beaconConfig  *params.BeaconChainConfig
 }
 
-// NewHermesController creates a new Hermes controller
+// NewHermesController creates a new Hermes controller.
 func NewHermesController(cfg config.Config, logger logrus.FieldLogger) *DefaultHermesController {
 	return &DefaultHermesController{
 		config: cfg,
@@ -38,7 +38,7 @@ func NewHermesController(cfg config.Config, logger logrus.FieldLogger) *DefaultH
 	}
 }
 
-// Start initializes and starts the Hermes node
+// Start initializes and starts the Hermes node.
 func (hc *DefaultHermesController) Start(ctx context.Context) error {
 	hc.logger.Info("Starting Hermes node")
 
@@ -86,6 +86,7 @@ func (hc *DefaultHermesController) Start(ctx context.Context) error {
 		if strings.Contains(err.Error(), "in correct fork_digest") {
 			return fmt.Errorf("invalid fork digest (config.ethereum.network and prysm network probably don't match): %w", err)
 		}
+
 		return err
 	}
 
@@ -113,10 +114,11 @@ func (hc *DefaultHermesController) Start(ctx context.Context) error {
 	}()
 
 	hc.logger.Info("Hermes node started successfully")
+
 	return nil
 }
 
-// Stop gracefully shuts down the Hermes node
+// Stop gracefully shuts down the Hermes node.
 func (hc *DefaultHermesController) Stop() error {
 	hc.logger.Info("Stopping Hermes node")
 
@@ -128,18 +130,18 @@ func (hc *DefaultHermesController) Stop() error {
 	return nil
 }
 
-// RegisterEventCallback sets the callback function for processing events
+// RegisterEventCallback sets the callback function for processing events.
 func (hc *DefaultHermesController) RegisterEventCallback(callback func(ctx context.Context, event interface{}) error) {
 	hc.callback = callback
 	hc.logger.Debug("Event callback registered")
 }
 
-// GetNode returns the underlying Hermes node
+// GetNode returns the underlying Hermes node.
 func (hc *DefaultHermesController) GetNode() interface{} {
 	return hc.node
 }
 
-// createHermesConfig creates the Hermes node configuration
+// createHermesConfig creates the Hermes node configuration.
 func (hc *DefaultHermesController) createHermesConfig(forkDigest [4]byte, currentForkVersion [4]byte) *eth.NodeConfig {
 	cfg := hc.config.AsHermesConfig()
 	// Genesis config will be set by the caller
@@ -161,7 +163,7 @@ func (hc *DefaultHermesController) createHermesConfig(forkDigest [4]byte, curren
 	return cfg
 }
 
-// applyValidationConfig applies validation-specific configuration overrides
+// applyValidationConfig applies validation-specific configuration overrides.
 func (hc *DefaultHermesController) applyValidationConfig(cfg *eth.NodeConfig) {
 	validationMode := hc.config.GetValidationMode()
 
@@ -179,6 +181,7 @@ func (hc *DefaultHermesController) applyValidationConfig(cfg *eth.NodeConfig) {
 		}
 	default:
 		hc.logger.Warnf("Unknown validation mode: %s", validationMode)
+
 		return
 	}
 

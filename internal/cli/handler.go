@@ -15,19 +15,19 @@ import (
 	"github.com/ethpandaops/hermes-peer-score/internal/reports"
 )
 
-// Handler manages CLI operations and command routing
+// Handler manages CLI operations and command routing.
 type Handler struct {
 	logger logrus.FieldLogger
 }
 
-// NewHandler creates a new CLI handler
+// NewHandler creates a new CLI handler.
 func NewHandler(logger logrus.FieldLogger) *Handler {
 	return &Handler{
 		logger: logger.WithField("component", "cli_handler"),
 	}
 }
 
-// Run executes the main application logic based on configuration
+// Run executes the main application logic based on configuration.
 func (h *Handler) Run(cfg *config.DefaultConfig) error {
 	h.logger.Info("Starting Hermes Peer Score Tool")
 
@@ -44,7 +44,7 @@ func (h *Handler) Run(cfg *config.DefaultConfig) error {
 	}
 }
 
-// handleHTMLOnlyMode generates HTML report from existing JSON file
+// handleHTMLOnlyMode generates HTML report from existing JSON file.
 func (h *Handler) handleHTMLOnlyMode(cfg *config.DefaultConfig) error {
 	h.logger.Info("Running in HTML-only mode")
 
@@ -81,9 +81,11 @@ func (h *Handler) handleHTMLOnlyMode(cfg *config.DefaultConfig) error {
 	// Generate HTML report
 	if apiKey != "" && !cfg.IsSkipAI() {
 		h.logger.Info("Including AI analysis in HTML report")
+
 		err = reportGen.GenerateHTMLFromJSONWithAI(inputFile, outputFile, apiKey)
 	} else {
 		h.logger.Info("Generating HTML report without AI analysis")
+
 		err = reportGen.GenerateHTMLFromJSON(inputFile, outputFile)
 	}
 
@@ -92,10 +94,11 @@ func (h *Handler) handleHTMLOnlyMode(cfg *config.DefaultConfig) error {
 	}
 
 	h.logger.WithField("output", outputFile).Info("HTML report generated successfully")
+
 	return nil
 }
 
-// handleGoModUpdate updates go.mod for the specified validation mode
+// handleGoModUpdate updates go.mod for the specified validation mode.
 func (h *Handler) handleGoModUpdate(cfg *config.DefaultConfig) error {
 	validationMode := cfg.GetValidationMode()
 	h.logger.WithField("validation_mode", validationMode).Info("Updating go.mod")
@@ -109,10 +112,11 @@ func (h *Handler) handleGoModUpdate(cfg *config.DefaultConfig) error {
 	}
 
 	h.logger.WithField("validation_mode", validationMode).Info("Successfully updated go.mod")
+
 	return nil
 }
 
-// handleGoModValidation validates go.mod for the specified validation mode
+// handleGoModValidation validates go.mod for the specified validation mode.
 func (h *Handler) handleGoModValidation(cfg *config.DefaultConfig) error {
 	validationMode := cfg.GetValidationMode()
 	h.logger.WithField("validation_mode", validationMode).Info("Validating go.mod")
@@ -123,14 +127,16 @@ func (h *Handler) handleGoModValidation(cfg *config.DefaultConfig) error {
 	// Validate go.mod for the validation mode
 	if err := goModManager.ValidateForValidationMode(validationMode); err != nil {
 		h.logger.WithError(err).Error("go.mod validation failed")
+
 		return fmt.Errorf("go.mod validation failed for validation mode %s: %w", validationMode, err)
 	}
 
 	h.logger.WithField("validation_mode", validationMode).Info("go.mod validation successful")
+
 	return nil
 }
 
-// handlePeerScoreTest runs the main peer scoring test
+// handlePeerScoreTest runs the main peer scoring test.
 func (h *Handler) handlePeerScoreTest(cfg *config.DefaultConfig) error {
 	h.logger.WithField("validation_mode", cfg.GetValidationMode()).Info("Starting peer score test")
 
@@ -170,10 +176,11 @@ func (h *Handler) handlePeerScoreTest(cfg *config.DefaultConfig) error {
 	}
 
 	h.logger.Info("Peer score test completed successfully")
+
 	return nil
 }
 
-// setupGracefulShutdown configures signal handling for graceful shutdown
+// setupGracefulShutdown configures signal handling for graceful shutdown.
 func (h *Handler) setupGracefulShutdown() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -189,7 +196,7 @@ func (h *Handler) setupGracefulShutdown() (context.Context, context.CancelFunc) 
 	return ctx, cancel
 }
 
-// logConnectionSettings logs connection details with password redaction
+// logConnectionSettings logs connection details with password redaction.
 func (h *Handler) logConnectionSettings(cfg *config.DefaultConfig) {
 	h.logger.Info("Connection settings:")
 	h.logger.WithFields(logrus.Fields{
@@ -200,10 +207,11 @@ func (h *Handler) logConnectionSettings(cfg *config.DefaultConfig) {
 	}).Info("Prysm connection configured")
 }
 
-// generateHTMLFilename generates HTML filename from JSON filename
+// generateHTMLFilename generates HTML filename from JSON filename.
 func generateHTMLFilename(jsonFile string) string {
 	if len(jsonFile) > 5 && jsonFile[len(jsonFile)-5:] == ".json" {
 		return jsonFile[:len(jsonFile)-5] + ".html"
 	}
+
 	return jsonFile + ".html"
 }

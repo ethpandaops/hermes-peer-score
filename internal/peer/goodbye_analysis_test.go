@@ -145,7 +145,7 @@ func TestCalculateGoodbyeEventsSummary(t *testing.T) {
 	if len(summary.TopReasons) == 0 {
 		t.Error("Expected at least one top reason")
 	}
-	
+
 	// The most common reason should be "Client shutdown" (2 occurrences)
 	if len(summary.TopReasons) > 0 && summary.TopReasons[0] != "Client shutdown" {
 		t.Errorf("Expected first top reason to be 'Client shutdown', got '%s'", summary.TopReasons[0])
@@ -185,7 +185,7 @@ func TestParseTimestampString(t *testing.T) {
 	for _, tc := range testCases {
 		result := parseTimestampString(tc.input)
 		isZero := result.IsZero()
-		
+
 		if tc.expected && isZero {
 			t.Errorf("Expected successful parsing for '%s', but got zero time", tc.input)
 		}
@@ -253,7 +253,7 @@ func TestExtractGoodbyeEvent(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := extractGoodbyeEvent(tc.input)
-			
+
 			if result.Code != tc.expected.Code {
 				t.Errorf("Expected code %d, got %d", tc.expected.Code, result.Code)
 			}

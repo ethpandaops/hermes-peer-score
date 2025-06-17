@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	
+
 	"github.com/ethpandaops/hermes-peer-score/internal/config"
 )
 
-// Tool defines the interface for the main peer score tool
+// Tool defines the interface for the main peer score tool.
 type Tool interface {
 	Start(ctx context.Context) error
 	Stop() error
@@ -18,10 +18,10 @@ type Tool interface {
 	GetConfig() Config
 }
 
-// Config is an alias for the config package interface
+// Config is an alias for the config package interface.
 type Config = config.Config
 
-// EventManager defines the interface for managing events
+// EventManager defines the interface for managing events.
 type EventManager interface {
 	RegisterHandlers() error
 	HandleEvent(ctx context.Context, event interface{}) error
@@ -29,7 +29,7 @@ type EventManager interface {
 	Stop() error
 }
 
-// PeerManager defines the interface for managing peer data
+// PeerManager defines the interface for managing peer data.
 type PeerManager interface {
 	GetPeer(peerID string) (interface{}, bool)
 	CreatePeer(peerID string) interface{}
@@ -38,13 +38,13 @@ type PeerManager interface {
 	GetStats() interface{}
 }
 
-// ReportGenerator defines the interface for generating reports
+// ReportGenerator defines the interface for generating reports.
 type ReportGenerator interface {
 	Generate(config Config, startTime, endTime time.Time, peers map[string]interface{}) (*Report, error)
 	SaveReport(report *Report) error
 }
 
-// HermesController defines the interface for controlling the Hermes node
+// HermesController defines the interface for controlling the Hermes node.
 type HermesController interface {
 	Start(ctx context.Context) error
 	Stop() error
@@ -52,7 +52,7 @@ type HermesController interface {
 	GetNode() interface{}
 }
 
-// Report represents the main report structure
+// Report represents the main report structure.
 type Report struct {
 	Config               Config                    `json:"config"`
 	ValidationMode       string                    `json:"validation_mode"`

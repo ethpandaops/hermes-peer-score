@@ -6,7 +6,7 @@ import (
 	"github.com/probe-lab/hermes/eth"
 )
 
-// ValidationMode represents the type of validation approach used by Hermes
+// ValidationMode represents the type of validation approach used by Hermes.
 type ValidationMode string
 
 const (
@@ -14,7 +14,7 @@ const (
 	ValidationModeIndependent ValidationMode = "independent" // Uses Prysm for beacon state but validates internally
 )
 
-// Config defines the interface for tool configuration
+// Config defines the interface for tool configuration.
 type Config interface {
 	GetValidationMode() ValidationMode
 	GetTestDuration() time.Duration
@@ -28,7 +28,7 @@ type Config interface {
 	AsHermesConfig() *eth.NodeConfig
 	Validate() error
 	HostWithRedactedSecrets() string
-	
+
 	// Report configuration
 	IsHTMLOnly() bool
 	GetInputJSON() string
@@ -38,20 +38,20 @@ type Config interface {
 	IsValidateGoMod() bool
 }
 
-// Validator defines the interface for configuration validation
+// Validator defines the interface for configuration validation.
 type Validator interface {
 	ValidateValidationMode(mode string) (ValidationMode, error)
 	ValidateConfig(config Config) error
 }
 
-// Manager defines the interface for configuration management
+// Manager defines the interface for configuration management.
 type Manager interface {
 	LoadFromFlags() (Config, error)
 	GetValidationConfig(mode ValidationMode) ValidationConfig
 	GenerateTimestampedFilename(mode ValidationMode, base string, timestamp time.Time) string
 }
 
-// ValidationConfig holds configuration specific to a validation mode
+// ValidationConfig holds configuration specific to a validation mode.
 type ValidationConfig struct {
 	Mode            ValidationMode         `json:"mode"`
 	HermesVersion   string                 `json:"hermes_version"`

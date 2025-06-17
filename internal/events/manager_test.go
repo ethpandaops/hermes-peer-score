@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// MockHandler for testing
+// MockHandler for testing.
 type MockHandler struct {
 	eventType    string
 	handleCalled bool
@@ -17,6 +17,7 @@ type MockHandler struct {
 
 func (m *MockHandler) HandleEvent(ctx context.Context, event *host.TraceEvent) error {
 	m.handleCalled = true
+
 	return m.handleError
 }
 
@@ -24,7 +25,7 @@ func (m *MockHandler) EventType() string {
 	return m.eventType
 }
 
-// MockToolInterface for testing
+// MockToolInterface for testing.
 type MockToolInterface struct {
 	peers       map[string]interface{}
 	eventCounts map[string]map[string]int
@@ -39,12 +40,14 @@ func NewMockToolInterface() *MockToolInterface {
 
 func (m *MockToolInterface) GetPeer(peerID string) (interface{}, bool) {
 	peer, exists := m.peers[peerID]
+
 	return peer, exists
 }
 
 func (m *MockToolInterface) CreatePeer(peerID string) interface{} {
 	peer := map[string]interface{}{"peer_id": peerID}
 	m.peers[peerID] = peer
+
 	return peer
 }
 
@@ -52,6 +55,15 @@ func (m *MockToolInterface) UpdatePeer(peerID string, updateFn func(interface{})
 	if peer, exists := m.peers[peerID]; exists {
 		updateFn(peer)
 	}
+}
+
+func (m *MockToolInterface) UpdateOrCreatePeer(peerID string, updateFn func(interface{})) {
+	peer, exists := m.peers[peerID]
+	if !exists {
+		peer = m.CreatePeer(peerID)
+	}
+
+	updateFn(peer)
 }
 
 func (m *MockToolInterface) GetLogger() logrus.FieldLogger {
@@ -62,6 +74,7 @@ func (m *MockToolInterface) IncrementEventCount(peerID, eventType string) {
 	if _, exists := m.eventCounts[peerID]; !exists {
 		m.eventCounts[peerID] = make(map[string]int)
 	}
+
 	m.eventCounts[peerID][eventType]++
 }
 

@@ -11,14 +11,14 @@ import (
 	"github.com/ethpandaops/hermes-peer-score/internal/events/handlers"
 )
 
-// DefaultManager implements the Manager interface
+// DefaultManager implements the Manager interface.
 type DefaultManager struct {
 	handlers map[string]Handler
 	tool     common.ToolInterface
 	logger   logrus.FieldLogger
 }
 
-// NewManager creates a new event manager with the given tool interface
+// NewManager creates a new event manager with the given tool interface.
 func NewManager(tool common.ToolInterface, logger logrus.FieldLogger) *DefaultManager {
 	return &DefaultManager{
 		handlers: make(map[string]Handler),
@@ -27,7 +27,7 @@ func NewManager(tool common.ToolInterface, logger logrus.FieldLogger) *DefaultMa
 	}
 }
 
-// RegisterHandler registers a handler for a specific event type
+// RegisterHandler registers a handler for a specific event type.
 func (m *DefaultManager) RegisterHandler(handler Handler) error {
 	eventType := handler.EventType()
 	if eventType == "" {
@@ -39,17 +39,20 @@ func (m *DefaultManager) RegisterHandler(handler Handler) error {
 	}
 
 	m.handlers[eventType] = handler
+
 	m.logger.WithField("event_type", eventType).Debug("Registered event handler")
+
 	return nil
 }
 
-// GetHandler returns the handler for the given event type
+// GetHandler returns the handler for the given event type.
 func (m *DefaultManager) GetHandler(eventType string) (Handler, bool) {
 	handler, exists := m.handlers[eventType]
+
 	return handler, exists
 }
 
-// HandleEvent routes the event to the appropriate handler
+// HandleEvent routes the event to the appropriate handler.
 func (m *DefaultManager) HandleEvent(ctx context.Context, event *host.TraceEvent) error {
 	// Add validation mode context to all event logging
 	eventLogger := m.logger.WithFields(logrus.Fields{
@@ -66,6 +69,7 @@ func (m *DefaultManager) HandleEvent(ctx context.Context, event *host.TraceEvent
 	handler, exists := m.handlers[event.Type]
 	if !exists {
 		eventLogger.Debug("Unhandled event type")
+
 		return nil
 	}
 
@@ -77,7 +81,7 @@ func (m *DefaultManager) HandleEvent(ctx context.Context, event *host.TraceEvent
 	return nil
 }
 
-// RegisterDefaultHandlers registers all the default event handlers
+// RegisterDefaultHandlers registers all the default event handlers.
 func (m *DefaultManager) RegisterDefaultHandlers() error {
 	// Register all event handlers
 	eventHandlers := []Handler{
@@ -94,7 +98,9 @@ func (m *DefaultManager) RegisterDefaultHandlers() error {
 		if err := m.RegisterHandler(handler); err != nil {
 			return fmt.Errorf("failed to register handler %s: %w", handler.EventType(), err)
 		}
+
 		m.logger.WithField("event_type", handler.EventType()).Debug("Registered event handler")
 	}
+
 	return nil
 }

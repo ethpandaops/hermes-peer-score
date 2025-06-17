@@ -8,10 +8,10 @@ import (
 	"time"
 )
 
-// DefaultParser provides common parsing functionality
+// DefaultParser provides common parsing functionality.
 type DefaultParser struct{}
 
-// ParsePeerScoreFromMap parses peer score data from a map payload
+// ParsePeerScoreFromMap parses peer score data from a map payload.
 func (p *DefaultParser) ParsePeerScoreFromMap(payload map[string]interface{}) (*PeerScoreData, error) {
 	score := &PeerScoreData{
 		Timestamp: time.Now(),
@@ -53,7 +53,7 @@ func (p *DefaultParser) ParsePeerScoreFromMap(payload map[string]interface{}) (*
 	return score, nil
 }
 
-// ParseGoodbyeFromMap parses goodbye event data from a map payload
+// ParseGoodbyeFromMap parses goodbye event data from a map payload.
 func (p *DefaultParser) ParseGoodbyeFromMap(payload map[string]interface{}) (*GoodbyeData, error) {
 	goodbye := &GoodbyeData{
 		Timestamp: time.Now(),
@@ -74,7 +74,7 @@ func (p *DefaultParser) ParseGoodbyeFromMap(payload map[string]interface{}) (*Go
 	return goodbye, nil
 }
 
-// ParseMeshFromMap parses mesh event data from a map payload
+// ParseMeshFromMap parses mesh event data from a map payload.
 func (p *DefaultParser) ParseMeshFromMap(payload map[string]interface{}, eventType string) (*MeshData, error) {
 	mesh := &MeshData{
 		Timestamp: time.Now(),
@@ -102,7 +102,7 @@ func (p *DefaultParser) ParseMeshFromMap(payload map[string]interface{}, eventTy
 	return mesh, nil
 }
 
-// parseTopicScores parses topic score data from various formats
+// parseTopicScores parses topic score data from various formats.
 func (p *DefaultParser) parseTopicScores(topicsVal interface{}) ([]TopicScore, error) {
 	var topics []TopicScore
 
@@ -111,6 +111,7 @@ func (p *DefaultParser) parseTopicScores(topicsVal interface{}) ([]TopicScore, e
 		if val.IsNil() {
 			return topics, nil
 		}
+
 		val = val.Elem()
 	}
 
@@ -124,7 +125,7 @@ func (p *DefaultParser) parseTopicScores(topicsVal interface{}) ([]TopicScore, e
 	}
 }
 
-// parseTopicScoresFromMap parses topic scores from a map structure
+// parseTopicScoresFromMap parses topic scores from a map structure.
 func (p *DefaultParser) parseTopicScoresFromMap(val reflect.Value) ([]TopicScore, error) {
 	var topics []TopicScore
 
@@ -138,17 +139,17 @@ func (p *DefaultParser) parseTopicScoresFromMap(val reflect.Value) ([]TopicScore
 
 		if topicVal.Kind() == reflect.Map {
 			topic := TopicScore{Topic: topicName}
-			
+
 			// Parse topic score fields
 			for _, topicKey := range topicVal.MapKeys() {
 				fieldName := topicKey.String()
 				fieldVal := topicVal.MapIndex(topicKey)
-				
+
 				if err := p.setTopicScoreField(&topic, fieldName, fieldVal.Interface()); err != nil {
 					continue // Skip invalid fields
 				}
 			}
-			
+
 			topics = append(topics, topic)
 		}
 	}
@@ -156,7 +157,7 @@ func (p *DefaultParser) parseTopicScoresFromMap(val reflect.Value) ([]TopicScore
 	return topics, nil
 }
 
-// parseTopicScoresFromSlice parses topic scores from a slice structure
+// parseTopicScoresFromSlice parses topic scores from a slice structure.
 func (p *DefaultParser) parseTopicScoresFromSlice(val reflect.Value) ([]TopicScore, error) {
 	var topics []TopicScore
 
@@ -168,16 +169,16 @@ func (p *DefaultParser) parseTopicScoresFromSlice(val reflect.Value) ([]TopicSco
 
 		if item.Kind() == reflect.Map {
 			topic := TopicScore{}
-			
+
 			for _, key := range item.MapKeys() {
 				fieldName := key.String()
 				fieldVal := item.MapIndex(key)
-				
+
 				if err := p.setTopicScoreField(&topic, fieldName, fieldVal.Interface()); err != nil {
 					continue // Skip invalid fields
 				}
 			}
-			
+
 			topics = append(topics, topic)
 		}
 	}
@@ -185,7 +186,7 @@ func (p *DefaultParser) parseTopicScoresFromSlice(val reflect.Value) ([]TopicSco
 	return topics, nil
 }
 
-// setTopicScoreField sets a field on the TopicScore struct
+// setTopicScoreField sets a field on the TopicScore struct.
 func (p *DefaultParser) setTopicScoreField(topic *TopicScore, fieldName string, value interface{}) error {
 	switch fieldName {
 	case "Topic":
@@ -209,10 +210,11 @@ func (p *DefaultParser) setTopicScoreField(topic *TopicScore, fieldName string, 
 			topic.InvalidMessageDeliveries = float
 		}
 	}
+
 	return nil
 }
 
-// parseFloat64 safely converts various types to float64
+// parseFloat64 safely converts various types to float64.
 func parseFloat64(val interface{}) (float64, error) {
 	switch v := val.(type) {
 	case float64:
@@ -232,7 +234,9 @@ func parseFloat64(val interface{}) (float64, error) {
 	}
 }
 
-// parseUint64 safely converts various types to uint64
+// parseUint64 safely converts various types to uint64.
+//
+//nolint:gocyclo // complex switch.
 func parseUint64(val interface{}) (uint64, error) {
 	switch v := val.(type) {
 	case uint64:
@@ -245,16 +249,19 @@ func parseUint64(val interface{}) (uint64, error) {
 		if v >= 0 {
 			return uint64(v), nil
 		}
+
 		return 0, fmt.Errorf("negative int cannot be converted to uint64")
 	case int32:
 		if v >= 0 {
 			return uint64(v), nil
 		}
+
 		return 0, fmt.Errorf("negative int32 cannot be converted to uint64")
 	case int64:
 		if v >= 0 {
 			return uint64(v), nil
 		}
+
 		return 0, fmt.Errorf("negative int64 cannot be converted to uint64")
 	case string:
 		return strconv.ParseUint(v, 10, 64)
@@ -262,12 +269,12 @@ func parseUint64(val interface{}) (uint64, error) {
 		// Try to extract uint64 value from SSZ types or other custom types
 		// Use reflection to check if the type has methods or fields we can use
 		rval := reflect.ValueOf(v)
-		
+
 		// If it's a pointer, dereference it
 		if rval.Kind() == reflect.Ptr && !rval.IsNil() {
 			rval = rval.Elem()
 		}
-		
+
 		// Handle struct types (like SSZ types)
 		if rval.Kind() == reflect.Struct {
 			// Try common method names for getting uint64 value
@@ -284,10 +291,10 @@ func parseUint64(val interface{}) (uint64, error) {
 							return resultVal.Uint(), nil
 						case reflect.Int, reflect.Int32, reflect.Int64, reflect.Int16, reflect.Int8:
 							if resultVal.Int() >= 0 {
-								return uint64(resultVal.Int()), nil
+								return uint64(resultVal.Int()), nil //nolint:gosec // ok.
 							}
 						}
-						
+
 						// If the method returns an interface{}, try to recursively parse it
 						if resultVal.Kind() == reflect.Interface && !resultVal.IsNil() {
 							if parsed, err := parseUint64(resultVal.Interface()); err == nil {
@@ -297,7 +304,7 @@ func parseUint64(val interface{}) (uint64, error) {
 					}
 				}
 			}
-			
+
 			// Try accessing common field names if no methods work
 			fieldNames := []string{"Value", "Val", "Data", "Raw"}
 			for _, fieldName := range fieldNames {
@@ -309,10 +316,10 @@ func parseUint64(val interface{}) (uint64, error) {
 						return field.Uint(), nil
 					case reflect.Int, reflect.Int32, reflect.Int64, reflect.Int16, reflect.Int8:
 						if field.Int() >= 0 {
-							return uint64(field.Int()), nil
+							return uint64(field.Int()), nil //nolint:gosec //ok.
 						}
 					}
-					
+
 					// Try recursive parsing on field value
 					if parsed, err := parseUint64(field.Interface()); err == nil {
 						return parsed, nil
@@ -320,7 +327,7 @@ func parseUint64(val interface{}) (uint64, error) {
 				}
 			}
 		}
-		
+
 		// For direct numeric types that might be wrapped
 		switch rval.Kind() {
 		case reflect.Uint64:
@@ -329,10 +336,10 @@ func parseUint64(val interface{}) (uint64, error) {
 			return rval.Uint(), nil
 		case reflect.Int, reflect.Int32, reflect.Int64, reflect.Int16, reflect.Int8:
 			if rval.Int() >= 0 {
-				return uint64(rval.Int()), nil
+				return uint64(rval.Int()), nil //nolint:gosec //ok.
 			}
 		}
-		
+
 		// Try type assertion for common SSZ uint64 types with String method
 		if stringer, ok := v.(fmt.Stringer); ok {
 			// If it has a String method, try parsing that
@@ -342,7 +349,7 @@ func parseUint64(val interface{}) (uint64, error) {
 				}
 			}
 		}
-		
+
 		// Special handling for known Ethereum SSZ types by name
 		typeName := reflect.TypeOf(v).String()
 		if strings.Contains(typeName, "SSZ") || strings.Contains(typeName, "Uint64") {
@@ -356,12 +363,12 @@ func parseUint64(val interface{}) (uint64, error) {
 				}
 			}
 		}
-		
+
 		return 0, fmt.Errorf("cannot convert %T to uint64", v)
 	}
 }
 
-// parseDuration safely converts various types to time.Duration
+// parseDuration safely converts various types to time.Duration.
 func parseDuration(val interface{}) (time.Duration, error) {
 	switch v := val.(type) {
 	case time.Duration:

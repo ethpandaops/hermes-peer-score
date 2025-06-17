@@ -11,14 +11,14 @@ import (
 	"github.com/ethpandaops/hermes-peer-score/internal/peer"
 )
 
-// PeerScoreHandler handles peer score events
+// PeerScoreHandler handles peer score events.
 type PeerScoreHandler struct {
 	tool   common.ToolInterface
 	logger logrus.FieldLogger
 	parser *parsers.DefaultParser
 }
 
-// NewPeerScoreHandler creates a new peer score event handler
+// NewPeerScoreHandler creates a new peer score event handler.
 func NewPeerScoreHandler(tool common.ToolInterface, logger logrus.FieldLogger) *PeerScoreHandler {
 	return &PeerScoreHandler{
 		tool:   tool,
@@ -27,22 +27,24 @@ func NewPeerScoreHandler(tool common.ToolInterface, logger logrus.FieldLogger) *
 	}
 }
 
-// EventType returns the event type this handler manages
+// EventType returns the event type this handler manages.
 func (h *PeerScoreHandler) EventType() string {
 	return "PEERSCORE"
 }
 
-// HandleEvent processes a peer score event
+// HandleEvent processes a peer score event.
 func (h *PeerScoreHandler) HandleEvent(ctx context.Context, event *host.TraceEvent) error {
 	payload, ok := event.Payload.(map[string]interface{})
 	if !ok {
 		h.logger.Error("failed to convert peer score payload to map[string]interface{}")
+
 		return nil
 	}
 
 	peerID, ok := payload["PeerID"].(string)
 	if !ok {
 		h.logger.Error("peer score event missing or invalid PeerID")
+
 		return nil
 	}
 
@@ -50,6 +52,7 @@ func (h *PeerScoreHandler) HandleEvent(ctx context.Context, event *host.TraceEve
 	scoreData, err := h.parser.ParsePeerScoreFromMap(payload)
 	if err != nil {
 		h.logger.WithError(err).WithField("peer_id", common.FormatShortPeerID(peerID)).Error("failed to parse peer score data")
+
 		return nil
 	}
 
@@ -74,7 +77,7 @@ func (h *PeerScoreHandler) HandleEvent(ctx context.Context, event *host.TraceEve
 	return nil
 }
 
-// addPeerScore adds a peer score snapshot to the peer's current session
+// addPeerScore adds a peer score snapshot to the peer's current session.
 func (h *PeerScoreHandler) addPeerScore(peerStats *peer.Stats, scoreData *parsers.PeerScoreData) {
 	// Find the most recent active session
 	for i := len(peerStats.ConnectionSessions) - 1; i >= 0; i-- {
@@ -89,7 +92,7 @@ func (h *PeerScoreHandler) addPeerScore(peerStats *peer.Stats, scoreData *parser
 				BehaviourPenalty:   scoreData.BehaviourPenalty,
 				Topics:             make([]peer.TopicScore, 0, len(scoreData.Topics)),
 			}
-			
+
 			// Copy topic scores with full data
 			for _, topicScore := range scoreData.Topics {
 				scoreSnapshot.Topics = append(scoreSnapshot.Topics, peer.TopicScore{
@@ -100,31 +103,32 @@ func (h *PeerScoreHandler) addPeerScore(peerStats *peer.Stats, scoreData *parser
 					InvalidMessageDeliveries: topicScore.InvalidMessageDeliveries,
 				})
 			}
-			
+
 			session.PeerScores = append(session.PeerScores, scoreSnapshot)
-			
+
 			h.logger.WithFields(logrus.Fields{
-				"peer_id":    common.FormatShortPeerID(peerStats.PeerID),
-				"score":      scoreData.Score,
-				"topics":     len(scoreData.Topics),
-				"timestamp":  scoreData.Timestamp,
+				"peer_id":   common.FormatShortPeerID(peerStats.PeerID),
+				"score":     scoreData.Score,
+				"topics":    len(scoreData.Topics),
+				"timestamp": scoreData.Timestamp,
 			}).Debug("Added peer score snapshot")
+
 			return
 		}
 	}
-	
-	// No active session found, create a new one for this score event
+
+	// No active session found, create a new one for this score event.
 	h.logger.WithField("peer_id", common.FormatShortPeerID(peerStats.PeerID)).Debug("Creating new session for peer score event")
-	
+
 	now := scoreData.Timestamp
 	session := peer.ConnectionSession{
-		ConnectedAt:    &now,
-		Disconnected:   false,
-		PeerScores:     []peer.PeerScoreSnapshot{},
-		GoodbyeEvents:  []peer.GoodbyeEvent{},
-		MeshEvents:     []peer.MeshEvent{},
+		ConnectedAt:   &now,
+		Disconnected:  false,
+		PeerScores:    []peer.PeerScoreSnapshot{},
+		GoodbyeEvents: []peer.GoodbyeEvent{},
+		MeshEvents:    []peer.MeshEvent{},
 	}
-	
+
 	// Add the score to the new session
 	scoreSnapshot := peer.PeerScoreSnapshot{
 		Score:              scoreData.Score,
@@ -134,7 +138,7 @@ func (h *PeerScoreHandler) addPeerScore(peerStats *peer.Stats, scoreData *parser
 		BehaviourPenalty:   scoreData.BehaviourPenalty,
 		Topics:             make([]peer.TopicScore, 0, len(scoreData.Topics)),
 	}
-	
+
 	// Copy topic scores with full data
 	for _, topicScore := range scoreData.Topics {
 		scoreSnapshot.Topics = append(scoreSnapshot.Topics, peer.TopicScore{
@@ -145,14 +149,15 @@ func (h *PeerScoreHandler) addPeerScore(peerStats *peer.Stats, scoreData *parser
 			InvalidMessageDeliveries: topicScore.InvalidMessageDeliveries,
 		})
 	}
-	
+
 	session.PeerScores = append(session.PeerScores, scoreSnapshot)
+
 	peerStats.ConnectionSessions = append(peerStats.ConnectionSessions, session)
-	
+
 	h.logger.WithFields(logrus.Fields{
-		"peer_id":    common.FormatShortPeerID(peerStats.PeerID),
-		"score":      scoreData.Score,
-		"topics":     len(scoreData.Topics),
-		"timestamp":  scoreData.Timestamp,
+		"peer_id":   common.FormatShortPeerID(peerStats.PeerID),
+		"score":     scoreData.Score,
+		"topics":    len(scoreData.Topics),
+		"timestamp": scoreData.Timestamp,
 	}).Debug("Added peer score snapshot to new session")
 }

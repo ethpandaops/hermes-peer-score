@@ -7,12 +7,12 @@ import (
 	"time"
 )
 
-// AnalyzeGoodbyeReasons groups and analyzes goodbye reasons from events
+// AnalyzeGoodbyeReasons groups and analyzes goodbye reasons from events.
 func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats {
 	stats := make(map[string]*GoodbyeReasonStats)
 
 	for _, event := range events {
-		// Use lowercase for grouping but preserve original
+		// Use lowercase for grouping but preserve original.
 		key := strings.ToLower(strings.TrimSpace(event.Reason))
 		if key == "" {
 			key = "unknown"
@@ -28,12 +28,15 @@ func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats
 			if len(stat.Examples) < 3 && event.Reason != "" {
 				// Check if this exact example already exists
 				alreadyExists := false
+
 				for _, ex := range stat.Examples {
 					if ex == event.Reason {
 						alreadyExists = true
+
 						break
 					}
 				}
+
 				if !alreadyExists {
 					stat.Examples = append(stat.Examples, event.Reason)
 				}
@@ -60,19 +63,21 @@ func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats
 	return stats
 }
 
-// containsCode checks if a code exists in the slice
+// containsCode checks if a code exists in the slice.
 func containsCode(codes []uint64, code uint64) bool {
 	for _, c := range codes {
 		if c == code {
 			return true
 		}
 	}
+
 	return false
 }
 
-// CalculateGoodbyeEventsSummary aggregates goodbye event statistics from all peers
+// CalculateGoodbyeEventsSummary aggregates goodbye event statistics from all peers.
 func CalculateGoodbyeEventsSummary(peers map[string]*Stats) GoodbyeEventsSummary {
 	var allEvents []GoodbyeEvent
+
 	codeFreq := make(map[uint64]int)
 
 	// Collect all goodbye events from all peers
@@ -100,11 +105,14 @@ func CalculateGoodbyeEventsSummary(peers map[string]*Stats) GoodbyeEventsSummary
 
 	// Get top 5 reasons
 	var topReasons []string
+
 	for i := 0; i < 5 && i < len(statsList); i++ {
 		reason := statsList[i].Reason
+
 		if reason == "" {
 			reason = "no reason provided"
 		}
+
 		topReasons = append(topReasons, reason)
 	}
 
@@ -117,9 +125,10 @@ func CalculateGoodbyeEventsSummary(peers map[string]*Stats) GoodbyeEventsSummary
 	}
 }
 
-// CalculateGoodbyeEventsSummaryFromInterface calculates goodbye events summary from generic peer data
+// CalculateGoodbyeEventsSummaryFromInterface calculates goodbye events summary from generic peer data.
 func CalculateGoodbyeEventsSummaryFromInterface(peers map[string]interface{}) GoodbyeEventsSummary {
 	var allEvents []GoodbyeEvent
+
 	codeFreq := make(map[uint64]int)
 
 	// Collect all goodbye events from all peers
@@ -170,11 +179,13 @@ func CalculateGoodbyeEventsSummaryFromInterface(peers map[string]interface{}) Go
 
 	// Get top 5 reasons
 	var topReasons []string
+
 	for i := 0; i < 5 && i < len(statsList); i++ {
 		reason := statsList[i].Reason
 		if reason == "" {
 			reason = "no reason provided"
 		}
+
 		topReasons = append(topReasons, reason)
 	}
 
@@ -187,7 +198,7 @@ func CalculateGoodbyeEventsSummaryFromInterface(peers map[string]interface{}) Go
 	}
 }
 
-// extractGoodbyeEvent extracts a GoodbyeEvent from a map
+// extractGoodbyeEvent extracts a GoodbyeEvent from a map.
 func extractGoodbyeEvent(data map[string]interface{}) *GoodbyeEvent {
 	event := &GoodbyeEvent{}
 
@@ -220,9 +231,9 @@ func extractGoodbyeEvent(data map[string]interface{}) *GoodbyeEvent {
 	} else if code, ok := data["code"].(uint64); ok {
 		event.Code = code
 	} else if code, ok := data["code"].(int64); ok {
-		event.Code = uint64(code)
+		event.Code = uint64(code) //nolint:gosec // ok.
 	} else if code, ok := data["code"].(int); ok {
-		event.Code = uint64(code)
+		event.Code = uint64(code) //nolint:gosec // ok.
 	}
 
 	// Extract reason
@@ -233,7 +244,7 @@ func extractGoodbyeEvent(data map[string]interface{}) *GoodbyeEvent {
 	return event
 }
 
-// parseTimestampString attempts to parse timestamp strings in common formats
+// parseTimestampString attempts to parse timestamp strings in common formats.
 func parseTimestampString(timestampStr string) time.Time {
 	// Common timestamp formats to try
 	formats := []string{

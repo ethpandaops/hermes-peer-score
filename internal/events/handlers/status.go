@@ -11,13 +11,13 @@ import (
 	"github.com/ethpandaops/hermes-peer-score/internal/peer"
 )
 
-// StatusHandler handles status request events
+// StatusHandler handles status request events.
 type StatusHandler struct {
 	tool   common.ToolInterface
 	logger logrus.FieldLogger
 }
 
-// NewStatusHandler creates a new status event handler
+// NewStatusHandler creates a new status event handler.
 func NewStatusHandler(tool common.ToolInterface, logger logrus.FieldLogger) *StatusHandler {
 	return &StatusHandler{
 		tool:   tool,
@@ -25,16 +25,17 @@ func NewStatusHandler(tool common.ToolInterface, logger logrus.FieldLogger) *Sta
 	}
 }
 
-// EventType returns the event type this handler manages
+// EventType returns the event type this handler manages.
 func (h *StatusHandler) EventType() string {
 	return "REQUEST_STATUS"
 }
 
-// HandleEvent processes a status request event
+// HandleEvent processes a status request event.
 func (h *StatusHandler) HandleEvent(ctx context.Context, event *host.TraceEvent) error {
 	payload, ok := event.Payload.(map[string]interface{})
 	if !ok {
 		h.logger.Error("failed to convert status payload to map[string]interface{}")
+
 		return nil
 	}
 
@@ -43,6 +44,7 @@ func (h *StatusHandler) HandleEvent(ctx context.Context, event *host.TraceEvent)
 		h.logger.WithFields(logrus.Fields{
 			"payload": payload,
 		}).Error("status event missing or invalid PeerID")
+
 		return nil
 	}
 
@@ -68,7 +70,7 @@ func (h *StatusHandler) HandleEvent(ctx context.Context, event *host.TraceEvent)
 	return nil
 }
 
-// handleStatusUpdate processes the status update for a peer
+// handleStatusUpdate processes the status update for a peer.
 func (h *StatusHandler) handleStatusUpdate(peerStats *peer.Stats, payload map[string]interface{}, eventTime time.Time) {
 	// Extract client identification information from AgentVersion
 	if agentVersion, ok := payload["AgentVersion"].(string); ok && agentVersion != "" {
@@ -78,6 +80,7 @@ func (h *StatusHandler) handleStatusUpdate(peerStats *peer.Stats, payload map[st
 		if peerStats.ClientType == "" || peerStats.ClientType == "unknown" {
 			peerStats.ClientType = clientType
 		}
+
 		if peerStats.ClientAgent == "" {
 			peerStats.ClientAgent = agentVersion
 		}
@@ -97,7 +100,7 @@ func (h *StatusHandler) handleStatusUpdate(peerStats *peer.Stats, payload map[st
 	}).Debug("Handled status update")
 }
 
-// setSessionIdentified sets the IdentifiedAt timestamp on the current session
+// setSessionIdentified sets the IdentifiedAt timestamp on the current session.
 func (h *StatusHandler) setSessionIdentified(peerStats *peer.Stats, eventTime time.Time) {
 	if len(peerStats.ConnectionSessions) == 0 {
 		return
@@ -105,7 +108,7 @@ func (h *StatusHandler) setSessionIdentified(peerStats *peer.Stats, eventTime ti
 
 	// Get the last (current) session
 	currentSession := &peerStats.ConnectionSessions[len(peerStats.ConnectionSessions)-1]
-	
+
 	// Only set IdentifiedAt if it hasn't been set yet
 	if currentSession.IdentifiedAt == nil {
 		currentSession.IdentifiedAt = &eventTime

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Repository defines the interface for peer data management
+// Repository defines the interface for peer data management.
 type Repository interface {
 	GetPeer(peerID string) (*Stats, bool)
 	CreatePeer(peerID string) *Stats
@@ -18,7 +18,7 @@ type Repository interface {
 	GetEventMutex() *sync.RWMutex
 }
 
-// SessionManager defines the interface for managing peer connection sessions
+// SessionManager defines the interface for managing peer connection sessions.
 type SessionManager interface {
 	StartSession(peerID string, connectedAt time.Time) error
 	EndSession(peerID string, disconnectedAt time.Time) error
@@ -29,7 +29,7 @@ type SessionManager interface {
 	IncrementMessageCount(peerID string) error
 }
 
-// StatsCalculator defines the interface for calculating peer statistics
+// StatsCalculator defines the interface for calculating peer statistics.
 type StatsCalculator interface {
 	CalculateConnectionStats(peers map[string]*Stats) ConnectionStats
 	CalculateClientDistribution(peers map[string]*Stats) map[string]int

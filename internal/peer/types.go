@@ -2,7 +2,7 @@ package peer
 
 import "time"
 
-// Stats contains detailed statistics for an individual peer across all connection sessions
+// Stats contains detailed statistics for an individual peer across all connection sessions.
 type Stats struct {
 	PeerID               string              `json:"peer_id"`
 	ClientType           string              `json:"client_type"`
@@ -16,7 +16,7 @@ type Stats struct {
 	LastSeenAt           *time.Time          `json:"last_seen_at"`
 }
 
-// ConnectionSession represents a single connection timeline for a peer
+// ConnectionSession represents a single connection timeline for a peer.
 type ConnectionSession struct {
 	ConnectedAt    *time.Time          `json:"connected_at"`
 	IdentifiedAt   *time.Time          `json:"identified_at"`
@@ -29,7 +29,7 @@ type ConnectionSession struct {
 	MeshEvents     []MeshEvent         `json:"mesh_events"`
 }
 
-// PeerScoreSnapshot represents a snapshot of a peer's score at a specific time
+// PeerScoreSnapshot represents a snapshot of a peer's score at a specific time.
 type PeerScoreSnapshot struct {
 	Timestamp          time.Time    `json:"timestamp"`
 	Score              float64      `json:"score"`
@@ -39,7 +39,7 @@ type PeerScoreSnapshot struct {
 	Topics             []TopicScore `json:"topics"`
 }
 
-// TopicScore represents the peer score for a specific topic
+// TopicScore represents the peer score for a specific topic.
 type TopicScore struct {
 	Topic                    string        `json:"topic"`
 	TimeInMesh               time.Duration `json:"time_in_mesh"`
@@ -48,14 +48,14 @@ type TopicScore struct {
 	InvalidMessageDeliveries float64       `json:"invalid_message_deliveries"`
 }
 
-// GoodbyeEvent represents a goodbye message received from a peer
+// GoodbyeEvent represents a goodbye message received from a peer.
 type GoodbyeEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	Code      uint64    `json:"code"`
 	Reason    string    `json:"reason"`
 }
 
-// GoodbyeReasonStats tracks statistics for a specific goodbye reason
+// GoodbyeReasonStats tracks statistics for a specific goodbye reason.
 type GoodbyeReasonStats struct {
 	Reason   string   `json:"reason"`   // Original reason string
 	Count    int      `json:"count"`    // Number of occurrences
@@ -63,7 +63,7 @@ type GoodbyeReasonStats struct {
 	Examples []string `json:"examples"` // First few examples of this reason
 }
 
-// GoodbyeEventsSummary contains aggregated goodbye event statistics
+// GoodbyeEventsSummary contains aggregated goodbye event statistics.
 type GoodbyeEventsSummary struct {
 	TotalEvents   int                   `json:"total_events"`   // Total number of goodbye events
 	ReasonStats   []*GoodbyeReasonStats `json:"reason_stats"`   // Sorted by count (most common first)
@@ -72,7 +72,7 @@ type GoodbyeEventsSummary struct {
 	CodeFrequency map[uint64]int        `json:"code_frequency"` // Code occurrence count
 }
 
-// MeshEvent represents a GRAFT/PRUNE event for mesh participation tracking
+// MeshEvent represents a GRAFT/PRUNE event for mesh participation tracking.
 type MeshEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	Type      string    `json:"type"`
@@ -81,7 +81,7 @@ type MeshEvent struct {
 	Reason    string    `json:"reason"`
 }
 
-// ConnectionStats holds aggregate connection statistics
+// ConnectionStats holds aggregate connection statistics.
 type ConnectionStats struct {
 	TotalConnections     int `json:"total_connections"`
 	SuccessfulHandshakes int `json:"successful_handshakes"`
@@ -89,7 +89,7 @@ type ConnectionStats struct {
 	ConnectedPeers       int `json:"connected_peers"`
 }
 
-// DurationStats holds aggregate duration statistics
+// DurationStats holds aggregate duration statistics.
 type DurationStats struct {
 	AverageDuration time.Duration `json:"average_duration"`
 	MaxDuration     time.Duration `json:"max_duration"`

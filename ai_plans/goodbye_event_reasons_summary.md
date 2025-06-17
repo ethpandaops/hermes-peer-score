@@ -101,14 +101,14 @@ type GoodbyeReasonStats struct {
 // AnalyzeGoodbyeReasons groups and analyzes goodbye reasons from events
 func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats {
     stats := make(map[string]*GoodbyeReasonStats)
-    
+
     for _, event := range events {
         // Use lowercase for grouping but preserve original
         key := strings.ToLower(event.Reason)
         if key == "" {
             key = "unknown"
         }
-        
+
         if stat, exists := stats[key]; exists {
             stat.Count++
             // Track unique codes
@@ -124,7 +124,7 @@ func AnalyzeGoodbyeReasons(events []GoodbyeEvent) map[string]*GoodbyeReasonStats
             }
         }
     }
-    
+
     return stats
 }
 ```
@@ -169,8 +169,9 @@ type SummaryData struct {
 ```go
 func calculateGoodbyeEventsSummary(peers map[string]*PeerStats) GoodbyeEventsSummary {
     var allEvents []GoodbyeEvent
-    codeFreq := make(map[uint64]int)
     
+    codeFreq := make(map[uint64]int)
+
     // Collect all goodbye events
     for _, peer := range peers {
         for _, session := range peer.ConnectionSessions {
@@ -180,10 +181,10 @@ func calculateGoodbyeEventsSummary(peers map[string]*PeerStats) GoodbyeEventsSum
             }
         }
     }
-    
+
     // Analyze reasons
     reasonStats := AnalyzeGoodbyeReasons(allEvents)
-    
+
     // Convert to sorted slice
     var statsList []*GoodbyeReasonStats
     for _, stat := range reasonStats {
@@ -192,13 +193,14 @@ func calculateGoodbyeEventsSummary(peers map[string]*PeerStats) GoodbyeEventsSum
     sort.Slice(statsList, func(i, j int) bool {
         return statsList[i].Count > statsList[j].Count
     })
-    
+
     // Get top reasons
     var topReasons []string
+
     for i := 0; i < 5 && i < len(statsList); i++ {
         topReasons = append(topReasons, statsList[i].Reason)
     }
-    
+
     return GoodbyeEventsSummary{
         TotalEvents:   len(allEvents),
         ReasonStats:   statsList,
@@ -346,7 +348,7 @@ function escapeHtml(text) {
 // Update the initial data loading to include goodbye summaries
 function initializeReport() {
     // ... existing code ...
-    
+
     // Render goodbye events summary if available
     if (window.reportData.summary.goodbye_events_summary) {
         renderGoodbyeEventsSummary(window.reportData.summary.goodbye_events_summary);
@@ -356,7 +358,7 @@ function initializeReport() {
 // Function to render the goodbye events breakdown
 function renderGoodbyeEventsSummary(summary) {
     if (!summary || summary.total_events === 0) return;
-    
+
     // Add the breakdown section to the page
     const container = document.getElementById('goodbyeBreakdownContainer');
     if (container) {

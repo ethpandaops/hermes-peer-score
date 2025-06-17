@@ -11,7 +11,7 @@ import (
 
 const unknown = constants.Unknown
 
-// GetPeerID extracts the peer ID from a trace event
+// GetPeerID extracts the peer ID from a trace event.
 func GetPeerID(event *host.TraceEvent) string {
 	if event == nil || event.Payload == nil {
 		return unknown
@@ -25,7 +25,7 @@ func GetPeerID(event *host.TraceEvent) string {
 	return peerID
 }
 
-// extractPeerIDFromStruct extracts peer ID from various payload structures using reflection
+// extractPeerIDFromStruct extracts peer ID from various payload structures using reflection.
 func extractPeerIDFromStruct(payload interface{}) string {
 	if payload == nil {
 		return ""
@@ -36,6 +36,7 @@ func extractPeerIDFromStruct(payload interface{}) string {
 		if val.IsNil() {
 			return ""
 		}
+
 		val = val.Elem()
 	}
 
@@ -49,9 +50,10 @@ func extractPeerIDFromStruct(payload interface{}) string {
 	}
 }
 
-// extractFromStruct extracts peer ID from struct fields
+// extractFromStruct extracts peer ID from struct fields.
 func extractFromStruct(val reflect.Value) string {
 	typ := val.Type()
+
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		fieldName := typ.Field(i).Name
@@ -70,10 +72,11 @@ func extractFromStruct(val reflect.Value) string {
 			}
 		}
 	}
+
 	return ""
 }
 
-// extractFromMap extracts peer ID from map values
+// extractFromMap extracts peer ID from map values.
 func extractFromMap(val reflect.Value) string {
 	if val.Kind() != reflect.Map {
 		return ""
@@ -92,19 +95,21 @@ func extractFromMap(val reflect.Value) string {
 			}
 		}
 	}
+
 	return ""
 }
 
-// isPeerIDField checks if a field name indicates it contains a peer ID
+// isPeerIDField checks if a field name indicates it contains a peer ID.
 func isPeerIDField(fieldName string) bool {
 	lowerName := strings.ToLower(fieldName)
+
 	return lowerName == "peerid" ||
 		lowerName == "peer_id" ||
 		lowerName == "remotepeer" ||
 		lowerName == "remote_peer"
 }
 
-// extractPeerIDValue extracts the actual peer ID string from a field value
+// extractPeerIDValue extracts the actual peer ID string from a field value.
 func extractPeerIDValue(field reflect.Value) string {
 	if !field.IsValid() {
 		return ""
@@ -138,7 +143,7 @@ func extractPeerIDValue(field reflect.Value) string {
 	return ""
 }
 
-// NormalizeClientType normalizes client agent strings to standard types
+// NormalizeClientType normalizes client agent strings to standard types.
 func NormalizeClientType(clientAgent string) string {
 	if clientAgent == "" {
 		return unknown
@@ -167,14 +172,16 @@ func NormalizeClientType(clientAgent string) string {
 		if len(parts) > 0 {
 			return parts[0]
 		}
+
 		return unknown
 	}
 }
 
-// FormatShortPeerID returns a shortened version of the peer ID for logging
+// FormatShortPeerID returns a shortened version of the peer ID for logging.
 func FormatShortPeerID(peerID string) string {
 	if len(peerID) <= 12 {
 		return peerID
 	}
+
 	return peerID[:12]
 }

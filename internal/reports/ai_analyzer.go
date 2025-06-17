@@ -13,13 +13,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// DefaultAIAnalyzer implements the AIAnalyzer interface
+// DefaultAIAnalyzer implements the AIAnalyzer interface.
 type DefaultAIAnalyzer struct {
 	logger     logrus.FieldLogger
 	httpClient *http.Client
 }
 
-// NewDefaultAIAnalyzer creates a new AI analyzer
+// NewDefaultAIAnalyzer creates a new AI analyzer.
 func NewDefaultAIAnalyzer(logger logrus.FieldLogger) *DefaultAIAnalyzer {
 	return &DefaultAIAnalyzer{
 		logger: logger.WithField("component", "ai_analyzer"),
@@ -29,7 +29,7 @@ func NewDefaultAIAnalyzer(logger logrus.FieldLogger) *DefaultAIAnalyzer {
 	}
 }
 
-// AnalyzeReport generates AI analysis for the given report
+// AnalyzeReport generates AI analysis for the given report.
 func (ai *DefaultAIAnalyzer) AnalyzeReport(report *Report, apiKey string) (string, error) {
 	if apiKey == "" {
 		return "", fmt.Errorf("API key is required for AI analysis")
@@ -47,6 +47,7 @@ func (ai *DefaultAIAnalyzer) AnalyzeReport(report *Report, apiKey string) (strin
 	}
 
 	ai.logger.Info("AI analysis generated successfully")
+
 	return analysis, nil
 }
 
@@ -55,7 +56,6 @@ func (ai *DefaultAIAnalyzer) AnalyzeReport(report *Report, apiKey string) (strin
 func (ai *DefaultAIAnalyzer) GenerateInsights(data interface{}) (string, error) {
 	// Generate basic insights from the provided data
 	// Can be extended to use AI models or more sophisticated analysis
-
 	insights := "## Report Insights\n\n"
 	insights += "- Analysis of peer connections and network behavior\n"
 	insights += "- Identification of potential issues or anomalies\n"
@@ -64,7 +64,7 @@ func (ai *DefaultAIAnalyzer) GenerateInsights(data interface{}) (string, error) 
 	return insights, nil
 }
 
-// prepareAnalysisData prepares the report data for AI analysis (enhanced like old implementation)
+// prepareAnalysisData prepares the report data for AI analysis (enhanced like old implementation).
 func (ai *DefaultAIAnalyzer) prepareAnalysisData(report *Report) map[string]interface{} {
 	summary := map[string]interface{}{
 		"overview": map[string]interface{}{
@@ -87,6 +87,7 @@ func (ai *DefaultAIAnalyzer) prepareAnalysisData(report *Report) map[string]inte
 
 	// Calculate success rate
 	if report.TotalConnections > 0 {
+		//nolint:errcheck // ok.
 		summary["overview"].(map[string]interface{})["success_rate"] = float64(report.SuccessfulHandshakes) / float64(report.TotalConnections) * 100
 	}
 
@@ -106,11 +107,13 @@ func (ai *DefaultAIAnalyzer) prepareAnalysisData(report *Report) map[string]inte
 		if peer, ok := peerData.(map[string]interface{}); ok {
 			// Client distribution
 			if clientType, ok := peer["client_type"].(string); ok {
+				//nolint:errcheck // ok.
 				summary["client_distribution"].(map[string]int)[clientType]++
 			}
 
 			// Get message count for this peer
 			var peerMsgCount int
+
 			if sessions, ok := peer["connection_sessions"].([]interface{}); ok {
 				if len(sessions) > 1 {
 					reconnections++
@@ -152,6 +155,7 @@ func (ai *DefaultAIAnalyzer) prepareAnalysisData(report *Report) map[string]inte
 			}
 
 			totalMessages += peerMsgCount
+
 			if peerMsgCount > mostActivePeerMsgCount {
 				mostActivePeerMsgCount = peerMsgCount
 				mostActivePeerID = peerID
@@ -168,14 +172,17 @@ func (ai *DefaultAIAnalyzer) prepareAnalysisData(report *Report) map[string]inte
 
 		// Calculate average
 		var totalDuration time.Duration
+
 		shortConnections := 0
 		longConnections := 0
 
 		for _, d := range connectionDurations {
 			totalDuration += d
+
 			if d < 30*time.Second {
 				shortConnections++
 			}
+
 			if d > 5*time.Minute {
 				longConnections++
 			}
@@ -203,6 +210,7 @@ func (ai *DefaultAIAnalyzer) prepareAnalysisData(report *Report) map[string]inte
 	}
 
 	if len(report.Peers) > 0 {
+		//nolint:errcheck // ok.
 		summary["peer_behavior_summary"].(map[string]interface{})["avg_messages_per_peer"] = float64(totalMessages) / float64(len(report.Peers))
 	}
 
@@ -234,12 +242,13 @@ func (ai *DefaultAIAnalyzer) prepareAnalysisData(report *Report) map[string]inte
 			"count":  reasons[i].count,
 		})
 	}
+
 	summary["top_disconnect_reasons"] = topReasons
 
 	return summary
 }
 
-// callOpenRouterAPI makes a request to the OpenRouter API for analysis
+// callOpenRouterAPI makes a request to the OpenRouter API for analysis.
 func (ai *DefaultAIAnalyzer) callOpenRouterAPI(data map[string]interface{}, apiKey string) (string, error) {
 	// Get model from environment or use DeepSeek default
 	model := os.Getenv("OPENROUTER_MODEL")
@@ -288,10 +297,12 @@ func (ai *DefaultAIAnalyzer) callOpenRouterAPI(data map[string]interface{}, apiK
 	if err != nil {
 		return "", fmt.Errorf("failed to make request: %w", err)
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+
 		return "", fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
@@ -315,7 +326,7 @@ func (ai *DefaultAIAnalyzer) callOpenRouterAPI(data map[string]interface{}, apiK
 	return response.Choices[0].Message.Content, nil
 }
 
-// buildAnalysisPrompts builds the system and user prompts for AI analysis (matching old implementation)
+// buildAnalysisPrompts builds the system and user prompts for AI analysis (matching old implementation).
 func (ai *DefaultAIAnalyzer) buildAnalysisPrompts(data map[string]interface{}) (string, string) {
 	dataJSON, _ := json.MarshalIndent(data, "", "  ")
 
@@ -372,7 +383,7 @@ Focus on improving Hermes as a passive network monitoring tool that other peers 
 	return systemPrompt, userPrompt
 }
 
-// SetHTTPClient allows setting a custom HTTP client (for testing)
+// SetHTTPClient allows setting a custom HTTP client (for testing).
 func (ai *DefaultAIAnalyzer) SetHTTPClient(client *http.Client) {
 	ai.httpClient = client
 }

@@ -4,7 +4,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ToolInterface defines the interface that event handlers need from the peer score tool
+// ToolInterface defines the interface that event handlers need from the peer score tool.
 type ToolInterface interface {
 	GetPeer(peerID string) (interface{}, bool)
 	CreatePeer(peerID string) interface{}

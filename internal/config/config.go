@@ -11,7 +11,7 @@ import (
 	"github.com/ethpandaops/hermes-peer-score/constants"
 )
 
-// DefaultConfig implements the Config interface
+// DefaultConfig implements the Config interface.
 type DefaultConfig struct {
 	// Tool configuration
 	validationMode ValidationMode
@@ -47,7 +47,7 @@ type DefaultConfig struct {
 	validateGoMod bool
 }
 
-// NewDefaultConfig creates a new configuration with default values
+// NewDefaultConfig creates a new configuration with default values.
 func NewDefaultConfig() *DefaultConfig {
 	cfg := &DefaultConfig{
 		validationMode:  ValidationModeDelegated,
@@ -72,137 +72,137 @@ func NewDefaultConfig() *DefaultConfig {
 	return cfg
 }
 
-// GetValidationMode returns the validation mode
+// GetValidationMode returns the validation mode.
 func (c *DefaultConfig) GetValidationMode() ValidationMode {
 	return c.validationMode
 }
 
-// GetTestDuration returns the test duration
+// GetTestDuration returns the test duration.
 func (c *DefaultConfig) GetTestDuration() time.Duration {
 	return c.testDuration
 }
 
-// GetReportInterval returns the report interval
+// GetReportInterval returns the report interval.
 func (c *DefaultConfig) GetReportInterval() time.Duration {
 	return c.reportInterval
 }
 
-// GetPrysmHost returns the Prysm host
+// GetPrysmHost returns the Prysm host.
 func (c *DefaultConfig) GetPrysmHost() string {
 	return c.prysmHost
 }
 
-// GetPrysmHTTPPort returns the Prysm HTTP port
+// GetPrysmHTTPPort returns the Prysm HTTP port.
 func (c *DefaultConfig) GetPrysmHTTPPort() int {
 	return c.prysmHTTPPort
 }
 
-// GetPrysmGRPCPort returns the Prysm gRPC port
+// GetPrysmGRPCPort returns the Prysm gRPC port.
 func (c *DefaultConfig) GetPrysmGRPCPort() int {
 	return c.prysmGRPCPort
 }
 
-// GetUseTLS returns whether TLS is enabled
+// GetUseTLS returns whether TLS is enabled.
 func (c *DefaultConfig) GetUseTLS() bool {
 	return c.useTLS
 }
 
-// GetMaxPeers returns the maximum number of peers
+// GetMaxPeers returns the maximum number of peers.
 func (c *DefaultConfig) GetMaxPeers() int {
 	return c.maxPeers
 }
 
-// GetDialConcurrency returns the dial concurrency
+// GetDialConcurrency returns the dial concurrency.
 func (c *DefaultConfig) GetDialConcurrency() int {
 	return c.dialConcurrency
 }
 
-// GetPrivateKeyStr returns the private key string
+// GetPrivateKeyStr returns the private key string.
 func (c *DefaultConfig) GetPrivateKeyStr() string {
 	return c.privateKeyStr
 }
 
-// GetDialTimeout returns the dial timeout
+// GetDialTimeout returns the dial timeout.
 func (c *DefaultConfig) GetDialTimeout() time.Duration {
 	return c.dialTimeout
 }
 
-// GetDevp2pHost returns the devp2p host
+// GetDevp2pHost returns the devp2p host.
 func (c *DefaultConfig) GetDevp2pHost() string {
 	return c.devp2pHost
 }
 
-// GetDevp2pPort returns the devp2p port
+// GetDevp2pPort returns the devp2p port.
 func (c *DefaultConfig) GetDevp2pPort() int {
 	return c.devp2pPort
 }
 
-// GetLibp2pHost returns the libp2p host
+// GetLibp2pHost returns the libp2p host.
 func (c *DefaultConfig) GetLibp2pHost() string {
 	return c.libp2pHost
 }
 
-// GetLibp2pPort returns the libp2p port
+// GetLibp2pPort returns the libp2p port.
 func (c *DefaultConfig) GetLibp2pPort() int {
 	return c.libp2pPort
 }
 
-// GetDataStreamType returns the data stream type
+// GetDataStreamType returns the data stream type.
 func (c *DefaultConfig) GetDataStreamType() string {
 	return c.dataStreamType
 }
 
-// GetSubnets returns the subnet configurations
+// GetSubnets returns the subnet configurations.
 func (c *DefaultConfig) GetSubnets() map[string]*eth.SubnetConfig {
 	return c.subnets
 }
 
-// IsHTMLOnly returns whether HTML-only mode is enabled
+// IsHTMLOnly returns whether HTML-only mode is enabled.
 func (c *DefaultConfig) IsHTMLOnly() bool {
 	return c.htmlOnly
 }
 
-// GetInputJSON returns the input JSON file path
+// GetInputJSON returns the input JSON file path.
 func (c *DefaultConfig) GetInputJSON() string {
 	return c.inputJSON
 }
 
-// GetClaudeAPIKey returns the Claude API key
+// GetClaudeAPIKey returns the Claude API key.
 func (c *DefaultConfig) GetClaudeAPIKey() string {
 	return c.claudeAPIKey
 }
 
-// IsSkipAI returns whether AI analysis should be skipped
+// IsSkipAI returns whether AI analysis should be skipped.
 func (c *DefaultConfig) IsSkipAI() bool {
 	return c.skipAI
 }
 
-// IsUpdateGoMod returns whether go.mod should be updated
+// IsUpdateGoMod returns whether go.mod should be updated.
 func (c *DefaultConfig) IsUpdateGoMod() bool {
 	return c.updateGoMod
 }
 
-// IsValidateGoMod returns whether go.mod should be validated
+// IsValidateGoMod returns whether go.mod should be validated.
 func (c *DefaultConfig) IsValidateGoMod() bool {
 	return c.validateGoMod
 }
 
-// SetValidationMode sets the validation mode
+// SetValidationMode sets the validation mode.
 func (c *DefaultConfig) SetValidationMode(mode ValidationMode) {
 	c.validationMode = mode
 }
 
-// SetTestDuration sets the test duration
+// SetTestDuration sets the test duration.
 func (c *DefaultConfig) SetTestDuration(duration time.Duration) {
 	c.testDuration = duration
 }
 
-// SetPrysmHost sets the Prysm host
+// SetPrysmHost sets the Prysm host.
 func (c *DefaultConfig) SetPrysmHost(host string) {
 	c.prysmHost = host
 }
 
-// SetPrysmHTTPPort sets the Prysm HTTP port
+// SetPrysmHTTPPort sets the Prysm HTTP port.
 func (c *DefaultConfig) SetPrysmHTTPPort(port int) {
 	c.prysmHTTPPort = port
 	if port == 443 {
@@ -210,7 +210,7 @@ func (c *DefaultConfig) SetPrysmHTTPPort(port int) {
 	}
 }
 
-// SetPrysmGRPCPort sets the Prysm gRPC port
+// SetPrysmGRPCPort sets the Prysm gRPC port.
 func (c *DefaultConfig) SetPrysmGRPCPort(port int) {
 	c.prysmGRPCPort = port
 	if port == 443 {
@@ -218,37 +218,37 @@ func (c *DefaultConfig) SetPrysmGRPCPort(port int) {
 	}
 }
 
-// SetHTMLOnly sets HTML-only mode
+// SetHTMLOnly sets HTML-only mode.
 func (c *DefaultConfig) SetHTMLOnly(htmlOnly bool) {
 	c.htmlOnly = htmlOnly
 }
 
-// SetInputJSON sets the input JSON file path
+// SetInputJSON sets the input JSON file path.
 func (c *DefaultConfig) SetInputJSON(inputJSON string) {
 	c.inputJSON = inputJSON
 }
 
-// SetClaudeAPIKey sets the Claude API key
+// SetClaudeAPIKey sets the Claude API key.
 func (c *DefaultConfig) SetClaudeAPIKey(apiKey string) {
 	c.claudeAPIKey = apiKey
 }
 
-// SetSkipAI sets whether to skip AI analysis
+// SetSkipAI sets whether to skip AI analysis.
 func (c *DefaultConfig) SetSkipAI(skipAI bool) {
 	c.skipAI = skipAI
 }
 
-// SetUpdateGoMod sets whether to update go.mod
+// SetUpdateGoMod sets whether to update go.mod.
 func (c *DefaultConfig) SetUpdateGoMod(update bool) {
 	c.updateGoMod = update
 }
 
-// SetValidateGoMod sets whether to validate go.mod
+// SetValidateGoMod sets whether to validate go.mod.
 func (c *DefaultConfig) SetValidateGoMod(validate bool) {
 	c.validateGoMod = validate
 }
 
-// Validate validates the configuration
+// Validate validates the configuration.
 func (c *DefaultConfig) Validate() error {
 	// Validation mode-specific validation
 	switch c.validationMode {
@@ -270,17 +270,17 @@ func (c *DefaultConfig) Validate() error {
 
 	// Ports should be valid
 	if c.prysmHTTPPort <= 0 || c.prysmHTTPPort > 65535 {
-		return fmt.Errorf("Prysm HTTP port must be between 1 and 65535")
+		return fmt.Errorf("prysm HTTP port must be between 1 and 65535")
 	}
 
 	if c.prysmGRPCPort <= 0 || c.prysmGRPCPort > 65535 {
-		return fmt.Errorf("Prysm gRPC port must be between 1 and 65535")
+		return fmt.Errorf("prysm gRPC port must be between 1 and 65535")
 	}
 
 	return nil
 }
 
-// AsHermesConfig converts the configuration to Hermes node configuration
+// AsHermesConfig converts the configuration to Hermes node configuration.
 func (c *DefaultConfig) AsHermesConfig() *eth.NodeConfig {
 	return &eth.NodeConfig{
 		PrivateKeyStr:               c.privateKeyStr,
@@ -301,12 +301,12 @@ func (c *DefaultConfig) AsHermesConfig() *eth.NodeConfig {
 	}
 }
 
-// HostWithRedactedSecrets redacts passwords from connection strings for secure logging
+// HostWithRedactedSecrets redacts passwords from connection strings for secure logging.
 func (c *DefaultConfig) HostWithRedactedSecrets() string {
 	return redactConnectionString(c.prysmHost)
 }
 
-// redactConnectionString redacts passwords from connection strings
+// redactConnectionString redacts passwords from connection strings.
 func redactConnectionString(connStr string) string {
 	// Handle user:pass@host format
 	if len(connStr) > 0 && connStr[0] != '@' {
@@ -318,10 +318,11 @@ func redactConnectionString(connStr string) string {
 			}
 		}
 	}
+
 	return connStr
 }
 
-// Clone creates a deep copy of the configuration
+// Clone creates a deep copy of the configuration.
 func (c *DefaultConfig) Clone() *DefaultConfig {
 	clone := *c
 
@@ -334,7 +335,7 @@ func (c *DefaultConfig) Clone() *DefaultConfig {
 	return &clone
 }
 
-// GetValidationConfigs returns configuration mappings for each validation mode
+// GetValidationConfigs returns configuration mappings for each validation mode.
 func GetValidationConfigs() map[ValidationMode]ValidationConfig {
 	return map[ValidationMode]ValidationConfig{
 		ValidationModeDelegated: {
