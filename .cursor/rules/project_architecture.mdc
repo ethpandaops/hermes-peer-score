@@ -1,0 +1,102 @@
+---
+description: Project architecture and structure for hermes-peer-score
+alwaysApply: true  
+---
+
+# Hermes Peer Score Tool - Project Architecture
+
+This is a Go CLI tool for analyzing Ethereum network peer connection health using Hermes as a gossipsub listener. The project follows a modular architecture with clear separation of concerns.
+
+## Core Architecture Components
+
+### Entry Point
+- `main.go` - CLI entry point and configuration parsing
+- `cmd/` - Command-line interface handling
+
+### Core Business Logic  
+- `internal/core/` - Main orchestration logic
+  - `hermes_controller.go` - Hermes integration and peer management
+  - `tool.go` - Core peer scoring functionality
+  - `interfaces.go` - Core domain interfaces
+
+### Domain Models
+- `internal/peer/` - Peer management and analysis
+  - Session tracking and statistics calculation
+  - Goodbye event analysis and client detection
+  - Repository pattern for data persistence
+  
+- `internal/events/` - Event processing system
+  - Event handlers for different peer events (connection, disconnection, goodbye, mesh, peer_score, status)
+  - Event parsing and management
+  - Real-time event capture and analysis
+
+### Configuration Management
+- `internal/config/` - Application configuration
+- `constants/` - Application constants and configuration defaults
+
+### Reporting System
+- `internal/reports/` - Report generation and processing
+  - JSON and HTML report generation
+  - AI analysis integration via OpenRouter
+  - Template management and file I/O
+  - Data processing and visualization
+
+### Infrastructure
+- `internal/build/` - Build utilities and version management
+- `internal/common/` - Shared utilities and interfaces
+- `scripts/` - Python utilities for report management and deployment
+
+## Validation Modes
+
+The application supports two distinct validation modes that require different Hermes versions:
+
+### Delegated Validation
+- Uses Hermes v0.0.4-0.20250513093811-320c1c3ee6e2
+- Delegates validation to Prysm beacon node
+- Lower resource usage
+
+### Independent Validation  
+- Uses Hermes v0.0.4-0.20250611164742-0abea7d82cb4
+- Performs internal validation logic
+- Higher resource usage but more control
+
+## Key Technologies
+
+- **Go 1.24+** - Primary language with modern Go features
+- **Hermes** - Gossipsub listener for Ethereum beacon chain
+- **Prysm** - Beacon chain client integration
+- **OpenRouter** - AI analysis integration
+- **libp2p** - Peer-to-peer networking
+- **HTML/CSS/JS** - Interactive report visualization
+
+## File Organization Patterns
+
+- `internal/` contains all private application code
+- Domain-specific packages under `internal/` (peer, events, reports, etc.)
+- Interfaces defined alongside implementations
+- Test files co-located with source files (`*_test.go`)
+- Templates and static assets in dedicated directories
+- Legacy code preserved in `old-monolithic-code/` for reference
+
+## Build and Dependency Management
+
+- Go modules with `go.mod` containing mode-specific Hermes versions
+- Built-in dependency management commands for switching between validation modes
+- CI/CD integration with GitHub Actions for automated testing
+- GitHub Pages deployment for report hosting
+
+## Data Flow
+
+1. CLI parses configuration and initializes validation mode
+2. Hermes controller establishes connection to beacon node
+3. Event manager captures and processes peer events in real-time
+4. Peer repository tracks sessions and calculates statistics
+5. Report generator creates JSON/HTML outputs with optional AI analysis
+6. Reports are archived and deployed to GitHub Pages
+
+## Testing Strategy
+
+- Unit tests for individual components
+- Integration tests with real network conditions via CI
+- Separate test workflows for each validation mode
+- Test helpers and utilities in `internal/test_helpers.go`
