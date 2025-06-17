@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/probe-lab/hermes/host"
-	
+
 	"github.com/ethpandaops/hermes-peer-score/constants"
 )
 
@@ -98,10 +98,10 @@ func extractFromMap(val reflect.Value) string {
 // isPeerIDField checks if a field name indicates it contains a peer ID
 func isPeerIDField(fieldName string) bool {
 	lowerName := strings.ToLower(fieldName)
-	return lowerName == "peerid" || 
-		   lowerName == "peer_id" || 
-		   lowerName == "remotepeer" || 
-		   lowerName == "remote_peer"
+	return lowerName == "peerid" ||
+		lowerName == "peer_id" ||
+		lowerName == "remotepeer" ||
+		lowerName == "remote_peer"
 }
 
 // extractPeerIDValue extracts the actual peer ID string from a field value
@@ -145,7 +145,7 @@ func NormalizeClientType(clientAgent string) string {
 	}
 
 	agent := strings.ToLower(clientAgent)
-	
+
 	switch {
 	case strings.Contains(agent, constants.Lighthouse):
 		return constants.Lighthouse
@@ -157,10 +157,10 @@ func NormalizeClientType(clientAgent string) string {
 		return constants.Nimbus
 	case strings.Contains(agent, constants.Lodestar):
 		return constants.Lodestar
-	case strings.Contains(agent, constants.Besu):
-		return constants.Besu
 	case strings.Contains(agent, constants.Grandine):
 		return constants.Grandine
+	case strings.Contains(agent, constants.Caplin):
+		return constants.Caplin
 	default:
 		// Try to extract the first word as client type
 		parts := strings.Fields(agent)

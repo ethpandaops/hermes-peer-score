@@ -274,8 +274,6 @@ func normalizeClientType(clientAgent string) string {
 		return constants.Nimbus
 	case contains(agent, constants.Lodestar):
 		return constants.Lodestar
-	case contains(agent, constants.Besu):
-		return constants.Besu
 	case contains(agent, constants.Grandine):
 		return constants.Grandine
 	default:

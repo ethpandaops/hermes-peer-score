@@ -1,6 +1,6 @@
 package constants
 
-// Common string constants
+// Common string constants for consensus clients
 const (
 	Unknown    = "unknown"
 	Lighthouse = "lighthouse"
@@ -8,6 +8,6 @@ const (
 	Teku       = "teku"
 	Nimbus     = "nimbus"
 	Lodestar   = "lodestar"
-	Besu       = "besu"
 	Grandine   = "grandine"
+	Caplin     = "caplin"
 )
